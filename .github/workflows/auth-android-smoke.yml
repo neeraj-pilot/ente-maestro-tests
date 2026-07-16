@@ -104,7 +104,7 @@ jobs:
                       mkdir -p artifacts/maestro/debug
                       adb shell settings put system screen_off_timeout 2147483647
                       adb install -r "$AUTH_APK_PATH"
-                      maestro test --no-ansi --format JUNIT --output artifacts/maestro/results.xml --debug-output artifacts/maestro/debug --flatten-debug-output maestro/auth/smoke/onboarding.yaml maestro/auth/smoke/offline-mode.yaml maestro/auth/offline/manual-setup.yaml
+                      maestro test --no-ansi --format JUNIT --output artifacts/maestro/results.xml --debug-output artifacts/maestro/debug --flatten-debug-output maestro/auth/smoke/onboarding.yaml maestro/auth/smoke/offline-mode.yaml maestro/auth/offline/manual-setup.yaml maestro/auth/offline/manual-validation.yaml
 
             - name: Summarize smoke tests
               if: always() && steps.smoke-tests.outcome != 'skipped'

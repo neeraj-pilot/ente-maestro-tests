@@ -1,0 +1,109 @@
+appId: io.ente.auth.independent
+name: Validate offline account details
+tags:
+  - auth
+  - android
+  - offline
+  - core
+---
+- launchApp:
+    clearState: true
+- runFlow:
+    file: ../subflows/enter-offline-mode.yaml
+- tapOn: "Enter a setup key"
+- extendedWaitUntil:
+    visible: "Enter account details"
+    timeout: 10000
+- scrollUntilVisible:
+    element: "Save"
+    direction: DOWN
+    visibilityPercentage: 60
+    centerElement: true
+- tapOn: "Save"
+- assertVisible: "Incorrect details"
+- assertVisible: "Secret can not be empty"
+- tapOn: "(?i)^ok$"
+- runFlow:
+    when:
+      visible:
+        id: "auth_manual_advanced"
+    commands:
+      - scrollUntilVisible:
+          element:
+            id: "auth_manual_advanced"
+          direction: UP
+      - tapOn:
+          id: "auth_manual_advanced"
+      - assertVisible:
+          id: "auth_manual_algorithm"
+      - assertVisible:
+          id: "auth_manual_type"
+      - tapOn:
+          id: "auth_manual_algorithm"
+      - assertVisible: "SHA1"
+      - assertVisible: "SHA256"
+      - assertVisible: "SHA512"
+      - tapOn: "Close"
+      - tapOn:
+          id: "auth_manual_type"
+      - assertVisible: "TOTP"
+      - assertVisible: "HOTP"
+      - tapOn: "Close"
+      - scrollUntilVisible:
+          element:
+            id: "auth_manual_digits"
+          direction: DOWN
+      - assertVisible:
+          id: "auth_manual_period"
+      - tapOn:
+          id: "auth_manual_digits"
+          point: "50%,70%"
+      - eraseText
+      - inputText: "11"
+      - pressKey: enter
+      - scrollUntilVisible:
+          element:
+            id: "auth_manual_save"
+          direction: DOWN
+          visibilityPercentage: 60
+          centerElement: true
+      - tapOn:
+          id: "auth_manual_save"
+      - assertVisible: "Incorrect details"
+      - assertVisible: "Digits must be between 1 and 10"
+      - tapOn: "(?i)^ok$"
+      - scrollUntilVisible:
+          element:
+            id: "auth_manual_digits"
+          direction: UP
+      - tapOn:
+          id: "auth_manual_digits"
+          point: "50%,70%"
+      - eraseText
+      - inputText: "6"
+      - tapOn:
+          id: "auth_manual_period"
+          point: "50%,70%"
+      - eraseText
+      - inputText: "9"
+      - pressKey: enter
+      - scrollUntilVisible:
+          element:
+            id: "auth_manual_save"
+          direction: DOWN
+          visibilityPercentage: 60
+          centerElement: true
+      - tapOn:
+          id: "auth_manual_save"
+      - assertVisible: "Incorrect details"
+      - assertVisible: "Period must be between 10 and 60 seconds"
+      - tapOn: "(?i)^ok$"
+- runFlow:
+    when:
+      notVisible:
+        id: "auth_manual_advanced"
+    commands:
+      - scrollUntilVisible:
+          element: "Advanced"
+          direction: UP
+      - assertVisible: "Advanced"
