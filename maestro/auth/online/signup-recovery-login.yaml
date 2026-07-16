@@ -50,12 +50,13 @@ tags: [auth, android, online, signup, recovery, login]
     commands:
       - tapOn:
           id: "auth_settings_account"
+- waitForAnimationToEnd
 - runFlow:
     when:
-      notVisible:
-        id: "auth_settings_account"
+      notVisible: "Logout"
     commands:
       - tapOn: "Account"
+- waitForAnimationToEnd
 - extendedWaitUntil:
     visible: "Logout"
     timeout: 30000
