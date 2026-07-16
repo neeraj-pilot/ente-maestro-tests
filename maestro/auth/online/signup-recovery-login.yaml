@@ -53,13 +53,18 @@ tags: [auth, android, online, signup, recovery, login]
 - waitForAnimationToEnd
 - runFlow:
     when:
-      notVisible: "Logout"
+      notVisible: "Change email"
     commands:
       - tapOn: "Account"
 - waitForAnimationToEnd
 - extendedWaitUntil:
-    visible: "Logout"
+    visible: "Change email"
     timeout: 30000
+- scrollUntilVisible:
+    element: "Logout"
+    direction: DOWN
+    visibilityPercentage: 60
+    centerElement: true
 - tapOn: "Logout"
 - tapOn: "Yes, logout"
 - extendedWaitUntil:
