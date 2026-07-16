@@ -59,6 +59,9 @@ test time, excluding emulator boot, exceeds five minutes.
    - Use a real issuer with an icon match; do not use a synthetic `Maestro`
      issuer.
 2. **Manual setup validation and advanced fields**
+   - Status: complete on Android. Promoted after two clean hosted runs of
+     `9a48bab` on 2026-07-16: [push](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29505095659)
+     and [repeat](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29505610153).
    - Cover required-field validation.
    - Exercise algorithm, digits, period, and HOTP/TOTP selection without
      depending on a native picker.
