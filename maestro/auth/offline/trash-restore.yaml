@@ -1,0 +1,82 @@
+appId: io.ente.auth.independent
+name: Trash and restore offline Auth code
+tags: [auth, android, offline, trash]
+---
+- launchApp:
+    clearState: true
+- runFlow:
+    file: ../subflows/enter-offline-mode.yaml
+- runFlow:
+    file: ../subflows/add-offline-account.yaml
+    env:
+      ISSUER: "GitHub"
+      SECRET: "JBSWY3DPEHPK3PXP"
+      ACCOUNT: "security@github.test"
+      NOTE: ""
+- runFlow:
+    file: ../subflows/add-offline-account.yaml
+    env:
+      ISSUER: "Stripe"
+      SECRET: "KRUGS4ZANFZSAYJA"
+      ACCOUNT: "billing@stripe.test"
+      NOTE: ""
+- runFlow:
+    when:
+      visible:
+        id: "auth_code_item"
+    commands:
+      - longPressOn:
+          id: "auth_code_item"
+- runFlow:
+    when:
+      notVisible:
+        id: "auth_code_item"
+    commands:
+      - longPressOn: "GitHub"
+- tapOn: "(?s)^Trash.*"
+- tapOn: "^Trash$"
+- assertNotVisible: "GitHub"
+- assertVisible: "Stripe"
+- runFlow:
+    when:
+      visible:
+        id: "auth_filter_trash"
+    commands:
+      - tapOn:
+          id: "auth_filter_trash"
+- runFlow:
+    when:
+      notVisible:
+        id: "auth_filter_trash"
+    commands:
+      - tapOn: "Trash"
+- assertVisible: "GitHub"
+- runFlow:
+    when:
+      visible:
+        id: "auth_code_item"
+    commands:
+      - longPressOn:
+          id: "auth_code_item"
+- runFlow:
+    when:
+      notVisible:
+        id: "auth_code_item"
+    commands:
+      - longPressOn: "GitHub"
+- runFlow:
+    when:
+      visible:
+        id: "auth_selection_restore"
+    commands:
+      - tapOn:
+          id: "auth_selection_restore"
+- runFlow:
+    when:
+      notVisible:
+        id: "auth_selection_restore"
+    commands:
+      - tapOn: "Restore"
+- tapOn: "All"
+- assertVisible: "GitHub"
+- assertVisible: "Stripe"
