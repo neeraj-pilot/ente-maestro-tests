@@ -16,10 +16,18 @@ tags:
     timeout: 10000
 - inputText: "GitHub"
 - tapOn:
-    point: "65%,25%"
+    rightOf: "Secret"
+    below: "Issuer"
+    above: "Account"
+    width: 717
+    tolerance: 80
 - inputText: "JBSWY3DPEHPK3PXP"
 - tapOn:
-    point: "65%,30%"
+    rightOf: "Account"
+    below: "Secret"
+    above: "Notes"
+    width: 717
+    tolerance: 80
 - inputText: "security@github.test"
 - pressKey: enter
 - scrollUntilVisible:
