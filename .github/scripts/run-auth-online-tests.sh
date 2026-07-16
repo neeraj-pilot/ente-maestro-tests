@@ -30,6 +30,9 @@ if ((test_status != 0)); then
     adb shell cat /sdcard/auth-window.xml 2>/dev/null \
         | grep -E 'text="(Account|Change email|Change password|Recovery key|Logout|Delete)"' \
         > artifacts/maestro/account-settings-hierarchy.txt || true
+    maestro hierarchy --compact --no-ansi 2>/dev/null \
+        | grep -E '(Account|Change email|Change password|Recovery key|Logout|Delete account)' \
+        > artifacts/maestro/maestro-account-hierarchy.txt || true
 fi
 
 exit "$test_status"
