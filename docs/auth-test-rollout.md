@@ -75,6 +75,9 @@ test time, excluding emulator boot, exceeds five minutes.
      icons, for example GitHub, Stripe, and Dropbox.
    - Keep the helper small. A flow should seed only the state it needs.
 5. **Home organization**
+   - Status: complete on Android. Promoted after two clean hosted matrix runs:
+     [first](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29524172187)
+     and [repeat](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29524701204).
    - Search by issuer and account.
    - Exercise issuer/account/custom sorting and visible filters.
    - Verify the empty-search state and clearing the query.
@@ -90,6 +93,11 @@ test time, excluding emulator boot, exceeds five minutes.
      group.
    - Keep destructive duplicate cleanup out until authentication is stable.
 9. **Settings without external navigation**
+   - Status: complete on Android. Promoted after two clean hosted settings
+     shards in [29526305068](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29526305068)
+     and [29526973851](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29526973851).
+     Assertions use the published nightly's visible labels and page titles;
+     they do not require development-only semantics IDs.
    - Verify the Data, Security, General, Support, About, and Theme structure.
    - Cover the version label, theme change, large-icon toggle, language list,
      and app-icon list.
