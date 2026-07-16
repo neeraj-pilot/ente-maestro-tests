@@ -156,15 +156,6 @@ jobs:
                   if-no-files-found: warn
                   retention-days: 7
 
-            - name: Upload safe Account settings screenshot on failure
-              if: steps.online-tests.outcome == 'failure'
-              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-              with:
-                  name: auth-account-settings-screenshot
-                  path: artifacts/maestro/account-settings.png
-                  if-no-files-found: warn
-                  retention-days: 1
-
             - name: Show backend status on failure
               if: steps.online-tests.outcome == 'failure'
               run: docker compose -f museum/compose.yaml ps

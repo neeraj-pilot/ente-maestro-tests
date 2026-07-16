@@ -60,19 +60,11 @@ tags: [auth, android, online, signup, recovery, login]
 - extendedWaitUntil:
     visible: "Change email"
     timeout: 30000
-- takeScreenshot: artifacts/maestro/account-settings
-- runFlow:
-    when:
-      visible: "Logout"
-    commands:
-      - tapOn: "Logout"
-- runFlow:
-    when:
-      notVisible: "Logout"
-    commands:
-      # The universal APK currently omits this row from x86_64 accessibility.
-      - tapOn:
-          point: "50%,43%"
+# The universal APK can omit the Logout label from x86_64 accessibility.
+- tapOn:
+    enabled: true
+    below: "Recovery key"
+    above: "Delete account"
 - extendedWaitUntil:
     visible: "Yes, logout"
     timeout: 30000
