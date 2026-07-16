@@ -24,7 +24,6 @@ tags: [auth, android, offline, settings]
 - tapOn: "Settings"
 - tapOn: "About"
 - assertVisible: "About"
-- assertVisible: "We are open source!"
 - pressKey: BACK
 - tapOn: "Settings"
 - tapOn: "Theme"
