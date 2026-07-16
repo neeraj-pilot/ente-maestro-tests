@@ -5,6 +5,11 @@ set -euo pipefail
 mkdir -p artifacts/maestro/online-debug
 adb shell settings put system screen_off_timeout 2147483647
 adb install -r "$AUTH_APK_PATH"
+{
+    adb shell wm size
+    adb shell wm density
+    adb shell settings get system font_scale
+} > artifacts/maestro/device-metrics.txt
 test_status=0
 maestro test --no-ansi \
     --format JUNIT \
