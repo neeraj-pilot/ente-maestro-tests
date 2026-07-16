@@ -1,4 +1,4 @@
-name: "Auth Android Museum"
+name: "Auth Android online"
 
 on:
     workflow_dispatch:
@@ -7,7 +7,7 @@ permissions:
     contents: read
 
 concurrency:
-    group: auth-android-museum-${{ github.ref }}
+    group: auth-android-online-${{ github.ref }}
     cancel-in-progress: true
 
 env:
@@ -15,14 +15,14 @@ env:
     AUTH_APK_DIR: ${{ github.workspace }}/artifacts/auth
     MAESTRO_CLI_NO_ANALYTICS: 1
     MAESTRO_VERSION: 2.6.1
-    MUSEUM_ENDPOINT: http://10.0.2.2:8080
-    MUSEUM_OTT: 123456
+    ONLINE_ENDPOINT: http://10.0.2.2:8080
+    ONLINE_OTT: 123456
     ONLINE_EMAIL: auth-ci-${{ github.run_id }}-${{ github.run_attempt }}@example.org
     MISSING_EMAIL: missing-${{ github.run_id }}-${{ github.run_attempt }}@example.org
 
 jobs:
-    museum-auth:
-        name: Signup, recovery key, and password login
+    auth-online:
+        name: Auth signup, recovery key, and password login
         runs-on: ubuntu-latest
         timeout-minutes: 40
         steps:
@@ -81,7 +81,7 @@ jobs:
                   curl -fsSL "https://get.maestro.mobile.dev" | bash
                   echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
 
-            - name: Start Museum
+            - name: Start local Auth backend
               run: |
                   docker compose -f museum/compose.yaml up --detach
                   for attempt in {1..60}; do
@@ -105,8 +105,8 @@ jobs:
                   echo "::add-mask::$password"
                   echo "ONLINE_PASSWORD=$password" >> "$GITHUB_ENV"
 
-            - name: Run Museum tests
-              id: museum-tests
+            - name: Run Auth online tests
+              id: online-tests
               continue-on-error: true
               uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
               with:
@@ -115,12 +115,12 @@ jobs:
                   arch: x86_64
                   profile: pixel_5
                   disable-animations: true
-                  script: .github/scripts/run-auth-museum-tests.sh
+                  script: .github/scripts/run-auth-online-tests.sh
 
-            - name: Summarize Museum tests
-              if: always() && steps.museum-tests.outcome != 'skipped'
+            - name: Summarize Auth online tests
+              if: always() && steps.online-tests.outcome != 'skipped'
               env:
-                  TEST_OUTCOME: ${{ steps.museum-tests.outcome }}
+                  TEST_OUTCOME: ${{ steps.online-tests.outcome }}
               run: |
                   if [[ "$TEST_OUTCOME" == "success" ]]; then
                       status="passed"
@@ -128,37 +128,37 @@ jobs:
                       status="failed"
                   fi
                   {
-                      echo "### Auth Android Museum $status"
+                      echo "### Auth Android online $status"
                       echo
                       echo "- Release: \`$AUTH_RELEASE_TAG\`"
                       echo "- Android API: \`34\`"
                       echo "- Maestro: \`$MAESTRO_VERSION\`"
-                      echo "- Museum: local container with PostgreSQL"
+                      echo "- Backend dependency: local Museum with PostgreSQL"
                       echo
                       echo "#### Coverage in this run"
                       echo
-                      echo "- Unknown-account login reaches Museum and is rejected"
+                      echo "- Unknown-account login shows the expected Auth error"
                       echo "- Signup with deterministic email verification"
                       echo "- Recovery key is generated and acknowledged"
                       echo "- Logout clears the custom endpoint"
                       echo "- Password login succeeds after endpoint reconfiguration"
                       echo
-                      echo "JUnit results are attached as \`auth-museum-results\`."
+                      echo "JUnit results are attached as \`auth-online-results\`."
                   } >> "$GITHUB_STEP_SUMMARY"
 
-            - name: Upload Museum results
-              if: always() && steps.museum-tests.outcome != 'skipped'
+            - name: Upload Auth online results
+              if: always() && steps.online-tests.outcome != 'skipped'
               uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
               with:
-                  name: auth-museum-results
-                  path: artifacts/maestro/museum-results.xml
+                  name: auth-online-results
+                  path: artifacts/maestro/online-results.xml
                   if-no-files-found: warn
                   retention-days: 7
 
-            - name: Show Museum status on failure
-              if: steps.museum-tests.outcome == 'failure'
+            - name: Show backend status on failure
+              if: steps.online-tests.outcome == 'failure'
               run: docker compose -f museum/compose.yaml ps
 
-            - name: Propagate Museum test failure
-              if: steps.museum-tests.outcome == 'failure'
+            - name: Propagate Auth online test failure
+              if: steps.online-tests.outcome == 'failure'
               run: exit 1

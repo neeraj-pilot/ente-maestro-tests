@@ -117,7 +117,7 @@ For imports, place fixtures in Android Downloads with `adb push` before the
 flow. The test should still exercise Ente's native picker and import UI; the
 host runner should not depend on an interactive desktop file chooser.
 
-### Phase 3: Museum-backed Auth
+### Phase 3: online Auth with a local Museum dependency
 
 Use a separate workflow and keep it manual until its provisioning is proven
 repeatable. Passkeys are out of scope for the first online suite.

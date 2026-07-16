@@ -9,6 +9,6 @@ appId: ${APP_ID}
 - tapOn: "Yes"
 - assertVisible: "Save"
 - eraseText: 100
-- inputText: ${MUSEUM_ENDPOINT}
+- inputText: ${ONLINE_ENDPOINT}
 - tapOn: "Save"
 - assertVisible: "Log in"

@@ -1,12 +1,12 @@
 appId: ${APP_ID}
-name: Museum signup, recovery key, and password login
-tags: [auth, android, museum, signup, recovery, login]
+name: Auth signup, recovery key, and password login
+tags: [auth, android, online, signup, recovery, login]
 ---
 - launchApp:
     clearState: true
 - assertVisible: "Log in"
 - runFlow:
-    file: ../subflows/configure-museum-endpoint.yaml
+    file: ../subflows/configure-online-test-endpoint.yaml
 - tapOn: "Sign up"
 - assertVisible: "Enter your email id"
 - tapOn: "Enter your email id"
@@ -30,7 +30,7 @@ tags: [auth, android, museum, signup, recovery, login]
 - extendedWaitUntil:
     visible: ".*We have sent a code to.*"
     timeout: 30000
-- inputText: ${MUSEUM_OTT}
+- inputText: ${ONLINE_OTT}
 - extendedWaitUntil:
     visible: ".*If you forget your password.*"
     timeout: 120000
@@ -47,7 +47,7 @@ tags: [auth, android, museum, signup, recovery, login]
     visible: "Log in"
     timeout: 30000
 - runFlow:
-    file: ../subflows/configure-museum-endpoint.yaml
+    file: ../subflows/configure-online-test-endpoint.yaml
 - tapOn: "Log in"
 - waitForAnimationToEnd
 - eraseText: 100

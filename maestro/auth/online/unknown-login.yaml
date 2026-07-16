@@ -1,12 +1,12 @@
 appId: ${APP_ID}
-name: Museum rejects an unknown login
-tags: [auth, android, museum, login]
+name: Auth shows an unknown-account login error
+tags: [auth, android, online, login]
 ---
 - launchApp:
     clearState: true
 - assertVisible: "Log in"
 - runFlow:
-    file: ../subflows/configure-museum-endpoint.yaml
+    file: ../subflows/configure-online-test-endpoint.yaml
 - tapOn: "Log in"
 - waitForAnimationToEnd
 - eraseText: 100
