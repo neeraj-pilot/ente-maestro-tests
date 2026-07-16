@@ -77,6 +77,7 @@ jobs:
                   )
 
                   echo "AUTH_APK_PATH=$apk_path" >> "$GITHUB_ENV"
+                  echo "AUTH_RELEASE_TAG=$release_tag" >> "$GITHUB_ENV"
 
             - name: Install Maestro
               run: |
@@ -90,6 +91,8 @@ jobs:
                   sudo udevadm trigger --name-match=kvm
 
             - name: Run smoke tests
+              id: smoke-tests
+              continue-on-error: true
               uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
               with:
                   api-level: 34
@@ -98,14 +101,42 @@ jobs:
                   profile: pixel_6
                   disable-animations: true
                   script: |
+                      mkdir -p artifacts/maestro/debug
                       adb install -r "$AUTH_APK_PATH"
-                      maestro test --no-ansi maestro/auth/smoke/onboarding.yaml maestro/auth/smoke/offline-mode.yaml
+                      maestro test --no-ansi --format JUNIT --output artifacts/maestro/results.xml --debug-output artifacts/maestro/debug --flatten-debug-output maestro/auth/smoke/onboarding.yaml maestro/auth/smoke/offline-mode.yaml
+
+            - name: Summarize smoke tests
+              if: always() && steps.smoke-tests.outcome != 'skipped'
+              env:
+                  TEST_OUTCOME: ${{ steps.smoke-tests.outcome }}
+              run: |
+                  if [[ "$TEST_OUTCOME" == "success" ]]; then
+                      status="passed"
+                  else
+                      status="failed"
+                  fi
+                  {
+                      echo "### Auth Android smoke $status"
+                      echo
+                      echo "- Release: \`$AUTH_RELEASE_TAG\`"
+                      echo "- Android API: \`34\`"
+                      echo "- Maestro: \`$MAESTRO_VERSION\`"
+                      if [[ "$TEST_OUTCOME" != "success" ]]; then
+                          echo "- Diagnostics: see the \`auth-maestro-diagnostics\` artifact"
+                      fi
+                  } >> "$GITHUB_STEP_SUMMARY"
 
             - name: Upload Maestro diagnostics
-              if: failure()
+              if: steps.smoke-tests.outcome == 'failure'
               uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
               with:
                   name: auth-maestro-diagnostics
-                  path: ~/.maestro/tests/**
-                  if-no-files-found: ignore
+                  path: |
+                      artifacts/maestro/**
+                      ~/.maestro/tests/**
+                  if-no-files-found: warn
                   retention-days: 7
+
+            - name: Propagate smoke test failure
+              if: steps.smoke-tests.outcome == 'failure'
+              run: exit 1
