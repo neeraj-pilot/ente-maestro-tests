@@ -60,12 +60,21 @@ tags: [auth, android, online, signup, recovery, login]
 - extendedWaitUntil:
     visible: "Change email"
     timeout: 30000
-- scrollUntilVisible:
-    element: "Logout"
-    direction: DOWN
-    visibilityPercentage: 60
-    centerElement: true
-- tapOn: "Logout"
+- runFlow:
+    when:
+      visible: "Logout"
+    commands:
+      - tapOn: "Logout"
+- runFlow:
+    when:
+      notVisible: "Logout"
+    commands:
+      # The universal APK currently omits this row from x86_64 accessibility.
+      - tapOn:
+          point: "50%,43%"
+- extendedWaitUntil:
+    visible: "Yes, logout"
+    timeout: 30000
 - tapOn: "Yes, logout"
 - extendedWaitUntil:
     visible: "Log in"
