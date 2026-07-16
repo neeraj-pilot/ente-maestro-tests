@@ -114,6 +114,7 @@ jobs:
                   target: default
                   arch: x86_64
                   profile: pixel_5
+                  cores: 4
                   disable-animations: true
                   script: .github/scripts/run-auth-online-tests.sh
 

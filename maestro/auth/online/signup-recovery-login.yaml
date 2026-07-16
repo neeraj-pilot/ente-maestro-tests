@@ -31,9 +31,10 @@ tags: [auth, android, online, signup, recovery, login]
     visible: ".*We have sent a code to.*"
     timeout: 30000
 - inputText: ${ONLINE_OTT}
+# Account creation performs client-side key derivation on the x86_64 runner.
 - extendedWaitUntil:
     visible: ".*If you forget your password.*"
-    timeout: 120000
+    timeout: 300000
 - tapOn: "Continue"
 - extendedWaitUntil:
     visible: "Settings"
