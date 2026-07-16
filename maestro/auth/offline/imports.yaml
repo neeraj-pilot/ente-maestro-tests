@@ -1,0 +1,112 @@
+appId: io.ente.auth.independent
+name: Import Auth fixtures offline
+tags: [auth, android, offline, import]
+---
+- launchApp:
+    clearState: true
+- runFlow:
+    file: ../subflows/enter-offline-mode.yaml
+- tapOn: "Settings"
+- tapOn: "Data"
+- extendedWaitUntil:
+    visible: "Import codes"
+    timeout: 10000
+- tapOn: "Import codes"
+- tapOn:
+    id: "auth_import_plainText"
+- tapOn: "Select file"
+- tapOn: "Show roots"
+- tapOn:
+    text: "Downloads"
+    index: 0
+- runFlow:
+    when:
+      notVisible: "Search…"
+    commands:
+      - tapOn:
+          id: "com.google.android.documentsui:id/option_menu_search"
+          retryTapIfNoChange: true
+- runFlow:
+    when:
+      notVisible: "Search…"
+    commands:
+      - tapOn:
+          id: "com.google.android.documentsui:id/option_menu_search"
+          retryTapIfNoChange: true
+- extendedWaitUntil:
+    visible: "Search…"
+    timeout: 10000
+- inputText: "plain_text_import.txt"
+- extendedWaitUntil:
+    visible: "^(?!Preview the file ).*plain_text_import.txt.*"
+    timeout: 15000
+- tapOn:
+    id: "android:id/title"
+- extendedWaitUntil:
+    visible:
+      id: "auth_import_success"
+    timeout: 30000
+- assertVisible: ".*imported 2 codes.*"
+- tapOn: "Ok"
+- pressKey: BACK
+- pressKey: BACK
+- pressKey: BACK
+- tapOn: "Settings"
+- tapOn: "Data"
+- extendedWaitUntil:
+    visible: "Import codes"
+    timeout: 10000
+- tapOn: "Import codes"
+- scrollUntilVisible:
+    element:
+      id: "auth_import_googleAuthenticator"
+    direction: DOWN
+- tapOn:
+    id: "auth_import_googleAuthenticator"
+- assertVisible: "Select file"
+- tapOn: "Select file"
+- tapOn: "Show roots"
+- tapOn:
+    text: "Downloads"
+    index: 0
+- runFlow:
+    when:
+      notVisible: "Search…"
+    commands:
+      - tapOn:
+          id: "com.google.android.documentsui:id/option_menu_search"
+          retryTapIfNoChange: true
+- runFlow:
+    when:
+      notVisible: "Search…"
+    commands:
+      - tapOn:
+          id: "com.google.android.documentsui:id/option_menu_search"
+          retryTapIfNoChange: true
+- extendedWaitUntil:
+    visible: "Search…"
+    timeout: 10000
+- inputText: "google_auth_migration.png"
+- extendedWaitUntil:
+    visible: "^(?!Preview the file ).*google_auth_migration.png.*"
+    timeout: 15000
+- tapOn:
+    text: "^google_auth_migration\\.png,.*"
+- extendedWaitUntil:
+    visible:
+      id: "auth_import_confirm_google_authenticator"
+    timeout: 30000
+- assertVisible: ".*Import 2 codes from Google Authenticator.*"
+- tapOn: "Import"
+- extendedWaitUntil:
+    visible:
+      id: "auth_import_success"
+    timeout: 30000
+- assertVisible: ".*imported 2 codes.*"
+- tapOn: "Ok"
+- extendedWaitUntil:
+    visible:
+      id: "auth_code_item"
+    timeout: 10000
+- assertVisible: "(?s).*security-lab@google.demo.*"
+- assertVisible: "(?s).*build-bot@microsoft.demo.*"
