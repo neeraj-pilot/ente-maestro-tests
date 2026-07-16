@@ -9,3 +9,6 @@ It does not build Ente, start Museum, or use Maestro Cloud.
 
 The workflow runs when its test files change and can also be started manually.
 Failed runs retain Maestro diagnostics for seven days.
+
+See the [Auth test rollout plan](docs/auth-test-rollout.md) for the order in
+which offline, platform-integrated, and Museum-backed coverage will be added.
