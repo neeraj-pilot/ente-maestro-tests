@@ -96,9 +96,9 @@ jobs:
               uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
               with:
                   api-level: 34
-                  target: google_apis
+                  target: default
                   arch: x86_64
-                  profile: pixel_6
+                  profile: pixel_5
                   disable-animations: true
                   script: |
                       mkdir -p artifacts/maestro/debug

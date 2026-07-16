@@ -157,6 +157,10 @@ secrets in GitHub summaries or uploaded plaintext logs.
 One Android runner is currently faster and cheaper because emulator setup is
 about three minutes while the smoke flows take under thirty seconds.
 
+Use the AOSP system image for offline suites. Add Google APIs or Play Store
+images only when a tested behavior demonstrates that dependency; the heavier
+Pixel Launcher image can introduce unrelated launcher ANRs.
+
 Introduce at most two parallel Android jobs when `offline-core` itself exceeds
 five minutes:
 
