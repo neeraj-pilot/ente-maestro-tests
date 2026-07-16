@@ -60,6 +60,10 @@ tags: [auth, android, online, signup, recovery, login]
 - extendedWaitUntil:
     visible: "Change email"
     timeout: 30000
+- scrollUntilVisible:
+    element: "Recovery key"
+    direction: DOWN
+    visibilityPercentage: 80
 # The universal APK can omit the Logout label from x86_64 accessibility.
 - tapOn:
     enabled: true
