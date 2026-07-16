@@ -14,12 +14,15 @@ tags:
 - extendedWaitUntil:
     visible: "Enter account details"
     timeout: 10000
-- inputText: "GitHub"
 - runFlow:
     when:
       visible:
         id: "auth_manual_secret"
     commands:
+      - tapOn:
+          id: "auth_manual_issuer"
+          point: "50%,70%"
+      - inputText: "GitHub"
       - tapOn:
           id: "auth_manual_secret"
           point: "50%,70%"
@@ -32,6 +35,7 @@ tags:
       notVisible:
         id: "auth_manual_secret"
     commands:
+      - inputText: "GitHub"
       - tapOn:
           point: "65%,25%"
       - inputText: "JBSWY3DPEHPK3PXP"
@@ -45,6 +49,11 @@ tags:
     visibilityPercentage: 60
     centerElement: true
 - tapOn: "Save"
+- runFlow:
+    when:
+      visible: "Long press on a code to edit or remove."
+    commands:
+      - tapOn: "Ok"
 - extendedWaitUntil:
     visible: "GitHub"
     timeout: 10000
