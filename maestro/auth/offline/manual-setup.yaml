@@ -1,0 +1,32 @@
+appId: io.ente.auth.independent
+name: Add an offline account manually
+tags:
+  - auth
+  - android
+  - offline
+  - core
+---
+- launchApp:
+    clearState: true
+- runFlow:
+    file: ../subflows/enter-offline-mode.yaml
+- tapOn: "Enter a setup key"
+- extendedWaitUntil:
+    visible: "Enter account details"
+    timeout: 10000
+- inputText: "GitHub"
+- tapOn:
+    point: "65%,25%"
+- inputText: "JBSWY3DPEHPK3PXP"
+- tapOn:
+    point: "65%,30%"
+- inputText: "security@github.test"
+- hideKeyboard
+- scrollUntilVisible:
+    element: "Save"
+    direction: DOWN
+- tapOn: "Save"
+- extendedWaitUntil:
+    visible: "GitHub"
+    timeout: 10000
+- assertVisible: ".*security@github.test.*"

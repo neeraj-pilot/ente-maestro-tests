@@ -8,13 +8,6 @@ tags:
 ---
 - launchApp:
     clearState: true
-- extendedWaitUntil:
-    visible: "Use without backups"
-    timeout: 60000
-- tapOn: "Use without backups"
-- assertVisible: "(?s)Warning.*You have chosen to proceed without backups.*"
-- tapOn: "Ok"
-- extendedWaitUntil:
-    visible: "(?s)Setup your first.*account"
-    timeout: 10000
+- runFlow:
+    file: ../subflows/enter-offline-mode.yaml
 - assertVisible: "Import codes"
