@@ -21,7 +21,7 @@ tags:
 - tapOn:
     point: "65%,30%"
 - inputText: "security@github.test"
-- hideKeyboard
+- pressKey: enter
 - scrollUntilVisible:
     element: "Save"
     direction: DOWN
