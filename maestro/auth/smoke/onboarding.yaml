@@ -1,0 +1,14 @@
+appId: io.ente.auth.independent
+name: Auth onboarding launches
+tags:
+  - auth
+  - android
+  - smoke
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible: "Use without backups"
+    timeout: 60000
+- assertVisible: "Sign up"
+- assertVisible: "Log in"
