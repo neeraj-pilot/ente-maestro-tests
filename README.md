@@ -6,7 +6,7 @@ The Android workflows download the newest `auth-v*-beta` APK from
 [`ente/nightly`](https://github.com/ente/nightly/releases), verify its checksum,
 and run it on a local GitHub Actions emulator. The required smoke workflow is
 offline. A separately dispatched online Auth workflow covers signup,
-recovery-key acknowledgement, logout, and password login. It starts local
+recovery-key acknowledgement, and password login. It starts local
 PostgreSQL and Museum only as backend dependencies. Neither workflow builds
 Ente or uses Maestro Cloud.
 

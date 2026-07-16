@@ -140,11 +140,19 @@ server revision reproducible:
 Add online flows in this order:
 
 1. Configure the endpoint and complete signup/basic login with a deterministic
-   OTT. Status: locally proven on Android against `auth-v4.4.25-beta` on
-   2026-07-16; hosted workflow validation is pending.
+   OTT. Status: complete for the current published nightly. The three-flow
+   Auth suite passed twice on clean hosted Android runners on 2026-07-16:
+   [first run](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29522907722)
+   and [repeat](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29523464564).
+   It covers unknown-account error handling, signup with OTT and recovery-key
+   acknowledgement, then password login after a fresh app state.
 2. Log in to a prepared account with TOTP two-factor authentication.
 3. Reset a password with the recovery key and deterministic OTT.
-4. Verify account settings and logout.
+4. Verify account settings and logout after the Logout action is exposed by the
+   published nightly on the hosted x86 emulator. The current nightly's
+   accessibility hierarchy omits Logout and places Delete account in its slot,
+   so CI does not make a false logout assertion; this remains a tracked Auth UI
+   compatibility item.
 
 Use unique emails ending in the configured local suffix. Never scrape Museum
 logs for verification codes, and never place passwords, recovery keys, or TOTP
