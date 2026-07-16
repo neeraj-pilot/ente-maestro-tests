@@ -24,8 +24,7 @@ tags: [auth, android, offline, import]
       notVisible: "Search…"
     commands:
       - tapOn:
-          id: "com.google.android.documentsui:id/option_menu_search"
-          retryTapIfNoChange: true
+          point: "82%,8%"
 - runFlow:
     when:
       notVisible: "Search…"
@@ -74,8 +73,7 @@ tags: [auth, android, offline, import]
       notVisible: "Search…"
     commands:
       - tapOn:
-          id: "com.google.android.documentsui:id/option_menu_search"
-          retryTapIfNoChange: true
+          point: "82%,8%"
 - runFlow:
     when:
       notVisible: "Search…"
