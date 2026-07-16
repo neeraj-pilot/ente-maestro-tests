@@ -39,8 +39,25 @@ tags: [auth, android, online, signup, recovery, login]
     visible: "Settings"
     timeout: 120000
 - tapOn: "Settings"
-- tapOn: "Account"
-- assertVisible: "Logout"
+- extendedWaitUntil:
+    visible: "Account"
+    timeout: 30000
+- runFlow:
+    when:
+      visible:
+        id: "auth_settings_account"
+    commands:
+      - tapOn:
+          id: "auth_settings_account"
+- runFlow:
+    when:
+      notVisible:
+        id: "auth_settings_account"
+    commands:
+      - tapOn: "Account"
+- extendedWaitUntil:
+    visible: "Logout"
+    timeout: 30000
 - tapOn: "Logout"
 - tapOn: "Yes, logout"
 - extendedWaitUntil:
