@@ -133,7 +133,7 @@ jobs:
                       mkdir -p artifacts/maestro/debug
                       adb shell settings put system screen_off_timeout 2147483647
                       adb install -r "$AUTH_APK_PATH"
-                      if [[ "${{ matrix.suite }}" == "imports" ]]; then
+                      if [ "${{ matrix.suite }}" = "imports" ]; then
                           adb push maestro/fixtures/plain_text_import.txt /sdcard/Download/plain_text_import.txt
                           adb push maestro/fixtures/google_auth_migration.png /sdcard/Download/google_auth_migration.png
                       fi
