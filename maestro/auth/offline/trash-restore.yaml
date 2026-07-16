@@ -66,17 +66,17 @@ tags: [auth, android, offline, trash]
       - longPressOn: "GitHub"
 - runFlow:
     when:
+      notVisible:
+        id: "auth_selection_restore"
+    commands:
+      - tapOn: "Restore"
+- runFlow:
+    when:
       visible:
         id: "auth_selection_restore"
     commands:
       - tapOn:
           id: "auth_selection_restore"
-- runFlow:
-    when:
-      notVisible:
-        id: "auth_selection_restore"
-    commands:
-      - tapOn: "Restore"
 - tapOn: "All"
 - assertVisible: "GitHub"
 - assertVisible: "Stripe"
