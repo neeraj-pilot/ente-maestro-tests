@@ -60,6 +60,7 @@ tags: [auth, android, online, signup, recovery, login]
 - extendedWaitUntil:
     visible: "Change email"
     timeout: 30000
+- takeScreenshot: artifacts/maestro/account-settings
 - runFlow:
     when:
       visible: "Logout"
