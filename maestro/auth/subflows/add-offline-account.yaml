@@ -1,6 +1,16 @@
 appId: io.ente.auth.independent
 ---
-- tapOn: "Enter a setup key"
+- runFlow:
+    when:
+      notVisible: "Enter a setup key"
+    commands:
+      - tapOn: "Add code"
+      - tapOn: "Enter details manually"
+- runFlow:
+    when:
+      visible: "Enter a setup key"
+    commands:
+      - tapOn: "Enter a setup key"
 - extendedWaitUntil:
     visible: "Enter account details"
     timeout: 10000
@@ -41,7 +51,7 @@ appId: io.ente.auth.independent
       - tapOn:
           point: "65%,30%"
       - inputText: ${ACCOUNT}
-- tapOn: "Enter account details"
+- hideKeyboard
 - scrollUntilVisible:
     element: "Save"
     direction: DOWN
