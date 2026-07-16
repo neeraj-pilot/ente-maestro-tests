@@ -156,33 +156,6 @@ jobs:
                   if-no-files-found: warn
                   retention-days: 7
 
-            - name: Upload filtered Account accessibility dump on failure
-              if: steps.online-tests.outcome == 'failure'
-              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-              with:
-                  name: auth-account-settings-hierarchy
-                  path: artifacts/maestro/account-settings-hierarchy.txt
-                  if-no-files-found: warn
-                  retention-days: 1
-
-            - name: Upload Auth emulator metrics on failure
-              if: steps.online-tests.outcome == 'failure'
-              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-              with:
-                  name: auth-emulator-metrics
-                  path: artifacts/maestro/device-metrics.txt
-                  if-no-files-found: warn
-                  retention-days: 1
-
-            - name: Upload filtered Maestro hierarchy on failure
-              if: steps.online-tests.outcome == 'failure'
-              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-              with:
-                  name: auth-maestro-account-hierarchy
-                  path: artifacts/maestro/maestro-account-hierarchy.txt
-                  if-no-files-found: warn
-                  retention-days: 1
-
             - name: Show backend status on failure
               if: steps.online-tests.outcome == 'failure'
               run: docker compose -f museum/compose.yaml ps
