@@ -82,8 +82,14 @@ test time, excluding emulator boot, exceeds five minutes.
    - Exercise issuer/account/custom sorting and visible filters.
    - Verify the empty-search state and clearing the query.
 6. **Tags and editing**
-   - Create, attach, rename, and remove a tag.
-   - Verify filtering by that tag and the result after removal.
+   - Status: tag creation and filtering are complete on Android. Promoted
+     after two clean hosted tag shards in
+     [29527901812](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29527901812)
+     and [29528427436](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29528427436).
+     Rename/delete remain deferred because the published nightly exposes a
+     different selected-tag overflow surface than the refreshed source UI.
+   - Next: cover attach, rename, and remove once the published overflow
+     surface is stable; the current promoted flow verifies create and filter.
 7. **Trash and restore**
    - Trash a code, find it in Trash, and restore it.
    - Add permanent deletion only after its local-auth behavior is handled in
