@@ -45,6 +45,10 @@ jobs:
                       suite: settings
                       flows: maestro/auth/offline/settings.yaml
                       coverage: settings structure, General, About, Theme, and version label
+                    - name: Offline tags
+                      suite: tags
+                      flows: maestro/auth/offline/tags.yaml
+                      coverage: create a tag and filter the offline code list
         steps:
             - name: Checkout tests
               uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0

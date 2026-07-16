@@ -1,0 +1,38 @@
+appId: io.ente.auth.independent
+name: Inspect offline tag actions
+tags: [auth, android, offline, tags]
+---
+- launchApp:
+    clearState: true
+- runFlow:
+    file: ../subflows/enter-offline-mode.yaml
+- runFlow:
+    file: ../subflows/add-offline-account.yaml
+    env:
+      ISSUER: "GitHub"
+      SECRET: "JBSWY3DPEHPK3PXP"
+      ACCOUNT: "security@github.test"
+      NOTE: ""
+- runFlow:
+    when:
+      visible:
+        id: "auth_code_item"
+    commands:
+      - longPressOn:
+          id: "auth_code_item"
+- runFlow:
+    when:
+      notVisible:
+        id: "auth_code_item"
+    commands:
+      - longPressOn: "GitHub"
+- assertVisible: "(?s)^Add tag.*"
+- tapOn: "(?s)^Add tag.*"
+- assertVisible: "Add new"
+- tapOn: "Add new"
+- assertVisible: "Create new tag"
+- inputText: "Finance"
+- tapOn: "Create"
+- tapOn: "Done"
+- tapOn: "Finance"
+- assertVisible: "GitHub"
