@@ -15,19 +15,28 @@ tags:
     visible: "Enter account details"
     timeout: 10000
 - inputText: "GitHub"
-- tapOn:
-    rightOf: "Secret"
-    below: "Issuer"
-    above: "Account"
-    width: 717
-    tolerance: 80
-- inputText: "JBSWY3DPEHPK3PXP"
-- tapOn:
-    rightOf: "Account"
-    below: "Secret"
-    above: "Notes"
-    width: 717
-    tolerance: 80
+- runFlow:
+    when:
+      visible:
+        id: "auth_manual_secret"
+    commands:
+      - tapOn:
+          id: "auth_manual_secret"
+          point: "50%,70%"
+      - inputText: "JBSWY3DPEHPK3PXP"
+      - tapOn:
+          id: "auth_manual_account"
+          point: "50%,70%"
+- runFlow:
+    when:
+      notVisible:
+        id: "auth_manual_secret"
+    commands:
+      - tapOn:
+          point: "65%,25%"
+      - inputText: "JBSWY3DPEHPK3PXP"
+      - tapOn:
+          point: "65%,30%"
 - inputText: "security@github.test"
 - pressKey: enter
 - scrollUntilVisible:
