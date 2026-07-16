@@ -19,15 +19,6 @@ tags:
       NOTE: "Primary admin account. Keep recovery contacts current."
 - runFlow:
     when:
-      visible: "Primary admin account. Keep recovery contacts current."
-    commands:
-      - tapOn: "Primary admin account. Keep recovery contacts current."
-      - assertVisible:
-          id: "auth_notes_sheet"
-      - assertVisible: "Copy"
-      - tapOn: "Close"
-- runFlow:
-    when:
       visible:
         id: "auth_code_item"
     commands:
@@ -46,10 +37,19 @@ tags:
     commands:
       - assertVisible:
           id: "auth_selection_count"
-- assertVisible: "Pin"
-- assertVisible: "Add tag"
-- assertVisible: "Trash"
-- tapOn: "Pin"
+- runFlow:
+    when:
+      visible: "Primary admin account. Keep recovery contacts current."
+    commands:
+      - tapOn: "Primary admin account. Keep recovery contacts current."
+      - assertVisible:
+          id: "auth_notes_sheet"
+      - assertVisible: "Copy"
+      - tapOn: "Close"
+- assertVisible: "(?s)^Pin.*"
+- assertVisible: "(?s)^Add tag.*"
+- assertVisible: "(?s)^Trash.*"
+- tapOn: "(?s)^Pin.*"
 - waitForAnimationToEnd
 - runFlow:
     when:
@@ -64,6 +64,6 @@ tags:
         id: "auth_code_item"
     commands:
       - longPressOn: "GitHub"
-- assertVisible: "Unpin"
-- tapOn: "Unpin"
+- assertVisible: "(?s)^Unpin.*"
+- tapOn: "(?s)^Unpin.*"
 - assertVisible: ".*security@github.test.*"
