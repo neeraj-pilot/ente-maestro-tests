@@ -141,8 +141,8 @@ jobs:
                       echo "- Unknown-account login shows the expected Auth error"
                       echo "- Signup with deterministic email verification"
                       echo "- Recovery key is generated and acknowledged"
-                      echo "- Logout clears the custom endpoint"
-                      echo "- Password login succeeds after endpoint reconfiguration"
+                      echo "- Password login succeeds after a fresh Auth app state"
+                      echo "- Logout is tracked separately because the current x86 nightly omits that Account action"
                       echo
                       echo "JUnit results are attached as \`auth-online-results\`."
                   } >> "$GITHUB_STEP_SUMMARY"

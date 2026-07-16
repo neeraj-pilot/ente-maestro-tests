@@ -23,7 +23,8 @@ maestro test --no-ansi \
     -e ONLINE_EMAIL="$ONLINE_EMAIL" \
     -e ONLINE_PASSWORD="$ONLINE_PASSWORD" \
     maestro/auth/online/unknown-login.yaml \
-    maestro/auth/online/signup-recovery-login.yaml || test_status=$?
+    maestro/auth/online/signup-recovery-login.yaml \
+    maestro/auth/online/password-login.yaml || test_status=$?
 
 if ((test_status != 0)); then
     adb shell uiautomator dump /sdcard/auth-window.xml >/dev/null 2>&1 || true

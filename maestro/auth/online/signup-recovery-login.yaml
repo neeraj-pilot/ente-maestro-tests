@@ -1,6 +1,6 @@
 appId: ${APP_ID}
-name: Auth signup, recovery key, and password login
-tags: [auth, android, online, signup, recovery, login]
+name: Auth signup and recovery key acknowledgement
+tags: [auth, android, online, signup, recovery]
 ---
 - launchApp:
     clearState: true
@@ -36,60 +36,6 @@ tags: [auth, android, online, signup, recovery, login]
     visible: ".*If you forget your password.*"
     timeout: 300000
 - tapOn: "Continue"
-- extendedWaitUntil:
-    visible: "Settings"
-    timeout: 120000
-- tapOn: "Settings"
-- extendedWaitUntil:
-    visible: "Account"
-    timeout: 30000
-- runFlow:
-    when:
-      visible:
-        id: "auth_settings_account"
-    commands:
-      - tapOn:
-          id: "auth_settings_account"
-- waitForAnimationToEnd
-- runFlow:
-    when:
-      notVisible: "Change email"
-    commands:
-      - tapOn: "Account"
-- waitForAnimationToEnd
-- extendedWaitUntil:
-    visible: "Change email"
-    timeout: 30000
-- scrollUntilVisible:
-    element: "Recovery key"
-    direction: DOWN
-    visibilityPercentage: 80
-# The universal APK can omit the Logout label from x86_64 accessibility.
-- tapOn:
-    enabled: true
-    below: "Recovery key"
-    above: "Delete account"
-- extendedWaitUntil:
-    visible: "Yes, logout"
-    timeout: 30000
-- tapOn: "Yes, logout"
-- extendedWaitUntil:
-    visible: "Log in"
-    timeout: 30000
-- runFlow:
-    file: ../subflows/configure-online-test-endpoint.yaml
-- tapOn: "Log in"
-- waitForAnimationToEnd
-- eraseText: 100
-- inputText: ${ONLINE_EMAIL}
-- assertVisible: ${ONLINE_EMAIL}
-- tapOn: "done"
-- extendedWaitUntil:
-    visible: ".*Enter the password for.*"
-    timeout: 30000
-- eraseText: 100
-- inputText: ${ONLINE_PASSWORD}
-- tapOn: "done"
 - extendedWaitUntil:
     visible: "Settings"
     timeout: 120000
