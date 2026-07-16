@@ -16,8 +16,10 @@ The package ID is `io.ente.auth.independent`.
 Tests must pass against that published APK. Do not copy flows that rely on app
 changes which have not reached the nightly build. In particular, the existing
 Ente development suite uses semantics IDs and `enteauth://debug/*` deep links
-from the Auth UI work. Those are useful for development and demos, but the
-current nightly does not contain them.
+from the Auth UI work. Those are useful for development and demos, but only
+IDs actually exposed by the installed nightly may be used. The current
+universal APK exposes refreshed form IDs on the hosted x86_64 emulator while
+its arm64 UI still needs a small legacy fallback.
 
 Prefer, in order:
 
@@ -48,6 +50,9 @@ Add these in order. Keep them in the existing Android job until the measured
 test time, excluding emulator boot, exceeds five minutes.
 
 1. **Manual setup happy path**
+   - Status: complete on Android. Promoted after two clean hosted runs of
+     `3c4cb51` on 2026-07-16: [push](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29504146339)
+     and [repeat](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29504375068).
    - Enter offline mode.
    - Add a GitHub TOTP account with a known valid secret.
    - Save it and verify the issuer, account, and generated code are visible.
