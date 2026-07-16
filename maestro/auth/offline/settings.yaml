@@ -1,0 +1,34 @@
+appId: io.ente.auth.independent
+name: Inspect offline Auth settings
+tags: [auth, android, offline, settings]
+---
+- launchApp:
+    clearState: true
+- runFlow:
+    file: ../subflows/enter-offline-mode.yaml
+- tapOn: "Settings"
+- assertVisible: "Settings"
+- assertVisible: "Data"
+- assertVisible: "Security"
+- assertVisible: "General"
+- assertVisible: "Support"
+- assertVisible: "About"
+- assertVisible: "Theme"
+- assertVisible: "Version:.*"
+- tapOn: "General"
+- assertVisible: "General"
+- assertVisible: "Language"
+- assertVisible: "App icon"
+- assertVisible: "Show large icons"
+- pressKey: BACK
+- tapOn: "Settings"
+- tapOn: "About"
+- assertVisible: "About"
+- assertVisible: "We are open source!"
+- pressKey: BACK
+- tapOn: "Settings"
+- tapOn: "Theme"
+- assertVisible: "Theme"
+- assertVisible: "System"
+- assertVisible: "Light"
+- assertVisible: "Dark"
