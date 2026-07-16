@@ -26,8 +26,21 @@ env:
 
 jobs:
     smoke:
+        name: ${{ matrix.name }}
         runs-on: ubuntu-latest
         timeout-minutes: 30
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - name: Offline setup and validation
+                      suite: setup
+                      flows: maestro/auth/smoke/onboarding.yaml maestro/auth/smoke/offline-mode.yaml maestro/auth/offline/manual-setup.yaml maestro/auth/offline/manual-validation.yaml
+                      coverage: onboarding, offline entry, manual setup, and field validation
+                    - name: Offline lifecycle and organization
+                      suite: organization
+                      flows: maestro/auth/offline/code-lifecycle.yaml maestro/auth/offline/home-organization.yaml
+                      coverage: code details and edits, issuer/account search, empty results, and sorting
         steps:
             - name: Checkout tests
               uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -104,7 +117,7 @@ jobs:
                       mkdir -p artifacts/maestro/debug
                       adb shell settings put system screen_off_timeout 2147483647
                       adb install -r "$AUTH_APK_PATH"
-                      maestro test --no-ansi --format JUNIT --output artifacts/maestro/results.xml --debug-output artifacts/maestro/debug --flatten-debug-output maestro/auth/smoke/onboarding.yaml maestro/auth/smoke/offline-mode.yaml maestro/auth/offline/manual-setup.yaml maestro/auth/offline/manual-validation.yaml maestro/auth/offline/code-lifecycle.yaml
+                      maestro test --no-ansi --format JUNIT --output artifacts/maestro/results.xml --debug-output artifacts/maestro/debug --flatten-debug-output ${{ matrix.flows }}
 
             - name: Summarize smoke tests
               if: always() && steps.smoke-tests.outcome != 'skipped'
@@ -120,18 +133,29 @@ jobs:
                       echo "### Auth Android smoke $status"
                       echo
                       echo "- Release: \`$AUTH_RELEASE_TAG\`"
+                      echo "- Suite: ${{ matrix.name }}"
+                      echo "- Coverage: ${{ matrix.coverage }}"
                       echo "- Android API: \`34\`"
                       echo "- Maestro: \`$MAESTRO_VERSION\`"
                       if [[ "$TEST_OUTCOME" != "success" ]]; then
-                          echo "- Diagnostics: see the \`auth-maestro-diagnostics\` artifact"
+                          echo "- Diagnostics: see the \`auth-${{ matrix.suite }}-diagnostics\` artifact"
                       fi
                   } >> "$GITHUB_STEP_SUMMARY"
+
+            - name: Upload Maestro results
+              if: always() && steps.smoke-tests.outcome != 'skipped'
+              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+              with:
+                  name: auth-${{ matrix.suite }}-results
+                  path: artifacts/maestro/results.xml
+                  if-no-files-found: warn
+                  retention-days: 7
 
             - name: Upload Maestro diagnostics
               if: steps.smoke-tests.outcome == 'failure'
               uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
               with:
-                  name: auth-maestro-diagnostics
+                  name: auth-${{ matrix.suite }}-diagnostics
                   path: |
                       artifacts/maestro/**
                       ~/.maestro/tests/**
