@@ -25,6 +25,8 @@ tags:
 - scrollUntilVisible:
     element: "Save"
     direction: DOWN
+    visibilityPercentage: 60
+    centerElement: true
 - tapOn: "Save"
 - extendedWaitUntil:
     visible: "GitHub"
