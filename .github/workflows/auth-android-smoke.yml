@@ -53,10 +53,6 @@ jobs:
                       suite: trash
                       flows: maestro/auth/offline/trash-restore.yaml
                       coverage: trash and restore an offline code without permanent deletion
-                    - name: Offline imports
-                      suite: imports
-                      flows: maestro/auth/offline/imports.yaml
-                      coverage: plain-text and Google Authenticator file imports
         steps:
             - name: Checkout tests
               uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0

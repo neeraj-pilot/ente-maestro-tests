@@ -24,7 +24,17 @@ tags: [auth, android, offline, import]
 - extendedWaitUntil:
     visible: "^(?!Preview the file ).*plain_text_import.txt.*"
     timeout: 15000
-- tapOn: "plain_text_import.txt"
+- tapOn:
+    id: "com.google.android.documentsui:id/item_root"
+    index: 1
+- runFlow:
+    when:
+      notVisible:
+        id: "auth_import_success"
+    commands:
+      - tapOn:
+          id: "com.google.android.documentsui:id/item_root"
+          index: 1
 - extendedWaitUntil:
     visible:
       id: "auth_import_success"

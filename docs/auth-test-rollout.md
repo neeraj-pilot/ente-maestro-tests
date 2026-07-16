@@ -121,7 +121,15 @@ system UI, permissions, biometric state, or filesystem setup.
 1. App lock and local authentication.
 2. Automatic local export, including password setup, folder selection, manual
    backup, and an on-device file assertion.
-3. Import from Android Downloads/Files.
+3. Import from Android Downloads/Files. The combined plain-text and Google
+   Authenticator flow is implemented in `maestro/auth/offline/imports.yaml`
+   and passes on the local ARM64 API 34 emulator. It is intentionally not in
+   the required GitHub x86_64 smoke matrix yet: the published nightly returns
+   from the x86 DocumentsUI picker with an unreadable selected-file path,
+   producing a false `Could not parse the selected file` failure. Keep this
+   flow for ARM64/physical-device validation until the picker/runtime
+   combination is fixed; do not mark the x86 smoke workflow green by hiding
+   the assertion.
 4. Google Authenticator migration import.
 5. Other supported app imports, performed sequentially in one prepared state
    when that reduces repeated setup.
