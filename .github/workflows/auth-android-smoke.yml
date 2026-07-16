@@ -21,6 +21,7 @@ concurrency:
 
 env:
     AUTH_APK_DIR: ${{ github.workspace }}/artifacts/auth
+    MAESTRO_CLI_NO_ANALYTICS: 1
     MAESTRO_VERSION: 2.6.1
 
 jobs:
@@ -98,9 +99,7 @@ jobs:
                   disable-animations: true
                   script: |
                       adb install -r "$AUTH_APK_PATH"
-                      maestro test --no-ansi \
-                          maestro/auth/smoke/onboarding.yaml \
-                          maestro/auth/smoke/offline-mode.yaml
+                      maestro test --no-ansi maestro/auth/smoke/onboarding.yaml maestro/auth/smoke/offline-mode.yaml
 
             - name: Upload Maestro diagnostics
               if: failure()
