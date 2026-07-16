@@ -10,51 +10,10 @@ tags:
     clearState: true
 - runFlow:
     file: ../subflows/enter-offline-mode.yaml
-- tapOn: "Enter a setup key"
-- extendedWaitUntil:
-    visible: "Enter account details"
-    timeout: 10000
 - runFlow:
-    when:
-      visible:
-        id: "auth_manual_secret"
-    commands:
-      - tapOn:
-          id: "auth_manual_issuer"
-          point: "50%,70%"
-      - inputText: "GitHub"
-      - tapOn:
-          id: "auth_manual_secret"
-          point: "50%,70%"
-      - inputText: "JBSWY3DPEHPK3PXP"
-      - tapOn:
-          id: "auth_manual_account"
-          point: "50%,70%"
-- runFlow:
-    when:
-      notVisible:
-        id: "auth_manual_secret"
-    commands:
-      - inputText: "GitHub"
-      - tapOn:
-          point: "65%,25%"
-      - inputText: "JBSWY3DPEHPK3PXP"
-      - tapOn:
-          point: "65%,30%"
-- inputText: "security@github.test"
-- pressKey: enter
-- scrollUntilVisible:
-    element: "Save"
-    direction: DOWN
-    visibilityPercentage: 60
-    centerElement: true
-- tapOn: "Save"
-- runFlow:
-    when:
-      visible: "Long press on a code to edit or remove."
-    commands:
-      - tapOn: "Ok"
-- extendedWaitUntil:
-    visible: "GitHub"
-    timeout: 10000
-- assertVisible: ".*security@github.test.*"
+    file: ../subflows/add-offline-account.yaml
+    env:
+      ISSUER: "GitHub"
+      SECRET: "JBSWY3DPEHPK3PXP"
+      ACCOUNT: "security@github.test"
+      NOTE: ""

@@ -1,0 +1,69 @@
+appId: io.ente.auth.independent
+name: Inspect and pin an offline code
+tags:
+  - auth
+  - android
+  - offline
+  - core
+---
+- launchApp:
+    clearState: true
+- runFlow:
+    file: ../subflows/enter-offline-mode.yaml
+- runFlow:
+    file: ../subflows/add-offline-account.yaml
+    env:
+      ISSUER: "GitHub"
+      SECRET: "JBSWY3DPEHPK3PXP"
+      ACCOUNT: "security@github.test"
+      NOTE: "Primary admin account. Keep recovery contacts current."
+- runFlow:
+    when:
+      visible: "Primary admin account. Keep recovery contacts current."
+    commands:
+      - tapOn: "Primary admin account. Keep recovery contacts current."
+      - assertVisible:
+          id: "auth_notes_sheet"
+      - assertVisible: "Copy"
+      - tapOn: "Close"
+- runFlow:
+    when:
+      visible:
+        id: "auth_code_item"
+    commands:
+      - longPressOn:
+          id: "auth_code_item"
+- runFlow:
+    when:
+      notVisible:
+        id: "auth_code_item"
+    commands:
+      - longPressOn: "GitHub"
+- runFlow:
+    when:
+      visible:
+        id: "auth_selection_action_bar"
+    commands:
+      - assertVisible:
+          id: "auth_selection_count"
+- assertVisible: "Pin"
+- assertVisible: "Add tag"
+- assertVisible: "Trash"
+- tapOn: "Pin"
+- waitForAnimationToEnd
+- runFlow:
+    when:
+      visible:
+        id: "auth_code_item"
+    commands:
+      - longPressOn:
+          id: "auth_code_item"
+- runFlow:
+    when:
+      notVisible:
+        id: "auth_code_item"
+    commands:
+      - longPressOn: "GitHub"
+- assertVisible: "Unpin"
+- tapOn: "Unpin"
+- assertVisible: ".*security@github.test.*"

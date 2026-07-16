@@ -1,0 +1,59 @@
+appId: io.ente.auth.independent
+---
+- tapOn: "Enter a setup key"
+- extendedWaitUntil:
+    visible: "Enter account details"
+    timeout: 10000
+- runFlow:
+    when:
+      visible:
+        id: "auth_manual_secret"
+    commands:
+      - tapOn:
+          id: "auth_manual_issuer"
+          point: "50%,70%"
+      - inputText: ${ISSUER}
+      - tapOn:
+          id: "auth_manual_secret"
+          point: "50%,70%"
+      - inputText: ${SECRET}
+      - tapOn:
+          id: "auth_manual_account"
+          point: "50%,70%"
+      - inputText: ${ACCOUNT}
+      - runFlow:
+          when:
+            true: ${NOTE != ''}
+          commands:
+            - tapOn:
+                id: "auth_manual_notes"
+                point: "50%,50%"
+            - inputText: ${NOTE}
+- runFlow:
+    when:
+      notVisible:
+        id: "auth_manual_secret"
+    commands:
+      - inputText: ${ISSUER}
+      - tapOn:
+          point: "65%,25%"
+      - inputText: ${SECRET}
+      - tapOn:
+          point: "65%,30%"
+      - inputText: ${ACCOUNT}
+- tapOn: "Enter account details"
+- scrollUntilVisible:
+    element: "Save"
+    direction: DOWN
+    visibilityPercentage: 60
+    centerElement: true
+- tapOn: "Save"
+- runFlow:
+    when:
+      visible: "Long press on a code to edit or remove."
+    commands:
+      - tapOn: "Ok"
+- extendedWaitUntil:
+    visible: ${ISSUER}
+    timeout: 10000
+- assertVisible: ".*${ACCOUNT}.*"
