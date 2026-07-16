@@ -1,0 +1,22 @@
+services:
+    museum:
+        image: ghcr.io/ente/server@sha256:e9e06eb01834c38f41a3a09f9a64885b631346ce0005ccff2153faea403bd6e2
+        depends_on:
+            postgres:
+                condition: service_healthy
+        ports:
+            - "8080:8080"
+        volumes:
+            - ./museum.yaml:/museum.yaml:ro
+
+    postgres:
+        image: postgres:15-alpine@sha256:3d0f7584ed7d04e27fa050d6683a74746608faf21f202be78460d679cc56461f
+        environment:
+            POSTGRES_DB: ente_auth_test
+            POSTGRES_PASSWORD: ente_auth
+            POSTGRES_USER: ente_auth
+        healthcheck:
+            test: ["CMD-SHELL", "pg_isready -q -d ente_auth_test -U ente_auth"]
+            interval: 1s
+            timeout: 5s
+            retries: 30

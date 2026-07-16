@@ -127,24 +127,21 @@ explicitly allows the entire `s3` section to be omitted. Do not start MinIO or
 configure buckets.
 
 PostgreSQL is currently required: Museum opens the `postgres` driver and runs
-PostgreSQL migrations, so SQLite is not a compatible replacement. Docker is
-not required on GitHub-hosted Ubuntu runners:
+PostgreSQL migrations, so SQLite is not a compatible replacement. The first
+workflow uses digest-pinned public Museum and PostgreSQL images. This avoids an
+Ente checkout, a server build, MinIO, and hosted services while keeping the
+server revision reproducible:
 
-1. Start the bundled PostgreSQL 16 service with
-   `sudo systemctl start postgresql.service`.
-2. Create a disposable Museum role and database.
-3. Check out a pinned `ente/ente` revision and build Museum directly with Go.
-4. Write a minimal local config containing only database credentials, fixed
-   development crypto/JWT keys, `internal.silent: true`, and a hardcoded OTT
-   suffix/value.
-5. Start Museum as a background process and wait for `GET /ping`.
-6. Point the Android app at `http://10.0.2.2:8080` through its developer
+1. Start the two containers with the checked-in minimal config.
+2. Wait for `GET /ping` without printing Museum request logs.
+3. Point the Android app at `http://10.0.2.2:8080` through its developer
    settings.
 
 Add online flows in this order:
 
 1. Configure the endpoint and complete signup/basic login with a deterministic
-   OTT.
+   OTT. Status: locally proven on Android against `auth-v4.4.25-beta` on
+   2026-07-16; hosted workflow validation is pending.
 2. Log in to a prepared account with TOTP two-factor authentication.
 3. Reset a password with the recovery key and deterministic OTT.
 4. Verify account settings and logout.

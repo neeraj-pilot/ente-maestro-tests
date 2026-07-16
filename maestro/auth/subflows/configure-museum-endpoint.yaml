@@ -1,0 +1,14 @@
+appId: ${APP_ID}
+---
+- repeat:
+    times: 7
+    commands:
+        - tapOn:
+            point: "50%,35%"
+- assertVisible: "Developer settings"
+- tapOn: "Yes"
+- assertVisible: "Save"
+- eraseText: 100
+- inputText: ${MUSEUM_ENDPOINT}
+- tapOn: "Save"
+- assertVisible: "Log in"

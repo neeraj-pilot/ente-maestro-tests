@@ -1,0 +1,175 @@
+name: "Auth Android Museum"
+
+on:
+    workflow_dispatch:
+
+permissions:
+    contents: read
+
+concurrency:
+    group: auth-android-museum-${{ github.ref }}
+    cancel-in-progress: true
+
+env:
+    APP_ID: io.ente.auth.independent
+    AUTH_APK_DIR: ${{ github.workspace }}/artifacts/auth
+    MAESTRO_CLI_NO_ANALYTICS: 1
+    MAESTRO_VERSION: 2.6.1
+    MUSEUM_ENDPOINT: http://10.0.2.2:8080
+    MUSEUM_OTT: 123456
+    ONLINE_EMAIL: auth-ci-${{ github.run_id }}-${{ github.run_attempt }}@example.org
+    MISSING_EMAIL: missing-${{ github.run_id }}-${{ github.run_attempt }}@example.org
+    ONLINE_PASSWORD: IhA6rCt2YlOWH
+
+jobs:
+    museum-auth:
+        name: Signup, recovery key, and password login
+        runs-on: ubuntu-latest
+        timeout-minutes: 40
+        steps:
+            - name: Checkout tests
+              uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+              with:
+                  persist-credentials: false
+
+            - name: Set up Java
+              uses: actions/setup-java@ad2b38190b15e4d6bdf0c97fb4fca8412226d287 # v5.3.0
+              with:
+                  distribution: temurin
+                  java-version: 17
+
+            - name: Download latest Auth nightly
+              env:
+                  GH_TOKEN: ${{ github.token }}
+              run: |
+                  mkdir -p "$AUTH_APK_DIR"
+                  release_tag=$(gh api "repos/ente/nightly/releases?per_page=100" --jq '
+                    [.[] | select(
+                      .draft == false and
+                      (.tag_name | startswith("auth-v")) and
+                      (.tag_name | endswith("-beta"))
+                    )] | max_by(.published_at).tag_name
+                  ')
+                  if [[ -z "$release_tag" || "$release_tag" == "null" ]]; then
+                      echo "No Auth nightly release found" >&2
+                      exit 1
+                  fi
+                  echo "Testing $release_tag"
+
+                  gh release download "$release_tag" \
+                      --repo ente/nightly \
+                      --pattern "ente-auth-*.apk" \
+                      --pattern SHA256SUMS \
+                      --dir "$AUTH_APK_DIR"
+
+                  apk_path=$(find "$AUTH_APK_DIR" -maxdepth 1 -type f -name "ente-auth-*.apk" -print -quit)
+                  if [[ -z "$apk_path" ]]; then
+                      echo "Auth APK was not downloaded" >&2
+                      exit 1
+                  fi
+
+                  checksum=$(grep -E "  $(basename "$apk_path")$" "$AUTH_APK_DIR/SHA256SUMS")
+                  (
+                      cd "$AUTH_APK_DIR"
+                      printf "%s\n" "$checksum" | sha256sum --check -
+                  )
+
+                  echo "AUTH_APK_PATH=$apk_path" >> "$GITHUB_ENV"
+                  echo "AUTH_RELEASE_TAG=$release_tag" >> "$GITHUB_ENV"
+
+            - name: Install Maestro
+              run: |
+                  curl -fsSL "https://get.maestro.mobile.dev" | bash
+                  echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+
+            - name: Start Museum
+              run: |
+                  docker compose -f museum/compose.yaml up --detach
+                  for attempt in {1..60}; do
+                      if curl -fsS http://127.0.0.1:8080/ping > /dev/null 2>&1; then
+                          exit 0
+                      fi
+                      sleep 1
+                  done
+                  docker compose -f museum/compose.yaml ps
+                  exit 1
+
+            - name: Enable KVM
+              run: |
+                  echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+                  sudo udevadm control --reload-rules
+                  sudo udevadm trigger --name-match=kvm
+
+            - name: Run Museum tests
+              id: museum-tests
+              continue-on-error: true
+              uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+              with:
+                  api-level: 34
+                  target: default
+                  arch: x86_64
+                  profile: pixel_5
+                  disable-animations: true
+                  script: |
+                      mkdir -p artifacts/maestro/museum-debug
+                      adb shell settings put system screen_off_timeout 2147483647
+                      adb install -r "$AUTH_APK_PATH"
+                      maestro test --no-ansi \
+                          --format JUNIT \
+                          --output artifacts/maestro/museum-results.xml \
+                          --debug-output artifacts/maestro/museum-debug \
+                          --flatten-debug-output \
+                          -e APP_ID="$APP_ID" \
+                          -e MUSEUM_ENDPOINT="$MUSEUM_ENDPOINT" \
+                          -e MUSEUM_OTT="$MUSEUM_OTT" \
+                          -e MISSING_EMAIL="$MISSING_EMAIL" \
+                          -e ONLINE_EMAIL="$ONLINE_EMAIL" \
+                          -e ONLINE_PASSWORD="$ONLINE_PASSWORD" \
+                          maestro/auth/online/museum-unknown-login.yaml \
+                          maestro/auth/online/museum-signup-recovery-login.yaml
+
+            - name: Summarize Museum tests
+              if: always() && steps.museum-tests.outcome != 'skipped'
+              env:
+                  TEST_OUTCOME: ${{ steps.museum-tests.outcome }}
+              run: |
+                  if [[ "$TEST_OUTCOME" == "success" ]]; then
+                      status="passed"
+                  else
+                      status="failed"
+                  fi
+                  {
+                      echo "### Auth Android Museum $status"
+                      echo
+                      echo "- Release: \`$AUTH_RELEASE_TAG\`"
+                      echo "- Android API: \`34\`"
+                      echo "- Maestro: \`$MAESTRO_VERSION\`"
+                      echo "- Museum: local container with PostgreSQL"
+                      echo
+                      echo "#### Coverage in this run"
+                      echo
+                      echo "- Unknown-account login reaches Museum and is rejected"
+                      echo "- Signup with deterministic email verification"
+                      echo "- Recovery key is generated and acknowledged"
+                      echo "- Logout clears the custom endpoint"
+                      echo "- Password login succeeds after endpoint reconfiguration"
+                      echo
+                      echo "JUnit results are attached as \`auth-museum-results\`."
+                  } >> "$GITHUB_STEP_SUMMARY"
+
+            - name: Upload Museum results
+              if: always() && steps.museum-tests.outcome != 'skipped'
+              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+              with:
+                  name: auth-museum-results
+                  path: artifacts/maestro/museum-results.xml
+                  if-no-files-found: warn
+                  retention-days: 7
+
+            - name: Show Museum status on failure
+              if: steps.museum-tests.outcome == 'failure'
+              run: docker compose -f museum/compose.yaml ps
+
+            - name: Propagate Museum test failure
+              if: steps.museum-tests.outcome == 'failure'
+              run: exit 1

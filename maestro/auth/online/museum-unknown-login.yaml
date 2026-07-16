@@ -1,0 +1,18 @@
+appId: ${APP_ID}
+name: Museum rejects an unknown login
+tags: [auth, android, museum, login]
+---
+- launchApp:
+    clearState: true
+- assertVisible: "Log in"
+- runFlow:
+    file: ../subflows/configure-museum-endpoint.yaml
+- tapOn: "Log in"
+- waitForAnimationToEnd
+- eraseText: 100
+- inputText: ${MISSING_EMAIL}
+- assertVisible: ${MISSING_EMAIL}
+- tapOn: "done"
+- extendedWaitUntil:
+    visible: "Email not registered."
+    timeout: 30000

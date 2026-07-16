@@ -1,0 +1,24 @@
+db:
+    host: postgres
+    port: 5432
+    name: ente_auth_test
+    user: ente_auth
+    password: ente_auth
+    sslmode: disable
+
+key:
+    encryption: yvmG/RnzKrbCb9L3mgsmoxXr9H7i2Z4qlbT0mL3ln4w=
+    hash: KXYiG07wC7GIgvCSdg+WmyWdXDAn6XKYJtp/wkEU7x573+byBRAYtpTP0wwvi8i/4l37uicX1dVTUzwH3sLZyw==
+
+jwt:
+    secret: i2DecQmfGreG6q1vBj5tCokhlN41gcfS2cjOs9Po-u8=
+
+internal:
+    silent: true
+    hardcoded-ott:
+        local-domain-suffix: "@example.org"
+        local-domain-value: "123456"
+
+jobs:
+    cron:
+        skip: true
