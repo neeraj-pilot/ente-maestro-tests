@@ -13,13 +13,19 @@ the Auth UI branch `auth-ui-refresh@68bfe8ad89`, and the published
 The CI target is the newest published `auth-v*-beta` APK from `ente/nightly`.
 The package ID is `io.ente.auth.independent`.
 
-Tests must pass against that published APK. Do not copy flows that rely on app
-changes which have not reached the nightly build. In particular, the existing
-Ente development suite uses semantics IDs and `enteauth://debug/*` deep links
-from the Auth UI work. Those are useful for development and demos, but only
-IDs actually exposed by the installed nightly may be used. The current
-universal APK exposes refreshed form IDs on the hosted x86_64 emulator while
-its arm64 UI still needs a small legacy fallback.
+Hosted and promotion-candidate tests must pass against that published APK. Do
+not copy flows that rely on app changes which have not reached the nightly
+build. In particular, the existing Ente development suite uses semantics IDs
+and `enteauth://debug/*` deep links from the Auth UI work. Those are useful
+for development and demos, but only IDs actually exposed by the installed
+nightly may be used. The current universal APK exposes refreshed form IDs on
+the hosted x86_64 emulator while its arm64 UI still needs a small legacy
+fallback.
+
+Local-only platform checks may target an explicit current-source debug APK
+when the nightly lacks the required UI. They must create public state, use no
+debug deep links, and be labeled local-only. They cannot count as published
+nightly or required CI coverage.
 
 Prefer, in order:
 
@@ -119,8 +125,15 @@ Keep these separate from `offline-core` because failures can come from Android
 system UI, permissions, biometric state, or filesystem setup.
 
 1. App lock and local authentication.
-2. Automatic local export, including password setup, folder selection, manual
-   backup, and an on-device file assertion.
+2. Automatic local export
+   - Status: complete as local-only ARM64 Android API 34 coverage with Maestro
+     `2.6.1` against the current source debug APK. The flow creates public
+     offline state, enables automatic backups, sets a password and folder,
+     creates a manual backup, then verifies both automatic and manual JSON
+     files contain encrypted backup fields without the test account in
+     plaintext.
+   - Promotion requires a nightly that exposes the controls and two clean
+     hosted runs. It is not part of the required hosted gate.
 3. Import from Android Downloads/Files. The combined plain-text and Google
    Authenticator flow is implemented in `maestro/auth/offline/imports.yaml`
    and passes on the local ARM64 API 34 emulator. It is intentionally not in
