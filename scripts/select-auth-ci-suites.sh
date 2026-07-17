@@ -57,7 +57,13 @@ add_suite() {
 if [[ ${#changed_files[@]} -gt 0 ]]; then
     for changed_file in "${changed_files[@]}"; do
         case "$changed_file" in
-            .github/workflows/auth-android-smoke.yml|scripts/select-auth-ci-suites.sh|scripts/test-select-auth-ci-suites.sh|maestro/auth/smoke/*|maestro/auth/subflows/*)
+            .github/workflows/auth-android-smoke.yml|scripts/select-auth-ci-suites.sh|scripts/test-select-auth-ci-suites.sh|maestro/auth/smoke/*|maestro/auth/subflows/add-offline-account.yaml|maestro/auth/subflows/enter-offline-mode.yaml)
+                full_matrix=true
+                ;;
+            maestro/auth/online/*|maestro/auth/subflows/add-online-code.yaml|maestro/auth/subflows/assert-synced-code.yaml|maestro/auth/subflows/configure-online-test-endpoint.yaml|maestro/auth/subflows/dismiss-code-guidance.yaml|maestro/auth/subflows/login-online-account.yaml)
+                ;;
+            maestro/auth/subflows/*)
+                # Unknown subflows may be shared by every hosted suite.
                 full_matrix=true
                 ;;
             maestro/auth/offline/manual-setup.yaml|maestro/auth/offline/manual-validation.yaml)

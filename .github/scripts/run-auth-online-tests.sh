@@ -23,8 +23,13 @@ adb install -r "$AUTH_APK_PATH"
 
 run_maestro() {
     local result_name=$1
+    local maestro_device_args=()
     shift
+    if [[ -n ${MAESTRO_DEVICE:-} ]]; then
+        maestro_device_args=(--device "$MAESTRO_DEVICE")
+    fi
     maestro test --no-ansi \
+        "${maestro_device_args[@]}" \
         --format JUNIT \
         --output "artifacts/maestro/online-results/$result_name.xml" \
         --debug-output "artifacts/maestro/online-debug/$result_name" \
@@ -33,6 +38,42 @@ run_maestro() {
         -e ONLINE_ENDPOINT="$ONLINE_ENDPOINT" \
         -e ASSERT_TWO_FACTOR_STATUS="${ASSERT_TWO_FACTOR_STATUS:-false}" \
         "$@"
+}
+
+prepare_basic_fixture_app() {
+    local app_data_dir app_owner current_user preferences_dir preferences_file
+
+    adb root >/dev/null
+    adb wait-for-device
+    if [[ $(adb shell id -u | tr -d '\r') != 0 ]]; then
+        echo "Prepared Auth fixture logins require a rootable Android emulator" >&2
+        return 1
+    fi
+
+    current_user=$(adb shell am get-current-user | tr -d '\r')
+    app_data_dir="/data/user/$current_user/$APP_ID"
+    preferences_dir="$app_data_dir/shared_prefs"
+    preferences_file="$preferences_dir/FlutterSharedPreferences.xml"
+    adb shell pm clear "$APP_ID" >/dev/null
+    app_owner=$(adb shell stat -c '%u:%g' "$app_data_dir" | tr -d '\r')
+    if [[ ! "$app_owner" =~ ^[0-9]+:[0-9]+$ ]]; then
+        echo "Unable to determine the Auth app-data owner: $app_owner" >&2
+        return 1
+    fi
+
+    adb shell "mkdir -p '$preferences_dir'"
+    adb shell \
+        "printf '%s\\n' '<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"yes\" ?>' '<map>' '    <boolean name=\"flutter.has_shown_coach_mark_v2\" value=\"true\" />' '</map>' > '$preferences_file'"
+    adb shell chown -R "$app_owner" "$preferences_dir"
+    adb shell chmod 771 "$preferences_dir"
+    adb shell chmod 660 "$preferences_file"
+    adb shell restorecon "$preferences_dir"
+    adb shell restorecon "$preferences_file"
+    if ! adb shell \
+        "grep -q 'name=\"flutter.has_shown_coach_mark_v2\" value=\"true\"' '$preferences_file'"; then
+        echo "Unable to preseed the Auth code guidance preference" >&2
+        return 1
+    fi
 }
 
 query_fixture_db() {
@@ -84,7 +125,11 @@ run_account_auth() {
         -e FIXTURE_TOTP_EMAIL="$fixture_totp_email" \
         -e FIXTURE_TOTP_PASSWORD="$fixture_totp_password" \
         maestro/auth/online/prepared-totp-login-start.yaml
-    fixture_totp_code=$(TOTP_SECRET="$fixture_totp_secret" node scripts/current-totp.mjs)
+    fixture_totp_code=$(
+        TOTP_SECRET="$fixture_totp_secret" \
+            TOTP_MIN_VALIDITY_SECONDS=20 \
+            node scripts/current-totp.mjs
+    )
     run_maestro prepared-totp-complete \
         -e FIXTURE_TOTP_CODE="$fixture_totp_code" \
         maestro/auth/online/prepared-totp-login-complete.yaml
@@ -118,6 +163,7 @@ run_account_auth() {
 run_data_sync() {
     local mutation_marker
 
+    prepare_basic_fixture_app
     run_maestro prepared-password \
         -e FIXTURE_BASIC_EMAIL="$fixture_basic_email" \
         -e FIXTURE_BASIC_PASSWORD="$fixture_basic_password" \
@@ -126,11 +172,10 @@ run_data_sync() {
     mutation_marker=$(query_fixture_db \
         "SELECT MAX(updated_at) FROM authenticator_entity WHERE user_id = $fixture_basic_user_id;")
     run_maestro prepared-bulk-mutation-start \
-        -e FIXTURE_BASIC_EMAIL="$fixture_basic_email" \
-        -e FIXTURE_BASIC_PASSWORD="$fixture_basic_password" \
         -e FIXTURE_MUTATION_TAG="$FIXTURE_MUTATION_TAG" \
         maestro/auth/online/prepared-bulk-mutation-start.yaml
     wait_for_bulk_mutation "$fixture_basic_user_id" "$mutation_marker"
+    prepare_basic_fixture_app
     run_maestro prepared-bulk-mutation-complete \
         -e FIXTURE_BASIC_EMAIL="$fixture_basic_email" \
         -e FIXTURE_BASIC_PASSWORD="$fixture_basic_password" \

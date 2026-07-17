@@ -1,9 +1,9 @@
 {
   "classification": "PUBLIC_LOCAL_TEST_FIXTURE",
   "fixtureVersion": 2,
-  "generatedAt": "2026-07-17T14:36:50Z",
+  "generatedAt": "2026-07-17T18:46:38Z",
   "databaseDump": "auth-fixture-v2.dump",
-  "dumpSha256": "72dd59b1c890e846bb1b03ff5a658c612a87d6f8a3bdf2d84782927327df1c95",
+  "dumpSha256": "272d2bdb9d9415ff2580d30ae64057aad2ec8ef995fbc633b2c30b3c5966a214",
   "museumImage": "ghcr.io/ente/server@sha256:e9e06eb01834c38f41a3a09f9a64885b631346ce0005ccff2153faea403bd6e2",
   "postgresImage": "postgres:15-alpine@sha256:3d0f7584ed7d04e27fa050d6683a74746608faf21f202be78460d679cc56461f",
   "enteSourceRevision": "d4873f6ca147aaf02ff82549f6c575e29790cff0",
@@ -14,9 +14,9 @@
     "auth-maestro-fixture-totp-v2@example.org"
   ],
   "accountCodeCounts": {
-    "basic": 5,
+    "basic": 3,
     "totp": 1,
     "recovery": 1
   },
-  "codeCount": 7
+  "codeCount": 5
 }

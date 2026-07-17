@@ -182,13 +182,12 @@ jobs:
 
             - name: Prepare private test password
               run: |
-                  password=$(openssl rand -base64 24 | tr -dc 'A-Za-z0-9' | head -c 20)
+                  password="AuthCi-$(openssl rand -hex 10)!"
                   echo "::add-mask::$password"
                   echo "ONLINE_PASSWORD=$password" >> "$GITHUB_ENV"
 
             - name: Run ${{ matrix.lane }} tests
               id: online-tests
-              continue-on-error: true
               uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
               with:
                   api-level: 34
@@ -204,7 +203,13 @@ jobs:
               env:
                   TEST_OUTCOME: ${{ steps.online-tests.outcome }}
               run: |
-                  if [[ "$TEST_OUTCOME" == "success" ]]; then status="passed"; else status="failed"; fi
+                  if [[ "$TEST_OUTCOME" == "success" ]]; then
+                      status="passed"
+                      coverage_label="Verified coverage"
+                  else
+                      status="failed"
+                      coverage_label="Planned coverage"
+                  fi
                   {
                       echo "### Auth Android ${{ matrix.lane }} $status"
                       echo
@@ -213,6 +218,8 @@ jobs:
                       echo "- Android API: \`34\`"
                       echo "- Maestro: \`$MAESTRO_VERSION\`"
                       echo "- Backend: checked-in public Museum fixture v2"
+                      echo
+                      echo "#### $coverage_label"
                       echo
                       if [[ "${{ matrix.lane }}" == "account-auth" ]]; then
                           echo "- Live TOTP challenge, synced-code visibility, signup, first Auth-key creation, cold password login, unknown-account error, and recovery-key password reset with code preservation"
@@ -232,14 +239,33 @@ jobs:
                   if-no-files-found: warn
                   retention-days: 7
 
+            - name: Upload data-sync failure diagnostics
+              if: failure() && matrix.lane == 'data-sync'
+              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+              with:
+                  name: auth-online-data-sync-diagnostics
+                  path: artifacts/maestro/online-debug
+                  if-no-files-found: warn
+                  retention-days: 3
+
             - name: Show backend status on failure
-              if: steps.online-tests.outcome == 'failure'
+              if: failure()
               run: docker compose --project-name "$AUTH_FIXTURE_COMPOSE_PROJECT" -f museum/compose.yaml ps
 
             - name: Stop local Auth backend
               if: always()
               run: docker compose --project-name "$AUTH_FIXTURE_COMPOSE_PROJECT" -f museum/compose.yaml down --volumes --remove-orphans
 
-            - name: Propagate ${{ matrix.lane }} failure
-              if: steps.online-tests.outcome == 'failure'
-              run: exit 1
+    auth-online-gate:
+        name: Auth online gate
+        if: always()
+        needs: [resolve, auth-online]
+        runs-on: ubuntu-latest
+        steps:
+            - name: Verify required online lanes
+              env:
+                  LANE_RESULT: ${{ needs.auth-online.result }}
+                  RESOLVE_RESULT: ${{ needs.resolve.result }}
+              run: |
+                  test "$RESOLVE_RESULT" = success
+                  test "$LANE_RESULT" = success

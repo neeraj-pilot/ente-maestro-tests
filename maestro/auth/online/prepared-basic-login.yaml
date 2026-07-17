@@ -1,0 +1,15 @@
+appId: ${APP_ID}
+name: Auth opens the prepared basic fixture account
+tags: [auth, android, online, fixture, login]
+---
+- launchApp
+- runFlow:
+    file: ../subflows/login-online-account.yaml
+    env:
+      LOGIN_EMAIL: ${FIXTURE_BASIC_EMAIL}
+      LOGIN_PASSWORD: ${FIXTURE_BASIC_PASSWORD}
+- extendedWaitUntil:
+    visible: ".*developer.fixture@example.org.*"
+    timeout: 30000
+- assertNotVisible:
+    id: auth_code_coach_mark_dismiss

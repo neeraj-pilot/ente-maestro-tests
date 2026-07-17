@@ -7,14 +7,14 @@ on purpose. Never restore this fixture to a shared or production environment.
 
 The three accounts have stable, visibly synthetic `@example.org` identities:
 
-- `basic`: password login, account settings, four active codes, and one trashed
+- `basic`: password login, account settings, two active codes, and one trashed
   code for sync and mutation coverage
 - `totp`: password login followed by a live TOTP challenge, with one synced code
 - `recovery`: recovery-key password reset, old-password rejection, login with
   the replacement password, and one code that must survive the reset
 
-The seven Auth entities use familiar issuers (`GitHub`, `Google`, `Microsoft`,
-`Stripe`, and `Dropbox`) so icon matching is exercised alongside stable
+The five Auth entities use familiar issuers (`GitHub`, `Google`, `Microsoft`,
+and `Dropbox`) so icon matching is exercised alongside stable
 `@example.org` account labels, tags, notes, pin state, and trash state.
 
 Normal CI restores the checked-in PostgreSQL dump and does not compile Ente.
@@ -34,7 +34,7 @@ ALLOW_AUTH_FIXTURE_RESTORE=1 \
 ```
 
 This verifies the dump checksum and metadata, creates fresh PostgreSQL storage,
-restores exactly three tagged accounts, three Auth data keys, seven encrypted
+restores exactly three tagged accounts, three Auth data keys, five encrypted
 entities, and one TOTP account, then starts Museum on
 `http://127.0.0.1:8080`.
 

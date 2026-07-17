@@ -10,5 +10,6 @@ appId: ${APP_ID}
 - assertVisible: "Save"
 - eraseText: 100
 - inputText: ${ONLINE_ENDPOINT}
+- hideKeyboard
 - tapOn: "Save"
 - assertVisible: "Log in"

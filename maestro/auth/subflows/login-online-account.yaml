@@ -1,7 +1,5 @@
 appId: ${APP_ID}
 ---
-- launchApp:
-    clearState: true
 - assertVisible: "Log in"
 - runFlow:
     file: configure-online-test-endpoint.yaml
