@@ -87,6 +87,10 @@ test time, excluding emulator boot, exceeds five minutes.
    - Status: complete on Android. Promoted after two clean hosted matrix runs:
      [first](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29524172187)
      and [repeat](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29524701204).
+     Multi-code Pin/Unpin is also complete: its pull-request run and full
+     `main` matrix passed in
+     [29559515515](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29559515515)
+     and [29560026639](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29560026639).
    - Search by issuer and account.
    - Exercise issuer/account/custom sorting and visible filters.
    - Verify the empty-search state and clearing the query.
@@ -215,18 +219,22 @@ secrets in GitHub summaries or uploaded plaintext logs.
 
 ## Runner strategy
 
-One Android runner is currently faster and cheaper because emulator setup is
-about three minutes while the smoke flows take under thirty seconds.
+Hosted offline CI currently uses five parallel Android shards: setup,
+organization, settings, tags, and trash. Pull requests use the selector to run
+only the affected shard; every merge to `main` runs all five.
+
+The first post-bulk-Pin full-matrix baseline is
+[29560026639](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29560026639):
+setup took 4m44s, settings 4m25s, trash 4m34s, tags 5m08s, and organization
+9m52s. This is a single measurement, not a median. Keep the current topology
+until two more clean `main` baselines exist. If organization remains the
+bottleneck, compare splitting that shard with a one-emulator sequential run
+before changing runner count; retain targeted pull-request selection either
+way.
 
 Use the AOSP system image for offline suites. Add Google APIs or Play Store
 images only when a tested behavior demonstrates that dependency; the heavier
 Pixel Launcher image can introduce unrelated launcher ANRs.
-
-Introduce at most two parallel Android jobs when `offline-core` itself exceeds
-five minutes:
-
-- `offline-core`: setup, lifecycle, search, tags, and trash.
-- `offline-settings`: settings and other read-only surfaces.
 
 Keep `offline-platform` and `museum-auth` in separate jobs because they have
 different provisioning and failure modes. Do not shard individual short flows
@@ -350,10 +358,16 @@ local iteration, demos, and hosted tests faster and more deterministic.
    applies a newly created `Finance` tag, then filters by that tag and verifies
    both accounts. It proves selection and one mutation across multiple codes
    without destructive cleanup.
-2. Add bulk trash and bulk restore after the documented two-code mutation
+2. The public offline **bulk Pin/Unpin** flow is complete: it selects GitHub
+   and Stripe, pins both, reselects both to unpin them, then verifies the shared
+   Pin action is available again. It passed on the pull request in
+   [29559515515](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29559515515)
+   and on the full `main` matrix in
+   [29560026639](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29560026639).
+3. Add bulk trash and bulk restore after the documented two-code mutation
    regression is fixed. It should prove the selection count, confirmation,
    Trash list, and restoration, while continuing to avoid permanent deletion.
-3. Once the two import defects are fixed, promote the existing sequential
+4. Once the two import defects are fixed, promote the existing sequential
    plain-text and Google Authenticator import flow to hosted Android and add
    the duplicate-count regression above.
 
