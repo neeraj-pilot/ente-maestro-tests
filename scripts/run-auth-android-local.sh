@@ -134,7 +134,10 @@ case "$suite" in
         )
         ;;
     trash)
-        flows=(maestro/auth/offline/trash-restore.yaml)
+        flows=(
+            maestro/auth/offline/trash-restore.yaml
+            maestro/auth/offline/bulk-trash-restore.yaml
+        )
         ;;
     imports)
         flows=(maestro/auth/offline/imports.yaml)
@@ -156,6 +159,7 @@ case "$suite" in
             maestro/auth/offline/tags.yaml
             maestro/auth/offline/bulk-tag-edit.yaml
             maestro/auth/offline/trash-restore.yaml
+            maestro/auth/offline/bulk-trash-restore.yaml
         )
         ;;
     *)

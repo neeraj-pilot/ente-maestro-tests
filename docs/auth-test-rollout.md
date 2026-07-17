@@ -107,8 +107,8 @@ test time, excluding emulator boot, exceeds five minutes.
      Rename/delete remain deferred because the published nightly exposes a
      different selected-tag overflow surface than the refreshed source UI.
    - Next: cover rename and remove once the published overflow surface is
-     stable. Bulk trash/restore remains blocked on the documented two-code
-     mutation regression.
+     stable. Bulk trash/restore has local release validation and awaits the
+     hosted promotion gate below.
 7. **Trash and restore**
    - Trash a code, find it in Trash, and restore it.
    - Add permanent deletion only after its local-auth behavior is handled in
@@ -289,16 +289,17 @@ local iteration, demos, and hosted tests faster and more deterministic.
    the returned bytes (or copy them to an app-owned temporary file), with
    explicit size bounds and cleanup ownership. That is the prerequisite for
    promoting import coverage to hosted CI.
-3. **Bulk trash does not persist a two-code offline selection in the published
-   nightly.** On local ARM64 API 34 with `auth-v4.4.25-beta`, create GitHub and
-   Stripe accounts, select both (the UI reports `2 selected`), tap Trash, and
-   confirm. Both accounts remain visible on the home list after Maestro's
-   17-second absence wait. The existing single-code trash-and-restore flow
-   passes with the same app and device, so this is a cardinality-specific
-   regression candidate rather than a picker or selector failure. Validate the
-   current-source bulk handler (`_onTrashSelectedPressed` and
-   `_saveCodesWithSingleSync`) and add a source regression before promoting the
-   drafted bulk-trash flow to CI.
+
+### Validated behavior clarifications
+
+1. **Bulk Trash does persist a two-code offline selection.** The prior local
+   candidate treated the continued visibility of GitHub and Stripe as a failed
+   mutation. The release app automatically switches to the Trash tab when no
+   active codes remain, so both codes correctly remain visible there. A
+   deterministic flow must switch to All and prove both are absent, switch to
+   Trash and prove both are present, then restore both and prove they return to
+   All. The flow is locally validated against `auth-v4.4.25-beta` on ARM64 and
+   awaits its hosted pull-request and `main` promotion runs.
 
 ### App changes that improve testability without weakening production UX
 
@@ -364,9 +365,11 @@ local iteration, demos, and hosted tests faster and more deterministic.
    [29559515515](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29559515515)
    and on the full `main` matrix in
    [29560026639](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29560026639).
-3. Add bulk trash and bulk restore after the documented two-code mutation
-   regression is fixed. It should prove the selection count, confirmation,
-   Trash list, and restoration, while continuing to avoid permanent deletion.
+3. The public offline **bulk Trash/Restore** flow is locally validated: it
+   selects GitHub and Stripe, confirms Trash, proves both are absent from All
+   and present in Trash, then restores both. It awaits its hosted
+   pull-request and `main` promotion runs; it deliberately does not cover
+   permanent deletion.
 4. Once the two import defects are fixed, promote the existing sequential
    plain-text and Google Authenticator import flow to hosted Android and add
    the duplicate-count regression above.
