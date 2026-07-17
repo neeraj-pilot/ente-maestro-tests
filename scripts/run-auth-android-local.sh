@@ -110,6 +110,8 @@ case "$suite" in
         ;;
     setup)
         flows=(
+            maestro/auth/smoke/onboarding.yaml
+            maestro/auth/smoke/offline-mode.yaml
             maestro/auth/offline/manual-setup.yaml
             maestro/auth/offline/manual-validation.yaml
         )

@@ -6,6 +6,7 @@ on:
         paths:
             - ".github/workflows/auth-android-smoke.yml"
             - "maestro/auth/**"
+            - "maestro/fixtures/**"
             - "scripts/resolve-auth-nightly.sh"
             - "scripts/select-auth-ci-suites.sh"
             - "scripts/test-select-auth-ci-suites.sh"
@@ -13,10 +14,24 @@ on:
         paths:
             - ".github/workflows/auth-android-smoke.yml"
             - "maestro/auth/**"
+            - "maestro/fixtures/**"
             - "scripts/resolve-auth-nightly.sh"
             - "scripts/select-auth-ci-suites.sh"
             - "scripts/test-select-auth-ci-suites.sh"
     workflow_dispatch:
+        inputs:
+            suite:
+                description: Offline suite to run
+                required: true
+                default: all
+                type: choice
+                options:
+                    - all
+                    - setup
+                    - organization
+                    - settings
+                    - tags
+                    - trash
 
 permissions:
     contents: read
@@ -29,6 +44,7 @@ env:
     AUTH_APK_DIR: ${{ github.workspace }}/artifacts/auth
     MAESTRO_CLI_NO_ANALYTICS: 1
     MAESTRO_VERSION: 2.6.1
+    MAESTRO_SHA256: 3440825f514f537c6a96bcf5de995780c2a4a7f83a43208fdc95d4f1fecfad3b
 
 jobs:
     select:
@@ -56,8 +72,11 @@ jobs:
                   EVENT_NAME: ${{ github.event_name }}
                   BASE_SHA: ${{ github.event.pull_request.base.sha }}
                   HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+                  REQUESTED_SUITE: ${{ inputs.suite || 'all' }}
               run: |
-                  if [[ "$EVENT_NAME" != "pull_request" ]]; then
+                  if [[ "$EVENT_NAME" == "workflow_dispatch" && "$REQUESTED_SUITE" != "all" ]]; then
+                      matrix="$(scripts/select-auth-ci-suites.sh --suite "$REQUESTED_SUITE")"
+                  elif [[ "$EVENT_NAME" != "pull_request" ]]; then
                       matrix="$(scripts/select-auth-ci-suites.sh --all)"
                   else
                       matrix="$(scripts/select-auth-ci-suites.sh "$BASE_SHA" "$HEAD_SHA")"
@@ -146,15 +165,21 @@ jobs:
                   echo "AUTH_RELEASE_TAG=$release_tag" >> "$GITHUB_ENV"
                   echo "AUTH_APK_SHA256=$expected_sha256" >> "$GITHUB_ENV"
 
-            - name: Install Maestro
+            - name: Install pinned Maestro
               run: |
-                  curl -fsSL "https://get.maestro.mobile.dev" | bash
-                  installed_version="$("$HOME/.maestro/bin/maestro" --version)"
+                  curl --fail --location --silent --show-error \
+                      "https://github.com/mobile-dev-inc/maestro/releases/download/cli-$MAESTRO_VERSION/maestro.zip" \
+                      --output "$RUNNER_TEMP/maestro.zip"
+                  echo "$MAESTRO_SHA256  $RUNNER_TEMP/maestro.zip" | sha256sum --check -
+                  mkdir -p "$HOME/.maestro"
+                  unzip -q "$RUNNER_TEMP/maestro.zip" -d "$HOME/.maestro"
+                  maestro_bin="$HOME/.maestro/maestro/bin/maestro"
+                  installed_version="$("$maestro_bin" --version)"
                   if [[ "$installed_version" != "$MAESTRO_VERSION" ]]; then
                       echo "Expected Maestro $MAESTRO_VERSION, installed $installed_version" >&2
                       exit 1
                   fi
-                  echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+                  echo "$HOME/.maestro/maestro/bin" >> "$GITHUB_PATH"
 
             - name: Enable KVM
               run: |
