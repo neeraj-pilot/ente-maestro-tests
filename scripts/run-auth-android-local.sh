@@ -121,7 +121,10 @@ case "$suite" in
         )
         ;;
     settings)
-        flows=(maestro/auth/offline/settings.yaml)
+        flows=(
+            maestro/auth/offline/settings.yaml
+            maestro/auth/offline/duplicate-codes.yaml
+        )
         ;;
     tags)
         flows=(maestro/auth/offline/tags.yaml)
@@ -144,6 +147,7 @@ case "$suite" in
             maestro/auth/offline/code-lifecycle.yaml
             maestro/auth/offline/home-organization.yaml
             maestro/auth/offline/settings.yaml
+            maestro/auth/offline/duplicate-codes.yaml
             maestro/auth/offline/tags.yaml
             maestro/auth/offline/trash-restore.yaml
         )
