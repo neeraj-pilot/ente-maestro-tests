@@ -38,9 +38,16 @@ assert_suites "trash" --changed-file maestro/auth/offline/bulk-trash-restore.yam
 assert_suites "trash" --changed-file maestro/auth/offline/bulk-permanent-delete.yaml
 assert_suites "tags,trash" --changed-file maestro/auth/offline/tags.yaml --changed-file maestro/auth/offline/trash-restore.yaml
 assert_suites "setup,organization,settings,tags,trash" --changed-file maestro/auth/subflows/add-offline-account.yaml
+assert_suites "setup,organization,settings,tags,trash" --changed-file maestro/auth/subflows/new-shared-helper.yaml
 assert_suites "setup,organization,settings,tags,trash" --changed-file maestro/auth/offline/new-hosted-flow.yaml
 assert_suites "setup,organization,settings,tags,trash" --all
 assert_suites "" --changed-file README.md
+assert_suites "" --changed-file maestro/auth/online/prepared-totp-login-complete.yaml
+assert_suites "" --changed-file maestro/auth/subflows/add-online-code.yaml
+assert_suites "" --changed-file maestro/auth/subflows/assert-synced-code.yaml
+assert_suites "" --changed-file maestro/auth/subflows/configure-online-test-endpoint.yaml
+assert_suites "" --changed-file maestro/auth/subflows/dismiss-code-guidance.yaml
+assert_suites "" --changed-file maestro/auth/subflows/login-online-account.yaml
 assert_suites "" --changed-file maestro/auth/offline/local-backup.yaml
 assert_suites "" --changed-file maestro/auth/fixtures/plain_text_import.txt
 assert_suites "setup,organization,settings,tags,trash" --changed-file maestro/auth/fixtures/new-fixture.json
