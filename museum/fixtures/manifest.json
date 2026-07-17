@@ -1,16 +1,22 @@
 {
   "classification": "PUBLIC_LOCAL_TEST_FIXTURE",
-  "fixtureVersion": 1,
-  "generatedAt": "2026-07-17T10:19:31Z",
-  "databaseDump": "auth-fixture-v1.dump",
-  "dumpSha256": "9dfe0decc37776ac176526c30dce34574be30aacf011b1f3901d85492275030b",
+  "fixtureVersion": 2,
+  "generatedAt": "2026-07-17T14:36:50Z",
+  "databaseDump": "auth-fixture-v2.dump",
+  "dumpSha256": "72dd59b1c890e846bb1b03ff5a658c612a87d6f8a3bdf2d84782927327df1c95",
   "museumImage": "ghcr.io/ente/server@sha256:e9e06eb01834c38f41a3a09f9a64885b631346ce0005ccff2153faea403bd6e2",
   "postgresImage": "postgres:15-alpine@sha256:3d0f7584ed7d04e27fa050d6683a74746608faf21f202be78460d679cc56461f",
-  "enteSourceRevision": "fd4988b6cea005576ea293dd32add131b89dd66c",
+  "enteSourceRevision": "d4873f6ca147aaf02ff82549f6c575e29790cff0",
   "generator": "tools/auth-fixture-generator",
   "accountEmails": [
-    "auth-maestro-fixture-basic-v1@example.org",
-    "auth-maestro-fixture-recovery-v1@example.org",
-    "auth-maestro-fixture-totp-v1@example.org"
-  ]
+    "auth-maestro-fixture-basic-v2@example.org",
+    "auth-maestro-fixture-recovery-v2@example.org",
+    "auth-maestro-fixture-totp-v2@example.org"
+  ],
+  "accountCodeCounts": {
+    "basic": 5,
+    "totp": 1,
+    "recovery": 1
+  },
+  "codeCount": 7
 }

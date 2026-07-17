@@ -56,10 +56,12 @@ dependencies = [
  "ente-accounts",
  "ente-core",
  "hmac",
+ "reqwest",
  "serde",
  "serde_json",
  "sha1",
  "tokio",
+ "url",
  "zeroize",
 ]
 
@@ -422,7 +424,7 @@ dependencies = [
 [[package]]
 name = "ente-accounts"
 version = "0.0.0"
-source = "git+https://github.com/ente-io/ente.git?rev=fd4988b6cea005576ea293dd32add131b89dd66c#fd4988b6cea005576ea293dd32add131b89dd66c"
+source = "git+https://github.com/ente-io/ente.git?rev=d4873f6ca147aaf02ff82549f6c575e29790cff0#d4873f6ca147aaf02ff82549f6c575e29790cff0"
 dependencies = [
  "base64",
  "ente-core",
@@ -437,7 +439,7 @@ dependencies = [
 [[package]]
 name = "ente-core"
 version = "0.0.0"
-source = "git+https://github.com/ente-io/ente.git?rev=fd4988b6cea005576ea293dd32add131b89dd66c#fd4988b6cea005576ea293dd32add131b89dd66c"
+source = "git+https://github.com/ente-io/ente.git?rev=d4873f6ca147aaf02ff82549f6c575e29790cff0#d4873f6ca147aaf02ff82549f6c575e29790cff0"
 dependencies = [
  "argon2",
  "base64",

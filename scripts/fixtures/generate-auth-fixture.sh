@@ -6,11 +6,11 @@ repo_root=$(cd "$(dirname "$0")/../.." && pwd)
 compose_file="$repo_root/museum/compose.yaml"
 fixtures_dir="$repo_root/museum/fixtures"
 credentials="$fixtures_dir/public-test-credentials.json"
-dump="$fixtures_dir/auth-fixture-v1.dump"
+dump="$fixtures_dir/auth-fixture-v2.dump"
 manifest="$fixtures_dir/manifest.json"
 project="ente-auth-fixture-generator"
 verification_project="ente-auth-fixture-generation-verify"
-ente_revision="fd4988b6cea005576ea293dd32add131b89dd66c"
+ente_revision="d4873f6ca147aaf02ff82549f6c575e29790cff0"
 museum_image="ghcr.io/ente/server@sha256:e9e06eb01834c38f41a3a09f9a64885b631346ce0005ccff2153faea403bd6e2"
 postgres_image="postgres:15-alpine@sha256:3d0f7584ed7d04e27fa050d6683a74746608faf21f202be78460d679cc56461f"
 
@@ -53,7 +53,7 @@ if command -v sha256sum >/dev/null; then
 else
     dump_sha256=$(shasum -a 256 "$dump" | awk '{print $1}')
 fi
-printf '%s  %s\n' "$dump_sha256" "$(basename "$dump")" > "$fixtures_dir/auth-fixture-v1.sha256"
+printf '%s  %s\n' "$dump_sha256" "$(basename "$dump")" > "$fixtures_dir/auth-fixture-v2.sha256"
 
 jq --null-input \
     --arg generatedAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
@@ -64,15 +64,17 @@ jq --null-input \
     --slurpfile credentials "$credentials" \
     '{
         classification: "PUBLIC_LOCAL_TEST_FIXTURE",
-        fixtureVersion: 1,
+        fixtureVersion: 2,
         generatedAt: $generatedAt,
-        databaseDump: "auth-fixture-v1.dump",
+        databaseDump: "auth-fixture-v2.dump",
         dumpSha256: $dumpSha256,
         museumImage: $museumImage,
         postgresImage: $postgresImage,
         enteSourceRevision: $enteRevision,
         generator: "tools/auth-fixture-generator",
-        accountEmails: ($credentials[0].accounts | to_entries | map(.value.email) | sort)
+        accountEmails: ($credentials[0].accounts | to_entries | map(.value.email) | sort),
+        accountCodeCounts: ($credentials[0].accounts | with_entries(.value = (.value.codes | length))),
+        codeCount: ([$credentials[0].accounts[].codes[]] | length)
     }' > "$manifest.tmp"
 mv "$manifest.tmp" "$manifest"
 
@@ -85,4 +87,4 @@ ALLOW_AUTH_FIXTURE_RESTORE=1 AUTH_FIXTURE_COMPOSE_PROJECT="$verification_project
     AUTH_FIXTURE_ENDPOINT=http://127.0.0.1:8080 \
         cargo run --locked --release -- verify "$credentials"
 )
-echo "Generated Auth fixture v1 in $fixtures_dir"
+echo "Generated Auth fixture v2 in $fixtures_dir"
