@@ -6,7 +6,7 @@ tags: [auth, android, online, fixture, totp]
     clearState: true
 - assertVisible: "Log in"
 - runFlow:
-    file: ../subflows/configure-online-test-endpoint.yaml
+    file: subflows/configure-online-test-endpoint.yaml
 - tapOn: "Log in"
 - waitForAnimationToEnd
 - inputText: ${FIXTURE_TOTP_EMAIL}

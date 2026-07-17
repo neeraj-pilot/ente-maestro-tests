@@ -6,7 +6,7 @@ tags: [auth, android, online, signup, recovery]
     clearState: true
 - assertVisible: "Log in"
 - runFlow:
-    file: ../subflows/configure-online-test-endpoint.yaml
+    file: subflows/configure-online-test-endpoint.yaml
 - tapOn: "Sign up"
 - assertVisible: "Enter your email id"
 - tapOn: "Enter your email id"
@@ -37,7 +37,7 @@ tags: [auth, android, online, signup, recovery]
     visible: "Settings"
     timeout: 120000
 - runFlow:
-    file: ../subflows/add-online-code.yaml
+    file: subflows/add-online-code.yaml
     env:
       ISSUER: GitHub
       SECRET: JBSWY3DPEHPK3PXP
