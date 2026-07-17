@@ -275,6 +275,16 @@ local iteration, demos, and hosted tests faster and more deterministic.
    the returned bytes (or copy them to an app-owned temporary file), with
    explicit size bounds and cleanup ownership. That is the prerequisite for
    promoting import coverage to hosted CI.
+3. **Bulk trash does not persist a two-code offline selection in the published
+   nightly.** On local ARM64 API 34 with `auth-v4.4.25-beta`, create GitHub and
+   Stripe accounts, select both (the UI reports `2 selected`), tap Trash, and
+   confirm. Both accounts remain visible on the home list after Maestro's
+   17-second absence wait. The existing single-code trash-and-restore flow
+   passes with the same app and device, so this is a cardinality-specific
+   regression candidate rather than a picker or selector failure. Validate the
+   current-source bulk handler (`_onTrashSelectedPressed` and
+   `_saveCodesWithSingleSync`) and add a source regression before promoting the
+   drafted bulk-trash flow to CI.
 
 ### App changes that improve testability without weakening production UX
 
