@@ -19,10 +19,11 @@ env:
     ONLINE_OTT: 123456
     ONLINE_EMAIL: auth-ci-${{ github.run_id }}-${{ github.run_attempt }}@example.org
     MISSING_EMAIL: missing-${{ github.run_id }}-${{ github.run_attempt }}@example.org
+    AUTH_FIXTURE_COMPOSE_PROJECT: auth-online-${{ github.run_id }}-${{ github.run_attempt }}
 
 jobs:
     auth-online:
-        name: Auth signup, recovery key, and password login
+        name: Auth fixture, signup, TOTP, and recovery flows
         runs-on: ubuntu-latest
         timeout-minutes: 40
         steps:
@@ -81,19 +82,16 @@ jobs:
             - name: Install Maestro
               run: |
                   curl -fsSL "https://get.maestro.mobile.dev" | bash
+                  installed_version="$("$HOME/.maestro/bin/maestro" --version)"
+                  if [[ "$installed_version" != "$MAESTRO_VERSION" ]]; then
+                      echo "Expected Maestro $MAESTRO_VERSION, installed $installed_version" >&2
+                      exit 1
+                  fi
                   echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
 
             - name: Start local Auth backend
               run: |
-                  docker compose -f museum/compose.yaml up --detach
-                  for attempt in {1..60}; do
-                      if curl -fsS http://127.0.0.1:8080/ping > /dev/null 2>&1; then
-                          exit 0
-                      fi
-                      sleep 1
-                  done
-                  docker compose -f museum/compose.yaml ps
-                  exit 1
+                  ALLOW_AUTH_FIXTURE_RESTORE=1 scripts/fixtures/restore-auth-fixture.sh
 
             - name: Enable KVM
               run: |
@@ -138,14 +136,17 @@ jobs:
                       echo "- Android API: \`34\`"
                       echo "- Maestro: \`$MAESTRO_VERSION\`"
                       echo "- Backend dependency: local Museum with PostgreSQL"
+                      echo "- Backend state: checked-in public local Auth fixture v1"
                       echo
                       echo "#### Coverage in this run"
                       echo
                       echo "- Unknown-account login shows the expected Auth error"
+                      echo "- Prepared password login exposes Account settings"
+                      echo "- Prepared TOTP account completes a live two-factor challenge"
                       echo "- Signup with deterministic email verification"
                       echo "- Recovery key is generated and acknowledged"
                       echo "- Password login succeeds after a fresh Auth app state"
-                      echo "- Logout is tracked separately because the current x86 nightly omits that Account action"
+                      echo "- Prepared recovery account rejects its old password after recovery-key reset and accepts the new password"
                       echo
                       echo "JUnit results are attached as \`auth-online-results\`."
                   } >> "$GITHUB_STEP_SUMMARY"
@@ -155,13 +156,17 @@ jobs:
               uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
               with:
                   name: auth-online-results
-                  path: artifacts/maestro/online-results.xml
+                  path: artifacts/maestro/online-results/*.xml
                   if-no-files-found: warn
                   retention-days: 7
 
             - name: Show backend status on failure
               if: steps.online-tests.outcome == 'failure'
-              run: docker compose -f museum/compose.yaml ps
+              run: docker compose --project-name "$AUTH_FIXTURE_COMPOSE_PROJECT" -f museum/compose.yaml ps
+
+            - name: Stop local Auth backend
+              if: always()
+              run: docker compose --project-name "$AUTH_FIXTURE_COMPOSE_PROJECT" -f museum/compose.yaml down --volumes --remove-orphans
 
             - name: Propagate Auth online test failure
               if: steps.online-tests.outcome == 'failure'

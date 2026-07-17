@@ -1,0 +1,12 @@
+appId: ${APP_ID}
+name: Auth prepared TOTP account completes two-factor login
+tags: [auth, android, online, fixture, totp]
+---
+- assertVisible: "Two-factor authentication"
+- inputText: ${FIXTURE_TOTP_CODE}
+- extendedWaitUntil:
+    visible: "Settings"
+    timeout: 120000
+- tapOn: "Settings"
+- assertVisible:
+    id: auth_settings_security
