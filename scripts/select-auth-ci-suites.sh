@@ -63,7 +63,7 @@ if [[ ${#changed_files[@]} -gt 0 ]]; then
             maestro/auth/offline/manual-setup.yaml|maestro/auth/offline/manual-validation.yaml)
                 add_suite setup
                 ;;
-            maestro/auth/offline/code-lifecycle.yaml|maestro/auth/offline/home-organization.yaml)
+            maestro/auth/offline/code-lifecycle.yaml|maestro/auth/offline/home-organization.yaml|maestro/auth/offline/bulk-pin-edit.yaml)
                 add_suite organization
                 ;;
             maestro/auth/offline/settings.yaml|maestro/auth/offline/duplicate-codes.yaml)
@@ -102,8 +102,8 @@ for suite in "${suite_order[@]}"; do
             ;;
         organization)
             name="Offline lifecycle and organization"
-            flows="maestro/auth/offline/code-lifecycle.yaml maestro/auth/offline/home-organization.yaml"
-            coverage="code details and edits, issuer/account search, empty results, and sorting"
+            flows="maestro/auth/offline/code-lifecycle.yaml maestro/auth/offline/home-organization.yaml maestro/auth/offline/bulk-pin-edit.yaml"
+            coverage="code details, bulk pinning, issuer/account search, empty results, and sorting"
             ;;
         settings)
             name="Offline settings"

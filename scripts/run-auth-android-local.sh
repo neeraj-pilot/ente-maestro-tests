@@ -118,6 +118,7 @@ case "$suite" in
         flows=(
             maestro/auth/offline/code-lifecycle.yaml
             maestro/auth/offline/home-organization.yaml
+            maestro/auth/offline/bulk-pin-edit.yaml
         )
         ;;
     settings)
@@ -149,6 +150,7 @@ case "$suite" in
             maestro/auth/offline/manual-validation.yaml
             maestro/auth/offline/code-lifecycle.yaml
             maestro/auth/offline/home-organization.yaml
+            maestro/auth/offline/bulk-pin-edit.yaml
             maestro/auth/offline/settings.yaml
             maestro/auth/offline/duplicate-codes.yaml
             maestro/auth/offline/tags.yaml
