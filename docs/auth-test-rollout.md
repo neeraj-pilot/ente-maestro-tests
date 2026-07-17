@@ -247,6 +247,82 @@ Do not automatically retry failed assertions. Maestro already waits for UI
 conditions; blanket retries hide real regressions. Isolate and fix a flaky
 selector or platform dependency before expanding the required suite.
 
+## App and runner follow-up backlog
+
+This is a deliberately small, evidence-backed list from the Auth Android
+rollout. It separates observed defects from improvements that would make
+local iteration, demos, and hosted tests faster and more deterministic.
+
+### Confirmed app defects
+
+1. **Plain-text import can overstate how many codes were added.**
+   `mobile/apps/auth/lib/ui/settings/data/import/import_flow.dart` returns the
+   number of parsed codes after it calls `CodeStore.addCode`, but ignores an
+   `AddResult.duplicate`. The success sheet therefore says that duplicate
+   entries were imported even though they were rejected. Count only accepted
+   results, and add a regression that imports the same fixture twice and
+   expects zero newly added codes on the second import. The Google importer
+   already demonstrates the intended duplicate-aware behavior.
+2. **File import assumes every selected Android file has a readable path.**
+   `pickAndProcessImportFile` dereferences `PlatformFile.path`. On the hosted
+   x86_64 emulator, DocumentsUI can return a selection whose path is not
+   readable by Auth, producing “Could not parse the selected file” for a valid
+   fixture. The app should accept a path when available and otherwise process
+   the returned bytes (or copy them to an app-owned temporary file), with
+   explicit size bounds and cleanup ownership. That is the prerequisite for
+   promoting import coverage to hosted CI.
+
+### App changes that improve testability without weakening production UX
+
+1. Ship stable, action-oriented semantics identifiers for the offline entry
+   action, backup-warning confirmation, select all, Pin/Unpin, Add tag, Trash,
+   tag-name input, and tag creation/Done actions. Keep the public labels as a
+   fallback; do not expose account names, OTP values, passwords, or recovery
+   material as identifiers.
+2. Keep onboarding tips and safety warnings in production. Their primary
+   actions should be identifiable and dismissible through semantics. A
+   debug-only/demo build may opt out of one-time education after exercising it
+   in a regression flow; the published-nightly gate must still exercise the
+   real warning at least once.
+3. Keep the existing debug code-seeding/deep-link hooks local to debug builds.
+   They are useful for fast pre-push exploration but must never replace
+   public-UI setup in the hosted release test.
+4. For time-dependent OTP UI, test the resulting visible state rather than a
+   full animation settling. If a deterministic clock is added for debug builds,
+   keep it build-gated and use it only for local development tests.
+
+### CI changes that improve reproducibility and cost
+
+1. Install the exact Maestro version declared by the workflow. The workflow
+   currently reports `2.6.1` but its installer fetches the latest CLI. Download
+   and checksum the requested release instead, then report the actual binary
+   version.
+2. Resolve the Auth nightly tag once in the selector job and pass that immutable
+   tag to every matrix shard. Today each shard independently asks for the
+   newest release, so a new nightly published mid-matrix can make one workflow
+   test different APKs.
+3. Retain targeted pull-request selection and a full `main` matrix. Before
+   changing the number of shards, record emulator boot time, test duration, and
+   runner-minutes from several clean runs. Do not combine unrelated suites just
+   to reduce job count if that makes failures slower to reproduce.
+4. Keep per-flow public setup and avoid generic retries. The re-launch in the
+   shared offline-entry helper is a narrow recovery for a cleared-state app
+   that was not foregrounded; it is not an assertion retry.
+
+### Next coverage increments
+
+1. Add a public offline **bulk edit** flow: create GitHub and Stripe accounts,
+   long-press one, select all visible accounts, apply a newly created `Finance`
+   tag, then filter by that tag and verify both accounts. This proves selection,
+   mutation across multiple codes, and the visible result without destructive
+   cleanup.
+2. Add bulk trash and bulk restore as a separate follow-up after the tag flow
+   is stable. It should prove the selection count, confirmation, Trash list,
+   and restoration, while continuing to avoid permanent deletion.
+3. Once the two import defects are fixed, promote the existing sequential
+   plain-text and Google Authenticator import flow to hosted Android and add
+   the duplicate-count regression above.
+
 ## Promotion gates
 
 A phase is ready to become required only when:
