@@ -323,14 +323,18 @@ local iteration, demos, and hosted tests faster and more deterministic.
 
 ### CI changes that improve reproducibility and cost
 
-1. Install the exact Maestro version declared by the workflow. The workflow
-   currently reports `2.6.1` but its installer fetches the latest CLI. Download
-   and checksum the requested release instead, then report the actual binary
-   version.
-2. Resolve the Auth nightly tag once in the selector job and pass that immutable
-   tag to every matrix shard. Today each shard independently asks for the
-   newest release, so a new nightly published mid-matrix can make one workflow
-   test different APKs.
+1. **Complete: pin the installed Maestro version.** The official installer now
+   receives `MAESTRO_VERSION=2.6.1`, and each shard verifies that the installed
+   binary reports exactly that version. The workflow passed on
+   [29558473438](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29558473438)
+   and again on `main` in
+   [29558854231](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29558854231).
+   Verification against an official release checksum remains a security
+   hardening follow-up if Maestro publishes a suitable manifest.
+2. **Complete: resolve the Auth nightly once per workflow.** The selector job
+   emits one immutable tag and every matrix shard downloads that tag. This
+   removes the race where a new nightly published mid-matrix could make one
+   workflow test different APKs; the same two clean runs above validate it.
 3. Retain targeted pull-request selection and a full `main` matrix. Before
    changing the number of shards, record emulator boot time, test duration, and
    runner-minutes from several clean runs. Do not combine unrelated suites just
