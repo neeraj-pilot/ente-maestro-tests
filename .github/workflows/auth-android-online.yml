@@ -206,6 +206,7 @@ jobs:
                   arch: x86_64
                   profile: pixel_5
                   cores: 4
+                  ram-size: ${{ matrix.lane == 'recovery-password' && '4096M' || '2560M' }}
                   disable-animations: true
                   script: .github/scripts/run-auth-online-tests.sh "${{ matrix.lane }}"
 
