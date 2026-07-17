@@ -22,21 +22,27 @@ tags: [auth, android, offline, trash]
       NOTE: ""
 - runFlow:
     when:
+      notVisible:
+        id: "auth_code_item"
+    commands:
+      - longPressOn: "GitHub"
+- runFlow:
+    when:
       visible:
         id: "auth_code_item"
     commands:
       - longPressOn:
           id: "auth_code_item"
-- runFlow:
-    when:
-      notVisible:
-        id: "auth_code_item"
-    commands:
-      - longPressOn: "GitHub"
 - tapOn: "(?s)^Trash.*"
 - tapOn: "^Trash$"
 - assertNotVisible: "GitHub"
 - assertVisible: "Stripe"
+- runFlow:
+    when:
+      notVisible:
+        id: "auth_filter_trash"
+    commands:
+      - tapOn: "Trash"
 - runFlow:
     when:
       visible:
@@ -44,13 +50,13 @@ tags: [auth, android, offline, trash]
     commands:
       - tapOn:
           id: "auth_filter_trash"
+- assertVisible: "GitHub"
 - runFlow:
     when:
       notVisible:
-        id: "auth_filter_trash"
+        id: "auth_code_item"
     commands:
-      - tapOn: "Trash"
-- assertVisible: "GitHub"
+      - longPressOn: "GitHub"
 - runFlow:
     when:
       visible:
@@ -58,12 +64,6 @@ tags: [auth, android, offline, trash]
     commands:
       - longPressOn:
           id: "auth_code_item"
-- runFlow:
-    when:
-      notVisible:
-        id: "auth_code_item"
-    commands:
-      - longPressOn: "GitHub"
 - runFlow:
     when:
       notVisible:

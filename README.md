@@ -20,27 +20,37 @@ which offline, platform-integrated, and Museum-backed coverage will be added.
 
 ## Latest verified coverage
 
-This table is the post-run record of what is currently green. It is based on
-the latest clean hosted runs against `ente-auth-v4.4.25-beta` on Android API
-34, with Maestro `2.6.1`. The latest required offline run completed on
-2026-07-16 UTC ([run 29536365665](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29536365665));
-the latest clean online run completed on 2026-07-16 UTC
+This table is the post-run record of what is currently green.
+
+### Hosted Android CI (published nightly)
+
+The latest clean hosted runs use `ente-auth-v4.4.25-beta` on Android API 34
+with Maestro `2.6.1`. The required offline run completed on 2026-07-17 UTC
+([run 29553237505](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29553237505));
+the clean online run completed on 2026-07-16 UTC
 ([run 29523464564](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29523464564)).
+Each badge opens the exact hosted run.
 
-The green badges open the exact hosted run. The local-import badge opens the
-flow, because that platform-specific validation does not have a hosted run.
+| Flow | Verified behavior |
+| --- | --- |
+| Online unknown-account login | [![Passed: run 29523464564](https://img.shields.io/badge/Latest%20run-passed-2ea44f?style=flat-square&logo=githubactions&logoColor=white)](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29523464564) Configures the local Auth endpoint and verifies the expected “Email not registered.” error. |
+| Online signup and recovery-key acknowledgement | [![Passed: run 29523464564](https://img.shields.io/badge/Latest%20run-passed-2ea44f?style=flat-square&logo=githubactions&logoColor=white)](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29523464564) Signs up with a unique CI email, deterministic OTT `123456`, creates a password, acknowledges the recovery key, and reaches Settings. |
+| Online password login | [![Passed: run 29523464564](https://img.shields.io/badge/Latest%20run-passed-2ea44f?style=flat-square&logo=githubactions&logoColor=white)](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29523464564) Starts from fresh Auth state, configures the endpoint, and signs into the account created earlier in the same run. |
+| Offline setup and validation | [![Passed: run 29553237505](https://img.shields.io/badge/Latest%20run-passed-2ea44f?style=flat-square&logo=githubactions&logoColor=white)](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29553237505) Covers onboarding, offline mode, the backup warning, GitHub TOTP setup, required-field validation, advanced fields, and HOTP/TOTP selection. |
+| Offline lifecycle and organization | [![Passed: run 29553237505](https://img.shields.io/badge/Latest%20run-passed-2ea44f?style=flat-square&logo=githubactions&logoColor=white)](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29553237505) Covers code details/editing, issuer/account search, empty results, sorting, and home-list organization. |
+| Offline settings | [![Passed: run 29553237505](https://img.shields.io/badge/Latest%20run-passed-2ea44f?style=flat-square&logo=githubactions&logoColor=white)](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29553237505) Covers Settings plus Data, Security, General, Support, About, Theme, and version-label surfaces. |
+| Offline tags | [![Passed: run 29553237505](https://img.shields.io/badge/Latest%20run-passed-2ea44f?style=flat-square&logo=githubactions&logoColor=white)](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29553237505) Creates a tag and filters the offline code list by it. |
+| Offline trash | [![Passed: run 29553237505](https://img.shields.io/badge/Latest%20run-passed-2ea44f?style=flat-square&logo=githubactions&logoColor=white)](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29553237505) Moves a code to Trash, opens Trash, and restores the code without permanently deleting it. |
 
-| Track | What the test exercises | Status |
-| --- | --- | --- |
-| Online unknown-account login | Configuring the local Auth endpoint and verifying the expected “Email not registered.” error | [![Passed: run 29523464564](https://img.shields.io/badge/Latest%20run-passed-2ea44f?style=flat-square&logo=githubactions&logoColor=white)](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29523464564) |
-| Online signup and recovery-key acknowledgement | Signup with a unique CI email, deterministic OTT `123456`, password creation, recovery-key acknowledgement, and reaching Settings | [![Passed: run 29523464564](https://img.shields.io/badge/Latest%20run-passed-2ea44f?style=flat-square&logo=githubactions&logoColor=white)](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29523464564) |
-| Online password login | Fresh Auth app state, endpoint configuration, and password login using the account created earlier in the same run | [![Passed: run 29523464564](https://img.shields.io/badge/Latest%20run-passed-2ea44f?style=flat-square&logo=githubactions&logoColor=white)](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29523464564) |
-| Offline setup and validation | Onboarding, entering offline mode, acknowledging the backup warning, manual GitHub TOTP setup, required-field validation, algorithm/digits/period fields, and HOTP/TOTP selection | [![Passed: run 29536365665](https://img.shields.io/badge/Latest%20run-passed-2ea44f?style=flat-square&logo=githubactions&logoColor=white)](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29536365665) |
-| Offline lifecycle and organization | Code details and editing, issuer/account search, empty search results, sorting, and home-list organization | [![Passed: run 29536365665](https://img.shields.io/badge/Latest%20run-passed-2ea44f?style=flat-square&logo=githubactions&logoColor=white)](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29536365665) |
-| Offline settings | Settings structure plus Data, Security, General, Support, About, Theme, and version-label surfaces | [![Passed: run 29536365665](https://img.shields.io/badge/Latest%20run-passed-2ea44f?style=flat-square&logo=githubactions&logoColor=white)](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29536365665) |
-| Offline tags | Creating a tag and filtering the offline code list by that tag | [![Passed: run 29536365665](https://img.shields.io/badge/Latest%20run-passed-2ea44f?style=flat-square&logo=githubactions&logoColor=white)](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29536365665) |
-| Offline trash | Moving a code to Trash, opening Trash, and restoring the code without permanent deletion | [![Passed: run 29536365665](https://img.shields.io/badge/Latest%20run-passed-2ea44f?style=flat-square&logo=githubactions&logoColor=white)](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29536365665) |
-| Native file imports | Plain-text import and Google Authenticator migration import using files placed in Android Downloads. Hosted x86_64 is excluded because its DocumentsUI returns an unreadable selected-file path. | [![Local ARM64: passed](https://img.shields.io/badge/Local%20ARM64-passed-0969da?style=flat-square&logo=android&logoColor=white)](maestro/auth/offline/imports.yaml) |
+### Local Android platform coverage
+
+These checks use a local ARM64 Android API 34 emulator and are not hosted
+nightly results or required CI gates. Their badges open the versioned flow.
+
+| Flow | Verified behavior |
+| --- | --- |
+| Native file imports | [![Local ARM64: passed](https://img.shields.io/badge/Local%20ARM64-passed-0969da?style=flat-square&logo=android&logoColor=white)](maestro/auth/offline/imports.yaml) Imports plain text and a Google Authenticator migration from Android Downloads. Hosted x86_64 is excluded because DocumentsUI returns an unreadable selected-file path. |
+| Local encrypted backups | [![Local ARM64: passed](https://img.shields.io/badge/Local%20ARM64-passed-0969da?style=flat-square&logo=android&logoColor=white)](maestro/auth/offline/local-backup.yaml) Creates public offline state, enables automatic backups, sets a password and Android backup folder, then creates a manual backup. The runner requires both JSON files to have encrypted backup fields and not expose the test account in plaintext. |
 
 ### Not yet green or intentionally deferred
 
@@ -48,8 +58,9 @@ flow, because that platform-specific validation does not have a hosted run.
   not expose a Logout action in its accessibility hierarchy.
 - Online TOTP two-factor login and recovery-key password reset are planned but
   are not covered by the last green online run.
-- Automatic local export, app lock/biometrics, QR scanning, and other native
-  platform integrations are not part of the required hosted gate yet.
+- Local encrypted backups are not part of the required hosted gate yet. App
+  lock/biometrics, QR scanning, and other native platform integrations remain
+  deferred.
 - Tag rename/delete and permanent Trash deletion remain deferred until the
   published nightly exposes stable UI surfaces for them.
 

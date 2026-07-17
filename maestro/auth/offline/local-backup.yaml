@@ -1,0 +1,95 @@
+appId: ${APP_ID}
+name: Create automatic and manual offline backups
+tags: [auth, android, offline, backup, platform]
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible: "Use without backups"
+    timeout: 60000
+- tapOn: "Use without backups"
+# Local debug builds may be compiled with ENTE_AUTH_SKIP_GUIDANCE for fast
+# demo runs; published builds retain this safety acknowledgement.
+- runFlow:
+    when:
+      visible: "(?s)Warning.*You have chosen to proceed without backups.*"
+    commands:
+      - tapOn: "Ok"
+- extendedWaitUntil:
+    visible: "(?s)Setup your first.*account"
+    timeout: 30000
+- runFlow:
+    file: ../subflows/add-offline-account.yaml
+    env:
+      ISSUER: "GitHub"
+      SECRET: "JBSWY3DPEHPK3PXP"
+      ACCOUNT: "backup.bot@github.test"
+      NOTE: ""
+- tapOn: "Settings"
+- tapOn: "Data"
+- extendedWaitUntil:
+    visible: "Local backup"
+    timeout: 10000
+- tapOn: "Local backup"
+- extendedWaitUntil:
+    visible: "(?s).*Automatic backups.*"
+    timeout: 10000
+- runFlow:
+    when:
+      notVisible:
+        id: "auth_local_backup_toggle"
+    commands:
+      - tapOn:
+          text: "(?s).*Automatic backups.*"
+          point: "87%,30%"
+- runFlow:
+    when:
+      visible:
+        id: "auth_local_backup_toggle"
+    commands:
+      - tapOn:
+          id: "auth_local_backup_toggle"
+          point: "95%,50%"
+- extendedWaitUntil:
+    visible: "Set backup password"
+    timeout: 10000
+- tapOn: "Enter password"
+- inputText: "MaestroBackup42!"
+- tapOn: "Save"
+- extendedWaitUntil:
+    visible: "Use this folder"
+    timeout: 15000
+- runFlow:
+    when:
+      visible: "Download"
+    commands:
+      - tapOn: "Download"
+- extendedWaitUntil:
+    visible: "Files in Download"
+    timeout: 15000
+- tapOn: "EnteAuthBackups"
+- extendedWaitUntil:
+    visible: "Files in EnteAuthBackups"
+    timeout: 15000
+- tapOn: "Use this folder"
+- runFlow:
+    when:
+      visible: "Allow"
+    commands:
+      - tapOn: "Allow"
+- extendedWaitUntil:
+    visible: "(?s).*Automatic backups.*"
+    timeout: 30000
+- runFlow:
+    when:
+      notVisible:
+        id: "auth_local_backup_create_now"
+    commands:
+      - tapOn: "Backup now"
+- runFlow:
+    when:
+      visible:
+        id: "auth_local_backup_create_now"
+    commands:
+      - tapOn:
+          id: "auth_local_backup_create_now"
