@@ -289,6 +289,10 @@ local iteration, demos, and hosted tests faster and more deterministic.
      tag. Until the action has a shared shipped identifier, cross-platform
      coverage should select two accounts individually; this is not a data
      mutation defect, but it makes selector-based tests non-portable.
+   - The hosted x86_64 accessibility value for `auth_selection_count` currently
+     duplicates its visible label (for example, `2 selected\n2 selected`).
+     Expose the count once so assistive technology and exact selectors receive
+     the same value; until then, tests use a count-specific multiline regex.
 2. Keep onboarding tips and safety warnings in production. Their primary
    actions should be identifiable and dismissible through semantics. A
    debug-only/demo build may opt out of one-time education after exercising it
