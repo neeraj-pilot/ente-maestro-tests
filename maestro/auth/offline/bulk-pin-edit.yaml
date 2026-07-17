@@ -67,6 +67,72 @@ tags: [auth, android, offline, organization]
     commands:
       - longPressOn:
           id: "auth_code_item"
+- assertVisible: "(?s)^Pin.*"
+- tapOn: "(?s)^Pin.*"
+- runFlow:
+    when:
+      notVisible:
+        id: "auth_code_item"
+    commands:
+      - longPressOn: "GitHub"
+- runFlow:
+    when:
+      visible:
+        id: "auth_code_item"
+    commands:
+      - longPressOn:
+          id: "auth_code_item"
 - longPressOn: "Stripe"
 - assertVisible: "(?s)^2 selected.*"
 - assertVisible: "(?s)^Pin.*"
+- assertVisible: "(?s)^Unpin.*"
+- tapOn: "(?s)^Unpin.*"
+- runFlow:
+    when:
+      notVisible:
+        id: "auth_code_item"
+    commands:
+      - longPressOn: "GitHub"
+- runFlow:
+    when:
+      visible:
+        id: "auth_code_item"
+    commands:
+      - longPressOn:
+          id: "auth_code_item"
+- assertVisible: "(?s)^Pin.*"
+- tapOn: "(?s)^Pin.*"
+- runFlow:
+    when:
+      notVisible:
+        id: "auth_code_item"
+    commands:
+      - longPressOn: "GitHub"
+- runFlow:
+    when:
+      visible:
+        id: "auth_code_item"
+    commands:
+      - longPressOn:
+          id: "auth_code_item"
+- longPressOn: "Stripe"
+- assertVisible: "(?s)^2 selected.*"
+- assertVisible: "(?s)^Pin.*"
+- assertVisible: "(?s)^Unpin.*"
+- tapOn: "(?s)^Pin.*"
+- runFlow:
+    when:
+      notVisible:
+        id: "auth_code_item"
+    commands:
+      - longPressOn: "GitHub"
+- runFlow:
+    when:
+      visible:
+        id: "auth_code_item"
+    commands:
+      - longPressOn:
+          id: "auth_code_item"
+- longPressOn: "Stripe"
+- assertVisible: "(?s)^2 selected.*"
+- assertVisible: "(?s)^Unpin.*"
