@@ -17,10 +17,11 @@ suite, while every merge to `main` runs the complete hosted baseline. Offline
 failures retain Maestro diagnostics for seven days. Online account-auth retains
 only JUnit results so passwords and recovery material cannot enter artifacts;
 failures also retain a secret-free runtime health snapshot for three days.
-Data-sync failures may retain public-fixture diagnostics for three days.
+Recovery and data-sync failures may retain public-fixture diagnostics for three
+days.
 
-See the [Auth test rollout plan](docs/auth-test-rollout.md) for the order in
-which offline, platform-integrated, and Museum-backed coverage will be added.
+See the [Auth test guide](docs/auth-test-rollout.md) for the hosted, local, and
+Museum-backed coverage boundaries.
 
 ## Run locally
 
