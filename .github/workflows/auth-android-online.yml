@@ -42,32 +42,33 @@ jobs:
                   GH_TOKEN: ${{ github.token }}
               run: |
                   mkdir -p "$AUTH_APK_DIR"
-                  release_tag=$(gh api "repos/ente/nightly/releases?per_page=100" --jq '
-                    [.[] | select(
-                      .draft == false and
-                      (.tag_name | startswith("auth-v")) and
-                      (.tag_name | endswith("-beta"))
-                    )] | max_by(.published_at).tag_name
-                  ')
-                  if [[ -z "$release_tag" || "$release_tag" == "null" ]]; then
-                      echo "No Auth nightly release found" >&2
-                      exit 1
-                  fi
-                  echo "Testing $release_tag"
+                  IFS=$'\t' read -r release_tag apk_name apk_sha256 < <(scripts/resolve-auth-nightly.sh)
+                  echo "Testing $release_tag ($apk_name, $apk_sha256)"
 
                   gh release download "$release_tag" \
                       --repo ente/nightly \
-                      --pattern "ente-auth-*.apk" \
+                      --pattern "$apk_name" \
                       --pattern SHA256SUMS \
                       --dir "$AUTH_APK_DIR"
 
-                  apk_path=$(find "$AUTH_APK_DIR" -maxdepth 1 -type f -name "ente-auth-*.apk" -print -quit)
-                  if [[ -z "$apk_path" ]]; then
+                  apk_path="$AUTH_APK_DIR/$apk_name"
+                  if [[ ! -f "$apk_path" ]]; then
                       echo "Auth APK was not downloaded" >&2
                       exit 1
                   fi
 
-                  checksum=$(grep -E "  $(basename "$apk_path")$" "$AUTH_APK_DIR/SHA256SUMS")
+                  expected_sha256="${apk_sha256#sha256:}"
+                  actual_sha256=$(sha256sum "$apk_path" | awk '{print $1}')
+                  if [[ "$actual_sha256" != "$expected_sha256" ]]; then
+                      echo "Downloaded Auth APK does not match the resolved release asset" >&2
+                      exit 1
+                  fi
+
+                  checksum=$(grep -E "^${expected_sha256}[[:space:]]+\\*?${apk_name}$" "$AUTH_APK_DIR/SHA256SUMS")
+                  if [[ -z "$checksum" ]]; then
+                      echo "SHA256SUMS does not contain the resolved Auth APK" >&2
+                      exit 1
+                  fi
                   (
                       cd "$AUTH_APK_DIR"
                       printf "%s\n" "$checksum" | sha256sum --check -
@@ -75,6 +76,7 @@ jobs:
 
                   echo "AUTH_APK_PATH=$apk_path" >> "$GITHUB_ENV"
                   echo "AUTH_RELEASE_TAG=$release_tag" >> "$GITHUB_ENV"
+                  echo "AUTH_APK_SHA256=$expected_sha256" >> "$GITHUB_ENV"
 
             - name: Install Maestro
               run: |
@@ -132,6 +134,7 @@ jobs:
                       echo "### Auth Android online $status"
                       echo
                       echo "- Release: \`$AUTH_RELEASE_TAG\`"
+                      echo "- Auth APK SHA-256: \`$AUTH_APK_SHA256\`"
                       echo "- Android API: \`34\`"
                       echo "- Maestro: \`$MAESTRO_VERSION\`"
                       echo "- Backend dependency: local Museum with PostgreSQL"

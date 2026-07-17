@@ -20,6 +20,17 @@ material cannot enter artifacts.
 See the [Auth test rollout plan](docs/auth-test-rollout.md) for the order in
 which offline, platform-integrated, and Museum-backed coverage will be added.
 
+## Run locally
+
+Always resolve the APK immediately before a local run. Auth beta release tags
+can be reused, so the helper verifies the immutable release-asset digest rather
+than trusting a filename such as `ente-auth-v4.4.25-beta.apk`.
+
+```sh
+apk_path=$(scripts/download-auth-nightly.sh)
+scripts/run-auth-android-local.sh --apk "$apk_path" --suite trash
+```
+
 ## Latest verified coverage
 
 This table is the post-run record of what is currently green.
