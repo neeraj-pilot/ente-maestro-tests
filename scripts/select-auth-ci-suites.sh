@@ -69,7 +69,7 @@ if [[ ${#changed_files[@]} -gt 0 ]]; then
             maestro/auth/offline/settings.yaml|maestro/auth/offline/duplicate-codes.yaml)
                 add_suite settings
                 ;;
-            maestro/auth/offline/tags.yaml)
+            maestro/auth/offline/tags.yaml|maestro/auth/offline/bulk-tag-edit.yaml)
                 add_suite tags
                 ;;
             maestro/auth/offline/trash-restore.yaml)
@@ -112,8 +112,8 @@ for suite in "${suite_order[@]}"; do
             ;;
         tags)
             name="Offline tags"
-            flows="maestro/auth/offline/tags.yaml"
-            coverage="create a tag and filter the offline code list"
+            flows="maestro/auth/offline/tags.yaml maestro/auth/offline/bulk-tag-edit.yaml"
+            coverage="create, filter, and bulk-apply a tag to offline codes"
             ;;
         trash)
             name="Offline trash"
