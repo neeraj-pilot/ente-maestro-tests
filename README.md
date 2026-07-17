@@ -5,10 +5,10 @@ Maestro smoke and end-to-end tests that run against published Ente apps.
 The Android workflows download the newest `auth-v*-beta` APK from
 [`ente/nightly`](https://github.com/ente/nightly/releases), verify its checksum,
 and run it on a local GitHub Actions emulator. The required smoke workflow is
-offline. A separately dispatched online Auth workflow covers signup,
-recovery-key acknowledgement, and password login. It starts local
-PostgreSQL and Museum only as backend dependencies. Neither workflow builds
-Ente or uses Maestro Cloud.
+offline. A separately dispatched online Auth workflow covers prepared password
+and TOTP accounts, signup, recovery-key acknowledgement, password login, and a
+recovery-key password reset. It starts local PostgreSQL and Museum only as
+backend dependencies. Neither workflow builds Ente or uses Maestro Cloud.
 
 On a pull request, the offline workflow runs only the affected hosted suite;
 shared helpers, onboarding, and workflow changes run the full matrix. Every
@@ -42,15 +42,18 @@ The latest clean required offline run used `ente-auth-v4.4.25-beta`
 on Android API 34 with Maestro `2.6.1`. The required offline run completed on
 2026-07-17 UTC
 ([run 29568421839](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29568421839));
-the clean online run completed on 2026-07-16 UTC
-([run 29523464564](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29523464564)).
+the clean online run completed on 2026-07-17 UTC
+([run 29574838453](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29574838453)).
 Each badge opens the exact hosted run.
 
 | Flow | Verified behavior |
 | --- | --- |
-| Online unknown-account login | [![Passed: run 29523464564](https://img.shields.io/badge/Latest%20run-passed-2ea44f?style=flat-square&logo=githubactions&logoColor=white)](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29523464564) Configures the local Auth endpoint and verifies the expected “Email not registered.” error. |
-| Online signup and recovery-key acknowledgement | [![Passed: run 29523464564](https://img.shields.io/badge/Latest%20run-passed-2ea44f?style=flat-square&logo=githubactions&logoColor=white)](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29523464564) Signs up with a unique CI email, deterministic OTT `123456`, creates a password, acknowledges the recovery key, and reaches Settings. |
-| Online password login | [![Passed: run 29523464564](https://img.shields.io/badge/Latest%20run-passed-2ea44f?style=flat-square&logo=githubactions&logoColor=white)](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29523464564) Starts from fresh Auth state, configures the endpoint, and signs into the account created earlier in the same run. |
+| Online prepared password login | [![Passed: run 29574838453](https://img.shields.io/badge/Latest%20run-passed-2ea44f?style=flat-square&logo=githubactions&logoColor=white)](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29574838453) Restores a stable fixture identity, signs in from fresh Auth state, and verifies the Account settings surfaces. |
+| Online TOTP login | [![Passed: run 29574838453](https://img.shields.io/badge/Latest%20run-passed-2ea44f?style=flat-square&logo=githubactions&logoColor=white)](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29574838453) Signs into a prepared two-factor account and completes its live TOTP challenge with a code generated at test time. |
+| Online unknown-account login | [![Passed: run 29574838453](https://img.shields.io/badge/Latest%20run-passed-2ea44f?style=flat-square&logo=githubactions&logoColor=white)](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29574838453) Configures the local Auth endpoint and verifies the expected “Email not registered.” error. |
+| Online signup and recovery-key acknowledgement | [![Passed: run 29574838453](https://img.shields.io/badge/Latest%20run-passed-2ea44f?style=flat-square&logo=githubactions&logoColor=white)](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29574838453) Signs up with a unique CI email, deterministic OTT `123456`, creates a password, acknowledges the recovery key, and reaches Settings. |
+| Online password login | [![Passed: run 29574838453](https://img.shields.io/badge/Latest%20run-passed-2ea44f?style=flat-square&logo=githubactions&logoColor=white)](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29574838453) Starts from fresh Auth state, configures the endpoint, and signs into the account created earlier in the same run. |
+| Online recovery-key password reset | [![Passed: run 29574838453](https://img.shields.io/badge/Latest%20run-passed-2ea44f?style=flat-square&logo=githubactions&logoColor=white)](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29574838453) Resets a prepared account with its stored recovery key, proves the old password is rejected, and signs in with the replacement password from fresh state. |
 | Offline setup and validation | [![Passed: run 29568421839](https://img.shields.io/badge/Latest%20run-passed-2ea44f?style=flat-square&logo=githubactions&logoColor=white)](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29568421839) Covers onboarding, offline mode, the backup warning, GitHub TOTP setup, required-field validation, advanced fields, and HOTP/TOTP selection. |
 | Offline lifecycle and organization | [![Passed: run 29568421839](https://img.shields.io/badge/Latest%20run-passed-2ea44f?style=flat-square&logo=githubactions&logoColor=white)](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29568421839) Covers code details/editing, issuer/account search, empty results, sorting, and home-list organization. |
 | Offline bulk pin actions | [![Passed: run 29568421839](https://img.shields.io/badge/Latest%20run-passed-2ea44f?style=flat-square&logo=githubactions&logoColor=white)](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29568421839) Uses Select all for a uniform selection, then exercises Pin, Unpin, and mixed-state actions that change only the applicable code. |
@@ -77,8 +80,6 @@ nightly results or required CI gates. Their badges open the versioned flow.
 
 - Logout remains tracked separately: the current published x86 nightly does
   not expose a Logout action in its accessibility hierarchy.
-- Online TOTP two-factor login and recovery-key password reset are planned but
-  are not covered by the last green online run.
 - Local encrypted backups are not part of the required hosted gate yet. App
   lock/biometrics, QR scanning, and other native platform integrations remain
   deferred.
