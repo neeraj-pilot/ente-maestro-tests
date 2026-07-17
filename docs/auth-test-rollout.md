@@ -48,7 +48,10 @@ Status: complete.
   home screen.
 - Run both flows in one Maestro invocation on Android API 34.
 
-These remain the required smoke gate for every workflow or runner change.
+These remain the required smoke gate for every workflow or runner change. Pull
+requests run only the affected hosted suite, except shared helpers, onboarding,
+and workflow changes, which run the full matrix. Every merge to `main` runs the
+full hosted matrix before its result is recorded in the README.
 
 ### Phase 1: offline core, no native picker or server
 

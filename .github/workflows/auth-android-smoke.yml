@@ -6,10 +6,14 @@ on:
         paths:
             - ".github/workflows/auth-android-smoke.yml"
             - "maestro/auth/**"
+            - "scripts/select-auth-ci-suites.sh"
+            - "scripts/test-select-auth-ci-suites.sh"
     pull_request:
         paths:
             - ".github/workflows/auth-android-smoke.yml"
             - "maestro/auth/**"
+            - "scripts/select-auth-ci-suites.sh"
+            - "scripts/test-select-auth-ci-suites.sh"
     workflow_dispatch:
 
 permissions:
@@ -25,34 +29,50 @@ env:
     MAESTRO_VERSION: 2.6.1
 
 jobs:
+    select:
+        name: Select hosted Auth suites
+        runs-on: ubuntu-latest
+        outputs:
+            matrix: ${{ steps.select.outputs.matrix }}
+            has_suites: ${{ steps.select.outputs.has_suites }}
+        steps:
+            - name: Checkout tests
+              uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+              with:
+                  fetch-depth: 0
+                  persist-credentials: false
+
+            - name: Validate suite selection
+              run: scripts/test-select-auth-ci-suites.sh
+
+            - name: Select suites for this event
+              id: select
+              env:
+                  EVENT_NAME: ${{ github.event_name }}
+                  BASE_SHA: ${{ github.event.pull_request.base.sha }}
+                  HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+              run: |
+                  if [[ "$EVENT_NAME" != "pull_request" ]]; then
+                      matrix="$(scripts/select-auth-ci-suites.sh --all)"
+                  else
+                      matrix="$(scripts/select-auth-ci-suites.sh "$BASE_SHA" "$HEAD_SHA")"
+                  fi
+                  echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+                  if [[ "$(jq '.include | length' <<< "$matrix")" -gt 0 ]]; then
+                      echo "has_suites=true" >> "$GITHUB_OUTPUT"
+                  else
+                      echo "has_suites=false" >> "$GITHUB_OUTPUT"
+                  fi
+
     smoke:
+        needs: select
+        if: needs.select.outputs.has_suites == 'true'
         name: ${{ matrix.name }}
         runs-on: ubuntu-latest
         timeout-minutes: 30
         strategy:
             fail-fast: false
-            matrix:
-                include:
-                    - name: Offline setup and validation
-                      suite: setup
-                      flows: maestro/auth/smoke/onboarding.yaml maestro/auth/smoke/offline-mode.yaml maestro/auth/offline/manual-setup.yaml maestro/auth/offline/manual-validation.yaml
-                      coverage: onboarding, offline entry, manual setup, and field validation
-                    - name: Offline lifecycle and organization
-                      suite: organization
-                      flows: maestro/auth/offline/code-lifecycle.yaml maestro/auth/offline/home-organization.yaml
-                      coverage: code details and edits, issuer/account search, empty results, and sorting
-                    - name: Offline settings
-                      suite: settings
-                      flows: maestro/auth/offline/settings.yaml
-                      coverage: settings structure, General, About, Theme, and version label
-                    - name: Offline tags
-                      suite: tags
-                      flows: maestro/auth/offline/tags.yaml
-                      coverage: create a tag and filter the offline code list
-                    - name: Offline trash
-                      suite: trash
-                      flows: maestro/auth/offline/trash-restore.yaml
-                      coverage: trash and restore an offline code without permanent deletion
+            matrix: ${{ fromJSON(needs.select.outputs.matrix) }}
         steps:
             - name: Checkout tests
               uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0

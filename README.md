@@ -10,10 +10,12 @@ recovery-key acknowledgement, and password login. It starts local
 PostgreSQL and Museum only as backend dependencies. Neither workflow builds
 Ente or uses Maestro Cloud.
 
-The offline workflow runs when its test files change and can also be started
-manually. The online workflow remains manual while it is being proven. Offline
-failures retain Maestro diagnostics for seven days; the online workflow retains
-only JUnit results so credentials and recovery material cannot enter artifacts.
+On a pull request, the offline workflow runs only the affected hosted suite;
+shared helpers, onboarding, and workflow changes run the full matrix. Every
+merge to `main` runs the full hosted matrix. The online workflow remains manual
+while it is being proven. Offline failures retain Maestro diagnostics for seven
+days; the online workflow retains only JUnit results so credentials and recovery
+material cannot enter artifacts.
 
 See the [Auth test rollout plan](docs/auth-test-rollout.md) for the order in
 which offline, platform-integrated, and Museum-backed coverage will be added.
@@ -64,7 +66,6 @@ nightly results or required CI gates. Their badges open the versioned flow.
 - Tag rename/delete and permanent Trash deletion remain deferred until the
   published nightly exposes stable UI surfaces for them.
 
-When a hosted run is promoted, update this table with its run link and move
-any newly covered flow out of the deferred list. Keep historical failed or
-cancelled runs in GitHub Actions; this table should represent the latest
-clean result, not hide the debugging history.
+Update this table from a clean full run on `main`, not a targeted pull-request
+run. Keep historical failed or cancelled runs in GitHub Actions; this table
+should represent the latest clean result, not hide the debugging history.
