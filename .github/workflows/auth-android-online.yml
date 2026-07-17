@@ -114,7 +114,6 @@ jobs:
             matrix:
                 lane: ${{ fromJSON(needs.resolve.outputs.lanes) }}
         env:
-            ASSERT_TWO_FACTOR_STATUS: "false"
             AUTH_FIXTURE_COMPOSE_PROJECT: auth-online-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.lane }}
             FIXTURE_MUTATION_TAG: FixturePersisted
             MISSING_EMAIL: missing-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.lane }}@example.org
