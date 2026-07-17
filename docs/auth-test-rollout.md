@@ -91,14 +91,20 @@ test time, excluding emulator boot, exceeds five minutes.
    - Exercise issuer/account/custom sorting and visible filters.
    - Verify the empty-search state and clearing the query.
 6. **Tags and editing**
-   - Status: tag creation and filtering are complete on Android. Promoted
-     after two clean hosted tag shards in
+   - Status: tag creation, filtering, and multi-account tag application are
+     complete on Android. Single-account coverage was promoted after two clean
+     hosted tag shards in
      [29527901812](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29527901812)
      and [29528427436](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29528427436).
+     The public two-account bulk flow passed on its pull request and on the
+     full `main` matrix in
+     [29557688425](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29557688425)
+     and [29558020187](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29558020187).
      Rename/delete remain deferred because the published nightly exposes a
      different selected-tag overflow surface than the refreshed source UI.
-   - Next: cover attach, rename, and remove once the published overflow
-     surface is stable; the current promoted flow verifies create and filter.
+   - Next: cover rename and remove once the published overflow surface is
+     stable. Bulk trash/restore remains blocked on the documented two-code
+     mutation regression.
 7. **Trash and restore**
    - Trash a code, find it in Trash, and restore it.
    - Add permanent deletion only after its local-auth behavior is handled in
@@ -335,14 +341,14 @@ local iteration, demos, and hosted tests faster and more deterministic.
 
 ### Next coverage increments
 
-1. Add a public offline **bulk edit** flow: create GitHub and Stripe accounts,
-   long-press one, select all visible accounts, apply a newly created `Finance`
-   tag, then filter by that tag and verify both accounts. This proves selection,
-   mutation across multiple codes, and the visible result without destructive
-   cleanup.
-2. Add bulk trash and bulk restore as a separate follow-up after the tag flow
-   is stable. It should prove the selection count, confirmation, Trash list,
-   and restoration, while continuing to avoid permanent deletion.
+1. The public offline **bulk tag edit** flow is complete: it creates GitHub and
+   Stripe accounts, selects both through the cross-platform long-press path,
+   applies a newly created `Finance` tag, then filters by that tag and verifies
+   both accounts. It proves selection and one mutation across multiple codes
+   without destructive cleanup.
+2. Add bulk trash and bulk restore after the documented two-code mutation
+   regression is fixed. It should prove the selection count, confirmation,
+   Trash list, and restoration, while continuing to avoid permanent deletion.
 3. Once the two import defects are fixed, promote the existing sequential
    plain-text and Google Authenticator import flow to hosted Android and add
    the duplicate-count regression above.
