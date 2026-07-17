@@ -15,17 +15,17 @@ tags: [auth, android, offline, tags]
       NOTE: ""
 - runFlow:
     when:
+      notVisible:
+        id: "auth_code_item"
+    commands:
+      - longPressOn: "GitHub"
+- runFlow:
+    when:
       visible:
         id: "auth_code_item"
     commands:
       - longPressOn:
           id: "auth_code_item"
-- runFlow:
-    when:
-      notVisible:
-        id: "auth_code_item"
-    commands:
-      - longPressOn: "GitHub"
 - assertVisible: "(?s)^Add tag.*"
 - tapOn: "(?s)^Add tag.*"
 - assertVisible: "Add new"

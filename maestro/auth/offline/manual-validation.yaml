@@ -25,6 +25,15 @@ tags:
 - tapOn: "(?i)^ok$"
 - runFlow:
     when:
+      notVisible:
+        id: "auth_manual_advanced"
+    commands:
+      - scrollUntilVisible:
+          element: "Advanced"
+          direction: UP
+      - assertVisible: "Advanced"
+- runFlow:
+    when:
       visible:
         id: "auth_manual_advanced"
     commands:
@@ -98,12 +107,3 @@ tags:
       - assertVisible: "Incorrect details"
       - assertVisible: "Period must be between 10 and 60 seconds"
       - tapOn: "(?i)^ok$"
-- runFlow:
-    when:
-      notVisible:
-        id: "auth_manual_advanced"
-    commands:
-      - scrollUntilVisible:
-          element: "Advanced"
-          direction: UP
-      - assertVisible: "Advanced"

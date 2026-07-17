@@ -19,17 +19,17 @@ tags:
       NOTE: "Primary admin account. Keep recovery contacts current."
 - runFlow:
     when:
+      notVisible:
+        id: "auth_code_item"
+    commands:
+      - longPressOn: "GitHub"
+- runFlow:
+    when:
       visible:
         id: "auth_code_item"
     commands:
       - longPressOn:
           id: "auth_code_item"
-- runFlow:
-    when:
-      notVisible:
-        id: "auth_code_item"
-    commands:
-      - longPressOn: "GitHub"
 - runFlow:
     when:
       visible:
@@ -48,17 +48,17 @@ tags:
       - tapOn: "Close"
       - runFlow:
           when:
+            notVisible:
+              id: "auth_code_item"
+          commands:
+            - longPressOn: "GitHub"
+      - runFlow:
+          when:
             visible:
               id: "auth_code_item"
           commands:
             - longPressOn:
                 id: "auth_code_item"
-      - runFlow:
-          when:
-            notVisible:
-              id: "auth_code_item"
-          commands:
-            - longPressOn: "GitHub"
 - assertVisible: "(?s)^Pin.*"
 - assertVisible: "(?s)^Add tag.*"
 - assertVisible: "(?s)^Trash.*"
@@ -66,17 +66,17 @@ tags:
 - waitForAnimationToEnd
 - runFlow:
     when:
+      notVisible:
+        id: "auth_code_item"
+    commands:
+      - longPressOn: "GitHub"
+- runFlow:
+    when:
       visible:
         id: "auth_code_item"
     commands:
       - longPressOn:
           id: "auth_code_item"
-- runFlow:
-    when:
-      notVisible:
-        id: "auth_code_item"
-    commands:
-      - longPressOn: "GitHub"
 - assertVisible: "(?s)^Unpin.*"
 - tapOn: "(?s)^Unpin.*"
 - assertVisible: ".*security@github.test.*"
