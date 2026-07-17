@@ -37,9 +37,11 @@ This table is the post-run record of what is currently green.
 
 ### Hosted Android CI (published nightly)
 
-The latest clean hosted runs use `ente-auth-v4.4.25-beta` on Android API 34
-with Maestro `2.6.1`. The required offline run completed on 2026-07-17 UTC
-([run 29560026639](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29560026639));
+The latest clean required offline run used `ente-auth-v4.4.25-beta`
+(SHA-256 `8b7d44e6fe180f3a592a130c89775692ac24b816bb3259bdc42f8c5ba99cbaea`)
+on Android API 34 with Maestro `2.6.1`. The required offline run completed on
+2026-07-17 UTC
+([run 29565939711](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29565939711));
 the clean online run completed on 2026-07-16 UTC
 ([run 29523464564](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29523464564)).
 Each badge opens the exact hosted run.
@@ -49,14 +51,17 @@ Each badge opens the exact hosted run.
 | Online unknown-account login | [![Passed: run 29523464564](https://img.shields.io/badge/Latest%20run-passed-2ea44f?style=flat-square&logo=githubactions&logoColor=white)](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29523464564) Configures the local Auth endpoint and verifies the expected “Email not registered.” error. |
 | Online signup and recovery-key acknowledgement | [![Passed: run 29523464564](https://img.shields.io/badge/Latest%20run-passed-2ea44f?style=flat-square&logo=githubactions&logoColor=white)](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29523464564) Signs up with a unique CI email, deterministic OTT `123456`, creates a password, acknowledges the recovery key, and reaches Settings. |
 | Online password login | [![Passed: run 29523464564](https://img.shields.io/badge/Latest%20run-passed-2ea44f?style=flat-square&logo=githubactions&logoColor=white)](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29523464564) Starts from fresh Auth state, configures the endpoint, and signs into the account created earlier in the same run. |
-| Offline setup and validation | [![Passed: run 29560026639](https://img.shields.io/badge/Latest%20run-passed-2ea44f?style=flat-square&logo=githubactions&logoColor=white)](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29560026639) Covers onboarding, offline mode, the backup warning, GitHub TOTP setup, required-field validation, advanced fields, and HOTP/TOTP selection. |
-| Offline lifecycle and organization | [![Passed: run 29560026639](https://img.shields.io/badge/Latest%20run-passed-2ea44f?style=flat-square&logo=githubactions&logoColor=white)](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29560026639) Covers code details/editing, issuer/account search, empty results, sorting, and home-list organization. |
-| Offline bulk pin edit | [![Passed: run 29560026639](https://img.shields.io/badge/Latest%20run-passed-2ea44f?style=flat-square&logo=githubactions&logoColor=white)](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29560026639) Selects GitHub and Stripe, pins both, reselects them to unpin both, then verifies that the shared Pin action is restored. |
-| Offline settings | [![Passed: run 29560026639](https://img.shields.io/badge/Latest%20run-passed-2ea44f?style=flat-square&logo=githubactions&logoColor=white)](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29560026639) Covers Settings plus Data, Security, General, Support, About, Theme, and version-label surfaces. |
-| Offline duplicate codes | [![Passed: run 29560026639](https://img.shields.io/badge/Latest%20run-passed-2ea44f?style=flat-square&logo=githubactions&logoColor=white)](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29560026639) Creates two identical GitHub accounts and verifies their two-code group in Data → Duplicate codes without deleting data. |
-| Offline tags | [![Passed: run 29560026639](https://img.shields.io/badge/Latest%20run-passed-2ea44f?style=flat-square&logo=githubactions&logoColor=white)](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29560026639) Creates a tag and filters the offline code list by it. |
-| Offline bulk tag edit | [![Passed: run 29560026639](https://img.shields.io/badge/Latest%20run-passed-2ea44f?style=flat-square&logo=githubactions&logoColor=white)](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29560026639) Selects GitHub and Stripe, applies one new `Finance` tag to both, and verifies both through the tag filter. |
-| Offline trash | [![Passed: run 29560026639](https://img.shields.io/badge/Latest%20run-passed-2ea44f?style=flat-square&logo=githubactions&logoColor=white)](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29560026639) Moves a code to Trash, opens Trash, and restores the code without permanently deleting it. |
+| Offline setup and validation | [![Passed: run 29565939711](https://img.shields.io/badge/Latest%20run-passed-2ea44f?style=flat-square&logo=githubactions&logoColor=white)](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29565939711) Covers onboarding, offline mode, the backup warning, GitHub TOTP setup, required-field validation, advanced fields, and HOTP/TOTP selection. |
+| Offline lifecycle and organization | [![Passed: run 29565939711](https://img.shields.io/badge/Latest%20run-passed-2ea44f?style=flat-square&logo=githubactions&logoColor=white)](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29565939711) Covers code details/editing, issuer/account search, empty results, sorting, and home-list organization. |
+| Offline bulk pin actions | [![Passed: run 29565939711](https://img.shields.io/badge/Latest%20run-passed-2ea44f?style=flat-square&logo=githubactions&logoColor=white)](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29565939711) Exercises bulk Pin and Unpin for uniform selections, then verifies that mixed selection changes only the applicable code. |
+| Offline settings | [![Passed: run 29565939711](https://img.shields.io/badge/Latest%20run-passed-2ea44f?style=flat-square&logo=githubactions&logoColor=white)](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29565939711) Covers Settings plus Data, Security, General, Support, About, Theme, and version-label surfaces. |
+| Offline duplicate codes | [![Passed: run 29565939711](https://img.shields.io/badge/Latest%20run-passed-2ea44f?style=flat-square&logo=githubactions&logoColor=white)](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29565939711) Creates two identical GitHub accounts and verifies their two-code group in Data → Duplicate codes without deleting data. |
+| Offline tags | [![Passed: run 29565939711](https://img.shields.io/badge/Latest%20run-passed-2ea44f?style=flat-square&logo=githubactions&logoColor=white)](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29565939711) Creates a tag and filters the offline code list by it. |
+| Offline bulk tag edit | [![Passed: run 29565939711](https://img.shields.io/badge/Latest%20run-passed-2ea44f?style=flat-square&logo=githubactions&logoColor=white)](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29565939711) Selects GitHub and Stripe, applies one new `Finance` tag to both, and verifies both through the tag filter. |
+| Offline bulk tag removal | [![Passed: run 29565939711](https://img.shields.io/badge/Latest%20run-passed-2ea44f?style=flat-square&logo=githubactions&logoColor=white)](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29565939711) Removes `Finance` from two selected codes and confirms the tag filter disappears. |
+| Offline trash | [![Passed: run 29565939711](https://img.shields.io/badge/Latest%20run-passed-2ea44f?style=flat-square&logo=githubactions&logoColor=white)](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29565939711) Moves one code to Trash, opens Trash, and restores it without permanently deleting it. |
+| Offline bulk trash and restore | [![Passed: run 29565939711](https://img.shields.io/badge/Latest%20run-passed-2ea44f?style=flat-square&logo=githubactions&logoColor=white)](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29565939711) Moves GitHub and Stripe to Trash together, proves both are there, then restores both to All. |
+| Offline permanent deletion | [![Passed: run 29565939711](https://img.shields.io/badge/Latest%20run-passed-2ea44f?style=flat-square&logo=githubactions&logoColor=white)](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29565939711) Moves GitHub and Stripe to Trash, then permanently deletes both. |
 
 ### Local Android platform coverage
 
@@ -77,8 +82,8 @@ nightly results or required CI gates. Their badges open the versioned flow.
 - Local encrypted backups are not part of the required hosted gate yet. App
   lock/biometrics, QR scanning, and other native platform integrations remain
   deferred.
-- Tag rename/delete and permanent Trash deletion remain deferred until the
-  published nightly exposes stable UI surfaces for them.
+- Tag rename/delete remain deferred until the published nightly exposes stable
+  UI surfaces for them.
 
 Update this table from a clean full run on `main`, not a targeted pull-request
 run. Keep historical failed or cancelled runs in GitHub Actions; this table
