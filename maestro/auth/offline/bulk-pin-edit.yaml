@@ -33,7 +33,7 @@ tags: [auth, android, offline, organization]
     commands:
       - longPressOn:
           id: "auth_code_item"
-- longPressOn: "Stripe"
+- tapOn: "(?s)^Select all.*"
 - assertVisible: "(?s)^2 selected.*"
 - assertVisible: "(?s)^Pin.*"
 - tapOn: "(?s)^Pin.*"
