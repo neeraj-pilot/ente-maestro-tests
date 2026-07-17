@@ -3,14 +3,10 @@ name: Auth reloads a persisted bulk fixture mutation
 tags: [auth, android, online, fixture, sync, bulk]
 ---
 - runFlow:
-    file: ../subflows/login-online-account.yaml
+    file: prepared-basic-login.yaml
     env:
-      LOGIN_EMAIL: ${FIXTURE_BASIC_EMAIL}
-      LOGIN_PASSWORD: ${FIXTURE_BASIC_PASSWORD}
-- runFlow:
-    file: ../subflows/dismiss-code-guidance.yaml
-    env:
-      READY_ACCOUNT: developer.fixture@example.org
+      FIXTURE_BASIC_EMAIL: ${FIXTURE_BASIC_EMAIL}
+      FIXTURE_BASIC_PASSWORD: ${FIXTURE_BASIC_PASSWORD}
 - extendedWaitUntil:
     visible: ${FIXTURE_MUTATION_TAG}
     timeout: 30000

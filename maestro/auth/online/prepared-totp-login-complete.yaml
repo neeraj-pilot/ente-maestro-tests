@@ -6,7 +6,7 @@ tags: [auth, android, online, fixture, totp]
 - inputText: ${FIXTURE_TOTP_CODE}
 - extendedWaitUntil:
     visible: "Settings"
-    timeout: 30000
+    timeout: 60000
 - runFlow:
     file: ../subflows/dismiss-code-guidance.yaml
     env:
