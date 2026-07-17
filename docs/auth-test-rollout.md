@@ -283,6 +283,12 @@ local iteration, demos, and hosted tests faster and more deterministic.
    tag-name input, and tag creation/Done actions. Keep the public labels as a
    fallback; do not expose account names, OTP values, passwords, or recovery
    material as identifiers.
+   - Observed compatibility gap: the published `auth-v4.4.25-beta` exposed a
+     visible Select all action on local ARM64, but not in the hosted x86_64
+     selection hierarchy. Both surfaces exposed the selection count and Add
+     tag. Until the action has a shared shipped identifier, cross-platform
+     coverage should select two accounts individually; this is not a data
+     mutation defect, but it makes selector-based tests non-portable.
 2. Keep onboarding tips and safety warnings in production. Their primary
    actions should be identifiable and dismissible through semantics. A
    debug-only/demo build may opt out of one-time education after exercising it
