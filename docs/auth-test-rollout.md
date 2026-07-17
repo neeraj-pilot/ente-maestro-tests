@@ -104,9 +104,13 @@ test time, excluding emulator boot, exceeds five minutes.
    - Add permanent deletion only after its local-auth behavior is handled in
      Phase 2.
 8. **Duplicate detection**
+   - Status: complete on Android. The full hosted matrix passed on
+     [29555954743](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29555954743),
+     then again after merge to `main` on
+     [29556312742](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29556312742).
    - Add the same account twice through manual setup and verify the duplicate
-     group.
-   - Keep destructive duplicate cleanup out until authentication is stable.
+     group without deleting it. Destructive cleanup remains deferred until
+     local authentication is stable.
 9. **Settings without external navigation**
    - Status: complete on Android. Promoted after two clean hosted settings
      shards in [29526305068](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29526305068)
