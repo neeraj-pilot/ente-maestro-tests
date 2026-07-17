@@ -5,17 +5,18 @@ Maestro smoke and end-to-end tests that run against published Ente apps.
 The Android workflows download the newest `auth-v*-beta` APK from
 [`ente/nightly`](https://github.com/ente/nightly/releases), verify its checksum,
 and run it on a local GitHub Actions emulator. The required smoke workflow is
-offline. A parallel online Auth workflow covers prepared password
-and TOTP accounts, signup, recovery-key acknowledgement, password login, and a
-recovery-key password reset. It starts local PostgreSQL and Museum only as
-backend dependencies. Neither workflow builds Ente or uses Maestro Cloud.
+offline. A parallel online Auth workflow isolates the recovery-key password
+reset on a fresh emulator, alongside account-authentication and synchronized-
+data lanes. It starts local PostgreSQL and Museum only as backend dependencies.
+Neither workflow builds Ente or uses Maestro Cloud.
 
 On a pull request, both workflows run only the affected hosted suites; shared
 helpers and workflow changes run their full matrices. Manual runs can target one
 suite, while every merge to `main` runs the complete hosted baseline. Offline
 failures retain Maestro diagnostics for seven days. Online account-auth retains
 only JUnit results so passwords and recovery material cannot enter artifacts;
-data-sync failures may retain public-fixture diagnostics for three days.
+failures also retain a secret-free runtime health snapshot for three days.
+Data-sync failures may retain public-fixture diagnostics for three days.
 
 See the [Auth test rollout plan](docs/auth-test-rollout.md) for the order in
 which offline, platform-integrated, and Museum-backed coverage will be added.

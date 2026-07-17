@@ -56,8 +56,11 @@ add_lane() {
 if [[ ${#changed_files[@]} -gt 0 ]]; then
     for changed_file in "${changed_files[@]}"; do
         case "$changed_file" in
-            maestro/auth/online/password-login.yaml|maestro/auth/online/prepared-recovery-password-reset.yaml|maestro/auth/online/prepared-totp-login-complete.yaml|maestro/auth/online/prepared-totp-login-start.yaml|maestro/auth/online/signup-recovery-login.yaml|maestro/auth/online/unknown-login.yaml|maestro/auth/online/subflows/add-online-code.yaml|scripts/current-totp.mjs)
+            maestro/auth/online/password-login.yaml|maestro/auth/online/prepared-totp-login-complete.yaml|maestro/auth/online/prepared-totp-login-start.yaml|maestro/auth/online/signup-recovery-login.yaml|maestro/auth/online/unknown-login.yaml|maestro/auth/online/subflows/add-online-code.yaml|scripts/current-totp.mjs)
                 add_lane account-auth
+                ;;
+            maestro/auth/online/prepared-recovery-password-reset.yaml)
+                add_lane recovery-password
                 ;;
             maestro/auth/online/prepared-basic-login.yaml|maestro/auth/online/prepared-bulk-mutation-complete.yaml|maestro/auth/online/prepared-bulk-mutation-start.yaml|maestro/auth/online/prepared-password-login.yaml)
                 add_lane data-sync
@@ -74,11 +77,11 @@ if [[ ${#changed_files[@]} -gt 0 ]]; then
 fi
 
 if [[ "$full_matrix" == true ]]; then
-    selected_lanes="account-auth,data-sync"
+    selected_lanes="account-auth,recovery-password,data-sync"
 fi
 
 lanes='[]'
-for lane in account-auth data-sync; do
+for lane in account-auth recovery-password data-sync; do
     [[ ",$selected_lanes," == *",$lane,"* ]] || continue
     lanes="$(jq -c --arg lane "$lane" '. + [$lane]' <<< "$lanes")"
 done
