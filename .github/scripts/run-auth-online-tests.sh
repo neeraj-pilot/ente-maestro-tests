@@ -84,7 +84,11 @@ run_account_auth() {
         -e FIXTURE_TOTP_EMAIL="$fixture_totp_email" \
         -e FIXTURE_TOTP_PASSWORD="$fixture_totp_password" \
         maestro/auth/online/prepared-totp-login-start.yaml
-    fixture_totp_code=$(TOTP_SECRET="$fixture_totp_secret" node scripts/current-totp.mjs)
+    fixture_totp_code=$(
+        TOTP_SECRET="$fixture_totp_secret" \
+            TOTP_MIN_VALIDITY_SECONDS=20 \
+            node scripts/current-totp.mjs
+    )
     run_maestro prepared-totp-complete \
         -e FIXTURE_TOTP_CODE="$fixture_totp_code" \
         maestro/auth/online/prepared-totp-login-complete.yaml

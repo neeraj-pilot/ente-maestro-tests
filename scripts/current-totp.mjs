@@ -5,9 +5,34 @@ if (!secret) {
     throw new Error("TOTP_SECRET is required");
 }
 
-const timestamp = process.env.TOTP_TIME
-    ? Number.parseInt(process.env.TOTP_TIME, 10)
-    : Math.floor(Date.now() / 1000);
+const periodSeconds = 30;
+const minValiditySeconds = process.env.TOTP_MIN_VALIDITY_SECONDS
+    ? Number.parseInt(process.env.TOTP_MIN_VALIDITY_SECONDS, 10)
+    : 0;
+if (
+    !Number.isSafeInteger(minValiditySeconds) ||
+    minValiditySeconds < 0 ||
+    minValiditySeconds > periodSeconds
+) {
+    throw new Error(
+        `TOTP_MIN_VALIDITY_SECONDS must be between 0 and ${periodSeconds}`,
+    );
+}
+
+let timestamp;
+if (process.env.TOTP_TIME) {
+    timestamp = Number.parseInt(process.env.TOTP_TIME, 10);
+} else {
+    const periodMilliseconds = periodSeconds * 1000;
+    const remainingMilliseconds =
+        periodMilliseconds - (Date.now() % periodMilliseconds);
+    if (remainingMilliseconds < minValiditySeconds * 1000) {
+        await new Promise((resolve) =>
+            setTimeout(resolve, remainingMilliseconds + 100),
+        );
+    }
+    timestamp = Math.floor(Date.now() / 1000);
+}
 if (!Number.isSafeInteger(timestamp) || timestamp < 0) {
     throw new Error("TOTP_TIME must be a non-negative integer");
 }
@@ -30,7 +55,7 @@ for (const character of secret.toUpperCase().replaceAll("=", "")) {
 }
 
 const counter = Buffer.alloc(8);
-counter.writeBigUInt64BE(BigInt(Math.floor(timestamp / 30)));
+counter.writeBigUInt64BE(BigInt(Math.floor(timestamp / periodSeconds)));
 const digest = createHmac("sha1", Buffer.from(bytes)).update(counter).digest();
 const offset = digest[digest.length - 1] & 0x0f;
 const binary =
