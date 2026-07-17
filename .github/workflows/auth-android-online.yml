@@ -25,6 +25,9 @@ on:
             - "museum/**"
             - "scripts/current-totp.mjs"
             - "scripts/fixtures/**"
+            - "scripts/resolve-auth-nightly.sh"
+            - "scripts/select-auth-online-lanes.sh"
+            - "scripts/test-select-auth-online-lanes.sh"
     push:
         branches: [main]
         paths:
@@ -39,6 +42,9 @@ on:
             - "museum/**"
             - "scripts/current-totp.mjs"
             - "scripts/fixtures/**"
+            - "scripts/resolve-auth-nightly.sh"
+            - "scripts/select-auth-online-lanes.sh"
+            - "scripts/test-select-auth-online-lanes.sh"
 
 permissions:
     contents: read
@@ -69,18 +75,32 @@ jobs:
             - name: Checkout tests
               uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
               with:
+                  fetch-depth: 0
                   persist-credentials: false
 
             - name: Resolve online lanes
               id: lanes
               env:
+                  BASE_SHA: ${{ github.event.pull_request.base.sha || '' }}
+                  EVENT_NAME: ${{ github.event_name }}
+                  HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
                   REQUESTED_LANE: ${{ inputs.lane || 'all' }}
               run: |
-                  case "$REQUESTED_LANE" in
-                      all) lanes='["account-auth","data-sync"]' ;;
-                      account-auth|data-sync) lanes="[\"$REQUESTED_LANE\"]" ;;
-                      *) echo "Unknown lane: $REQUESTED_LANE" >&2; exit 2 ;;
-                  esac
+                  if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+                      case "$REQUESTED_LANE" in
+                          all) lanes=$(scripts/select-auth-online-lanes.sh --all) ;;
+                          account-auth|data-sync) lanes="[\"$REQUESTED_LANE\"]" ;;
+                          *) echo "Unknown lane: $REQUESTED_LANE" >&2; exit 2 ;;
+                      esac
+                  elif [[ "$EVENT_NAME" == "pull_request" ]]; then
+                      lanes=$(scripts/select-auth-online-lanes.sh "$BASE_SHA" "$HEAD_SHA")
+                  else
+                      lanes=$(scripts/select-auth-online-lanes.sh --all)
+                  fi
+                  if [[ "$(jq length <<< "$lanes")" -eq 0 ]]; then
+                      echo "The online workflow ran without selecting an online lane" >&2
+                      exit 1
+                  fi
                   echo "lanes=$lanes" >> "$GITHUB_OUTPUT"
 
             - name: Resolve latest Auth nightly
