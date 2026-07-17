@@ -67,8 +67,8 @@ fi
 
 credential_code_count=$(jq '[.accounts[].codes[]] | length' "$credentials")
 manifest_code_count=$(jq '.codeCount' "$manifest")
-if [[ "$credential_code_count" -ne 7 || "$manifest_code_count" -ne "$credential_code_count" ]]; then
-    echo "Auth fixture must describe exactly seven encrypted code entities" >&2
+if [[ "$credential_code_count" -ne 5 || "$manifest_code_count" -ne "$credential_code_count" ]]; then
+    echo "Auth fixture must describe exactly five encrypted code entities" >&2
     exit 1
 fi
 credential_code_counts=$(jq --compact-output '.accounts | with_entries(.value = (.value.codes | length))' "$credentials")

@@ -623,17 +623,6 @@ fn basic_codes() -> Vec<FixtureCode> {
             0,
         ),
         fixture_code(
-            "google-personal",
-            "Google",
-            "personal.fixture@example.org",
-            "KRSXG5DSNFXGOIDBKRSXG5DSNFXGOIDB",
-            &["Personal"],
-            "Personal services",
-            false,
-            false,
-            1,
-        ),
-        fixture_code(
             "microsoft-operations",
             "Microsoft",
             "operations.fixture@example.org",
@@ -642,18 +631,7 @@ fn basic_codes() -> Vec<FixtureCode> {
             "Operations workspace",
             false,
             false,
-            2,
-        ),
-        fixture_code(
-            "stripe-finance",
-            "Stripe",
-            "billing.fixture@example.org",
-            "ONSWG4TFOQXG64THONSWG4TFOQXG64TH",
-            &["Finance"],
-            "Fixture billing console",
-            false,
-            false,
-            3,
+            1,
         ),
         fixture_code(
             "dropbox-trashed",
@@ -664,7 +642,7 @@ fn basic_codes() -> Vec<FixtureCode> {
             "Removed access pending review",
             false,
             true,
-            4,
+            2,
         ),
     ]
 }
