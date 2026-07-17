@@ -66,7 +66,7 @@ if [[ ${#changed_files[@]} -gt 0 ]]; then
             maestro/auth/offline/code-lifecycle.yaml|maestro/auth/offline/home-organization.yaml)
                 add_suite organization
                 ;;
-            maestro/auth/offline/settings.yaml)
+            maestro/auth/offline/settings.yaml|maestro/auth/offline/duplicate-codes.yaml)
                 add_suite settings
                 ;;
             maestro/auth/offline/tags.yaml)
@@ -107,8 +107,8 @@ for suite in "${suite_order[@]}"; do
             ;;
         settings)
             name="Offline settings"
-            flows="maestro/auth/offline/settings.yaml"
-            coverage="settings structure, General, About, Theme, and version label"
+            flows="maestro/auth/offline/settings.yaml maestro/auth/offline/duplicate-codes.yaml"
+            coverage="settings structure, General, About, Theme, version label, and duplicate groups"
             ;;
         tags)
             name="Offline tags"
