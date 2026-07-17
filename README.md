@@ -2,9 +2,10 @@
 
 Maestro smoke and end-to-end tests that run against published Ente apps.
 
-The Android workflows download the newest `auth-v*-beta` APK from
-[`ente/nightly`](https://github.com/ente/nightly/releases), verify its checksum,
-and run it on a local GitHub Actions emulator. The required smoke workflow is
+At the start of every run, the Android workflows resolve the newest
+`auth-v*-beta` release from [`ente/nightly`](https://github.com/ente/nightly/releases).
+They pin every shard in that run to the same release asset and SHA-256 digest,
+then run it on a local GitHub Actions emulator. The required smoke workflow is
 offline. A parallel online Auth workflow isolates the recovery-key password
 reset on a fresh emulator, alongside account-authentication and synchronized-
 data lanes. It starts local PostgreSQL and Museum only as backend dependencies.
