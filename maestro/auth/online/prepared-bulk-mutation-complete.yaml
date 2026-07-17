@@ -1,0 +1,21 @@
+appId: ${APP_ID}
+name: Auth reloads a persisted bulk fixture mutation
+tags: [auth, android, online, fixture, sync, bulk]
+---
+- runFlow:
+    file: ../subflows/login-online-account.yaml
+    env:
+      LOGIN_EMAIL: ${FIXTURE_BASIC_EMAIL}
+      LOGIN_PASSWORD: ${FIXTURE_BASIC_PASSWORD}
+- runFlow:
+    file: ../subflows/dismiss-code-guidance.yaml
+    env:
+      READY_ACCOUNT: developer.fixture@example.org
+- extendedWaitUntil:
+    visible: ${FIXTURE_MUTATION_TAG}
+    timeout: 30000
+- tapOn: ${FIXTURE_MUTATION_TAG}
+- assertVisible: GitHub
+- assertVisible: ".*developer.fixture@example.org.*"
+- assertVisible: Microsoft
+- assertVisible: ".*operations.fixture@example.org.*"

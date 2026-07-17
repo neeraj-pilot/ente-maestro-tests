@@ -1,0 +1,17 @@
+appId: ${APP_ID}
+---
+- extendedWaitUntil:
+    visible: ".*${READY_ACCOUNT}.*"
+    timeout: 30000
+- runFlow:
+    when:
+      visible:
+        id: auth_code_coach_mark_dismiss
+    commands:
+      - tapOn:
+          id: auth_code_coach_mark_dismiss
+- runFlow:
+    when:
+      visible: "Long press on a code to edit or remove."
+    commands:
+      - tapOn: "Ok"
