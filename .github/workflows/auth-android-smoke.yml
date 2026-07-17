@@ -35,6 +35,7 @@ jobs:
         outputs:
             matrix: ${{ steps.select.outputs.matrix }}
             has_suites: ${{ steps.select.outputs.has_suites }}
+            release_tag: ${{ steps.release.outputs.release_tag }}
         steps:
             - name: Checkout tests
               uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -64,6 +65,25 @@ jobs:
                       echo "has_suites=false" >> "$GITHUB_OUTPUT"
                   fi
 
+            - name: Resolve Auth nightly
+              id: release
+              if: steps.select.outputs.has_suites == 'true'
+              env:
+                  GH_TOKEN: ${{ github.token }}
+              run: |
+                  release_tag=$(gh api "repos/ente/nightly/releases?per_page=100" --jq '
+                    [.[] | select(
+                      .draft == false and
+                      (.tag_name | startswith("auth-v")) and
+                      (.tag_name | endswith("-beta"))
+                    )] | max_by(.published_at).tag_name
+                  ')
+                  if [[ -z "$release_tag" || "$release_tag" == "null" ]]; then
+                      echo "No Auth nightly release found" >&2
+                      exit 1
+                  fi
+                  echo "release_tag=$release_tag" >> "$GITHUB_OUTPUT"
+
     smoke:
         needs: select
         if: needs.select.outputs.has_suites == 'true'
@@ -88,17 +108,12 @@ jobs:
             - name: Download latest Auth nightly
               env:
                   GH_TOKEN: ${{ github.token }}
+                  AUTH_RELEASE_TAG: ${{ needs.select.outputs.release_tag }}
               run: |
                   mkdir -p "$AUTH_APK_DIR"
-                  release_tag=$(gh api "repos/ente/nightly/releases?per_page=100" --jq '
-                    [.[] | select(
-                      .draft == false and
-                      (.tag_name | startswith("auth-v")) and
-                      (.tag_name | endswith("-beta"))
-                    )] | max_by(.published_at).tag_name
-                  ')
+                  release_tag="$AUTH_RELEASE_TAG"
                   if [[ -z "$release_tag" || "$release_tag" == "null" ]]; then
-                      echo "No Auth nightly release found" >&2
+                      echo "Auth nightly release was not resolved" >&2
                       exit 1
                   fi
                   echo "Testing $release_tag"
@@ -127,6 +142,11 @@ jobs:
             - name: Install Maestro
               run: |
                   curl -fsSL "https://get.maestro.mobile.dev" | bash
+                  installed_version="$("$HOME/.maestro/bin/maestro" --version)"
+                  if [[ "$installed_version" != "$MAESTRO_VERSION" ]]; then
+                      echo "Expected Maestro $MAESTRO_VERSION, installed $installed_version" >&2
+                      exit 1
+                  fi
                   echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
 
             - name: Enable KVM
