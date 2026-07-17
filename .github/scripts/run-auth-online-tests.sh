@@ -36,7 +36,6 @@ run_maestro() {
         --flatten-debug-output \
         -e APP_ID="$APP_ID" \
         -e ONLINE_ENDPOINT="$ONLINE_ENDPOINT" \
-        -e ASSERT_TWO_FACTOR_STATUS="${ASSERT_TWO_FACTOR_STATUS:-false}" \
         "$@"
 }
 

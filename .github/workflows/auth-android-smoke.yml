@@ -117,7 +117,7 @@ jobs:
                   distribution: temurin
                   java-version: 17
 
-            - name: Download latest Auth nightly
+            - name: Download resolved Auth nightly
               env:
                   GH_TOKEN: ${{ github.token }}
                   AUTH_RELEASE_TAG: ${{ needs.select.outputs.release_tag }}

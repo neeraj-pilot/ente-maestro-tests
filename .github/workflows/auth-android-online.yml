@@ -114,7 +114,6 @@ jobs:
             matrix:
                 lane: ${{ fromJSON(needs.resolve.outputs.lanes) }}
         env:
-            ASSERT_TWO_FACTOR_STATUS: "false"
             AUTH_FIXTURE_COMPOSE_PROJECT: auth-online-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.lane }}
             FIXTURE_MUTATION_TAG: FixturePersisted
             MISSING_EMAIL: missing-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.lane }}@example.org
@@ -257,11 +256,11 @@ jobs:
                   if-no-files-found: warn
                   retention-days: 7
 
-            - name: Upload data-sync failure diagnostics
-              if: failure() && matrix.lane == 'data-sync'
+            - name: Upload ${{ matrix.lane }} failure diagnostics
+              if: failure()
               uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
               with:
-                  name: auth-online-data-sync-diagnostics
+                  name: auth-online-${{ matrix.lane }}-diagnostics
                   path: artifacts/maestro/online-debug
                   if-no-files-found: warn
                   retention-days: 3
