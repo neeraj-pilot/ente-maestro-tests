@@ -41,16 +41,17 @@ assert_suites "setup,organization,settings,tags,trash" --changed-file maestro/au
 assert_suites "setup,organization,settings,tags,trash" --changed-file maestro/auth/subflows/new-shared-helper.yaml
 assert_suites "setup,organization,settings,tags,trash" --changed-file maestro/auth/offline/new-hosted-flow.yaml
 assert_suites "setup,organization,settings,tags,trash" --all
+assert_suites "organization" --suite organization
 assert_suites "" --changed-file README.md
 assert_suites "" --changed-file maestro/auth/online/prepared-totp-login-complete.yaml
-assert_suites "" --changed-file maestro/auth/subflows/add-online-code.yaml
-assert_suites "" --changed-file maestro/auth/subflows/assert-synced-code.yaml
-assert_suites "" --changed-file maestro/auth/subflows/configure-online-test-endpoint.yaml
-assert_suites "" --changed-file maestro/auth/subflows/dismiss-code-guidance.yaml
-assert_suites "" --changed-file maestro/auth/subflows/login-online-account.yaml
+assert_suites "" --changed-file maestro/auth/online/subflows/add-online-code.yaml
+assert_suites "" --changed-file maestro/auth/online/subflows/assert-synced-code.yaml
+assert_suites "" --changed-file maestro/auth/online/subflows/configure-online-test-endpoint.yaml
+assert_suites "" --changed-file maestro/auth/online/subflows/dismiss-code-guidance.yaml
+assert_suites "" --changed-file maestro/auth/online/subflows/login-online-account.yaml
 assert_suites "" --changed-file maestro/auth/offline/local-backup.yaml
-assert_suites "" --changed-file maestro/auth/fixtures/plain_text_import.txt
-assert_suites "setup,organization,settings,tags,trash" --changed-file maestro/auth/fixtures/new-fixture.json
+assert_suites "" --changed-file maestro/fixtures/plain_text_import.txt
+assert_suites "setup,organization,settings,tags,trash" --changed-file maestro/fixtures/new-fixture.json
 assert_flows tags "maestro/auth/offline/tags.yaml maestro/auth/offline/bulk-tag-edit.yaml maestro/auth/offline/bulk-tag-remove.yaml" --changed-file maestro/auth/offline/tags.yaml
 assert_flows organization "maestro/auth/offline/code-lifecycle.yaml maestro/auth/offline/home-organization.yaml maestro/auth/offline/bulk-pin-edit.yaml" --changed-file maestro/auth/offline/code-lifecycle.yaml
 assert_flows settings "maestro/auth/offline/settings.yaml maestro/auth/offline/duplicate-codes.yaml" --changed-file maestro/auth/offline/duplicate-codes.yaml

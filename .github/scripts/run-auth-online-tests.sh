@@ -133,7 +133,6 @@ run_account_auth() {
     run_maestro prepared-totp-complete \
         -e FIXTURE_TOTP_CODE="$fixture_totp_code" \
         maestro/auth/online/prepared-totp-login-complete.yaml
-
     run_maestro unknown-login \
         -e MISSING_EMAIL="$MISSING_EMAIL" \
         maestro/auth/online/unknown-login.yaml
@@ -150,7 +149,9 @@ run_account_auth() {
         -e ONLINE_PASSWORD="$ONLINE_PASSWORD" \
         -e ONLINE_CODE_ACCOUNT="$ONLINE_CODE_ACCOUNT" \
         maestro/auth/online/password-login.yaml
+}
 
+run_recovery_password() {
     run_maestro prepared-recovery \
         -e ONLINE_OTT="$ONLINE_OTT" \
         -e FIXTURE_RECOVERY_EMAIL="$fixture_recovery_email" \
@@ -185,13 +186,15 @@ run_data_sync() {
 
 case "$lane" in
     account-auth) run_account_auth ;;
+    recovery-password) run_recovery_password ;;
     data-sync) run_data_sync ;;
     all)
         run_account_auth
+        run_recovery_password
         run_data_sync
         ;;
     *)
-        echo "Unknown Auth online test lane: $lane (expected all, account-auth, or data-sync)" >&2
+        echo "Unknown Auth online test lane: $lane" >&2
         exit 2
         ;;
 esac

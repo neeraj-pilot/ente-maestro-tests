@@ -8,11 +8,11 @@ tags: [auth, android, online, fixture, totp]
     visible: "Settings"
     timeout: 60000
 - runFlow:
-    file: ../subflows/dismiss-code-guidance.yaml
+    file: subflows/dismiss-code-guidance.yaml
     env:
       READY_ACCOUNT: security.fixture@example.org
 - runFlow:
-    file: ../subflows/assert-synced-code.yaml
+    file: subflows/assert-synced-code.yaml
     env:
       ISSUER: GitHub
       ACCOUNT: security.fixture@example.org

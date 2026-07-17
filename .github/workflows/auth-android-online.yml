@@ -11,34 +11,31 @@ on:
                 options:
                     - all
                     - account-auth
+                    - recovery-password
                     - data-sync
     pull_request:
         paths:
             - ".github/scripts/run-auth-online-tests.sh"
             - ".github/workflows/auth-android-online.yml"
             - "maestro/auth/online/**"
-            - "maestro/auth/subflows/add-online-code.yaml"
-            - "maestro/auth/subflows/assert-synced-code.yaml"
-            - "maestro/auth/subflows/configure-online-test-endpoint.yaml"
-            - "maestro/auth/subflows/dismiss-code-guidance.yaml"
-            - "maestro/auth/subflows/login-online-account.yaml"
             - "museum/**"
             - "scripts/current-totp.mjs"
             - "scripts/fixtures/**"
+            - "scripts/resolve-auth-nightly.sh"
+            - "scripts/select-auth-online-lanes.sh"
+            - "scripts/test-select-auth-online-lanes.sh"
     push:
         branches: [main]
         paths:
             - ".github/scripts/run-auth-online-tests.sh"
             - ".github/workflows/auth-android-online.yml"
             - "maestro/auth/online/**"
-            - "maestro/auth/subflows/add-online-code.yaml"
-            - "maestro/auth/subflows/assert-synced-code.yaml"
-            - "maestro/auth/subflows/configure-online-test-endpoint.yaml"
-            - "maestro/auth/subflows/dismiss-code-guidance.yaml"
-            - "maestro/auth/subflows/login-online-account.yaml"
             - "museum/**"
             - "scripts/current-totp.mjs"
             - "scripts/fixtures/**"
+            - "scripts/resolve-auth-nightly.sh"
+            - "scripts/select-auth-online-lanes.sh"
+            - "scripts/test-select-auth-online-lanes.sh"
 
 permissions:
     contents: read
@@ -69,18 +66,32 @@ jobs:
             - name: Checkout tests
               uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
               with:
+                  fetch-depth: 0
                   persist-credentials: false
 
             - name: Resolve online lanes
               id: lanes
               env:
+                  BASE_SHA: ${{ github.event.pull_request.base.sha || '' }}
+                  EVENT_NAME: ${{ github.event_name }}
+                  HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
                   REQUESTED_LANE: ${{ inputs.lane || 'all' }}
               run: |
-                  case "$REQUESTED_LANE" in
-                      all) lanes='["account-auth","data-sync"]' ;;
-                      account-auth|data-sync) lanes="[\"$REQUESTED_LANE\"]" ;;
-                      *) echo "Unknown lane: $REQUESTED_LANE" >&2; exit 2 ;;
-                  esac
+                  if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+                      case "$REQUESTED_LANE" in
+                          all) lanes=$(scripts/select-auth-online-lanes.sh --all) ;;
+                          account-auth|recovery-password|data-sync) lanes="[\"$REQUESTED_LANE\"]" ;;
+                          *) echo "Unknown lane: $REQUESTED_LANE" >&2; exit 2 ;;
+                      esac
+                  elif [[ "$EVENT_NAME" == "pull_request" ]]; then
+                      lanes=$(scripts/select-auth-online-lanes.sh "$BASE_SHA" "$HEAD_SHA")
+                  else
+                      lanes=$(scripts/select-auth-online-lanes.sh --all)
+                  fi
+                  if [[ "$(jq length <<< "$lanes")" -eq 0 ]]; then
+                      echo "The online workflow ran without selecting an online lane" >&2
+                      exit 1
+                  fi
                   echo "lanes=$lanes" >> "$GITHUB_OUTPUT"
 
             - name: Resolve latest Auth nightly
@@ -195,6 +206,7 @@ jobs:
                   arch: x86_64
                   profile: pixel_5
                   cores: 4
+                  emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -memory 4096
                   disable-animations: true
                   script: .github/scripts/run-auth-online-tests.sh "${{ matrix.lane }}"
 
@@ -221,11 +233,17 @@ jobs:
                       echo
                       echo "#### $coverage_label"
                       echo
-                      if [[ "${{ matrix.lane }}" == "account-auth" ]]; then
-                          echo "- Live TOTP challenge, synced-code visibility, signup, first Auth-key creation, cold password login, unknown-account error, and recovery-key password reset with code preservation"
-                      else
-                          echo "- Prepared password login, active and trashed synced codes, account/security settings, and a persisted two-code bulk tag across a cold login"
-                      fi
+                      case "${{ matrix.lane }}" in
+                          account-auth)
+                              echo "- Live TOTP challenge, synchronized-code visibility, unknown-account error, signup, first Auth-key creation, and cold password login"
+                              ;;
+                          recovery-password)
+                              echo "- Recovery-key password reset and synchronized-code preservation"
+                              ;;
+                          data-sync)
+                              echo "- Prepared password login, active and trashed synchronized codes, account/security settings, and a persisted two-code bulk tag across a cold login"
+                              ;;
+                      esac
                       echo
                       echo "JUnit results are attached as \`auth-online-${{ matrix.lane }}-results\`."
                   } >> "$GITHUB_STEP_SUMMARY"
@@ -246,6 +264,33 @@ jobs:
                   name: auth-online-data-sync-diagnostics
                   path: artifacts/maestro/online-debug
                   if-no-files-found: warn
+                  retention-days: 3
+
+            - name: Capture account runtime health
+              if: failure() && matrix.lane != 'data-sync'
+              run: |
+                  mkdir -p artifacts/maestro/runtime-health
+                  {
+                      date --iso-8601=seconds
+                      echo "lane=${{ matrix.lane }}"
+                      adb devices -l || true
+                      printf 'adb_state='
+                      adb get-state || true
+                      printf 'app_pid='
+                      adb shell pidof "$APP_ID" || true
+                      printf 'emulator_processes='
+                      pgrep -af 'emulator.*-avd' || true
+                      free -h || true
+                      df -h || true
+                  } > "artifacts/maestro/runtime-health/${{ matrix.lane }}.txt"
+
+            - name: Upload account runtime health
+              if: failure() && matrix.lane != 'data-sync'
+              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+              with:
+                  name: auth-online-${{ matrix.lane }}-runtime-health
+                  path: artifacts/maestro/runtime-health
+                  if-no-files-found: error
                   retention-days: 3
 
             - name: Show backend status on failure

@@ -6,6 +6,7 @@ usage() {
     cat <<'EOF'
 Usage:
   scripts/select-auth-ci-suites.sh --all
+  scripts/select-auth-ci-suites.sh --suite <setup|organization|settings|tags|trash>
   scripts/select-auth-ci-suites.sh --changed-file <path> [--changed-file <path> ...]
   scripts/select-auth-ci-suites.sh <base-revision> <head-revision>
 
@@ -19,12 +20,17 @@ if ! command -v jq > /dev/null; then
 fi
 
 full_matrix=false
+requested_suite=""
 changed_files=()
 
 case "${1:-}" in
     --all)
         [[ $# -eq 1 ]] || { usage >&2; exit 2; }
         full_matrix=true
+        ;;
+    --suite)
+        [[ $# -eq 2 ]] || { usage >&2; exit 2; }
+        requested_suite=$2
         ;;
     --changed-file)
         while [[ $# -gt 0 ]]; do
@@ -54,13 +60,20 @@ add_suite() {
     fi
 }
 
+if [[ -n "$requested_suite" ]]; then
+    case "$requested_suite" in
+        setup|organization|settings|tags|trash) add_suite "$requested_suite" ;;
+        *) echo "Unknown hosted Auth suite: $requested_suite" >&2; exit 2 ;;
+    esac
+fi
+
 if [[ ${#changed_files[@]} -gt 0 ]]; then
     for changed_file in "${changed_files[@]}"; do
         case "$changed_file" in
             .github/workflows/auth-android-smoke.yml|scripts/select-auth-ci-suites.sh|scripts/test-select-auth-ci-suites.sh|maestro/auth/smoke/*|maestro/auth/subflows/add-offline-account.yaml|maestro/auth/subflows/enter-offline-mode.yaml)
                 full_matrix=true
                 ;;
-            maestro/auth/online/*|maestro/auth/subflows/add-online-code.yaml|maestro/auth/subflows/assert-synced-code.yaml|maestro/auth/subflows/configure-online-test-endpoint.yaml|maestro/auth/subflows/dismiss-code-guidance.yaml|maestro/auth/subflows/login-online-account.yaml)
+            maestro/auth/online/*)
                 ;;
             maestro/auth/subflows/*)
                 # Unknown subflows may be shared by every hosted suite.
@@ -83,10 +96,10 @@ if [[ ${#changed_files[@]} -gt 0 ]]; then
                 ;;
             # These flows need an Android platform validation, not the hosted
             # x86_64 matrix. A merge still runs the full hosted baseline on main.
-            maestro/auth/offline/imports.yaml|maestro/auth/offline/local-backup.yaml|maestro/auth/fixtures/plain_text_import.txt|maestro/auth/fixtures/google_auth_migration.png)
+            maestro/auth/offline/imports.yaml|maestro/auth/offline/local-backup.yaml|maestro/fixtures/plain_text_import.txt|maestro/fixtures/google_auth_migration.png)
                 ;;
             # A new hosted flow must not silently receive no coverage.
-            maestro/auth/offline/*.yaml|maestro/auth/fixtures/*|maestro/auth/*.yaml)
+            maestro/auth/offline/*.yaml|maestro/fixtures/*|maestro/auth/*.yaml)
                 full_matrix=true
                 ;;
         esac

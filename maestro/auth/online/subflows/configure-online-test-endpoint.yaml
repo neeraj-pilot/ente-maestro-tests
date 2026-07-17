@@ -8,7 +8,7 @@ appId: ${APP_ID}
 - assertVisible: "Developer settings"
 - tapOn: "Yes"
 - assertVisible: "Save"
-- eraseText: 100
+- eraseText: 24
 - inputText: ${ONLINE_ENDPOINT}
 - hideKeyboard
 - tapOn: "Save"
