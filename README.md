@@ -17,3 +17,40 @@ only JUnit results so credentials and recovery material cannot enter artifacts.
 
 See the [Auth test rollout plan](docs/auth-test-rollout.md) for the order in
 which offline, platform-integrated, and Museum-backed coverage will be added.
+
+## Latest verified coverage
+
+This table is the post-run record of what is currently green. It is based on
+the latest clean hosted runs against `ente-auth-v4.4.25-beta` on Android API
+34, with Maestro `2.6.1`. The latest required offline run completed on
+2026-07-16 UTC ([run 29536365665](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29536365665));
+the latest clean online run completed on 2026-07-16 UTC
+([run 29523464564](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29523464564)).
+
+| Track | What the test exercises | Runner and dependencies | Last result |
+| --- | --- | --- | --- |
+| Offline setup and validation | Onboarding, entering offline mode, acknowledging the backup warning, manual GitHub TOTP setup, required-field validation, algorithm/digits/period fields, and HOTP/TOTP selection | Android API 34 x86_64; no server | Green in [29536365665](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29536365665) |
+| Offline lifecycle and organization | Code details and editing, issuer/account search, empty search results, sorting, and home-list organization | Android API 34 x86_64; no server | Green in [29536365665](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29536365665) |
+| Offline settings | Settings structure plus Data, Security, General, Support, About, Theme, and version-label surfaces | Android API 34 x86_64; no server | Green in [29536365665](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29536365665) |
+| Offline tags | Creating a tag and filtering the offline code list by that tag | Android API 34 x86_64; no server | Green in [29536365665](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29536365665) |
+| Offline trash | Moving a code to Trash, opening Trash, and restoring the code without permanent deletion | Android API 34 x86_64; no server | Green in [29536365665](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29536365665) |
+| Online unknown-account login | Configuring the local Auth endpoint and verifying the expected “Email not registered.” error | Android API 34 x86_64; local Museum + PostgreSQL | Green in [29523464564](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29523464564) |
+| Online signup and recovery-key acknowledgement | Signup with a unique CI email, deterministic OTT `123456`, password creation, recovery-key acknowledgement, and reaching Settings | Android API 34 x86_64; local Museum + PostgreSQL | Green in [29523464564](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29523464564) |
+| Online password login | Fresh Auth app state, endpoint configuration, and password login using the account created earlier in the same run | Android API 34 x86_64; local Museum + PostgreSQL | Green in [29523464564](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29523464564) |
+| Native file imports | Plain-text import and Google Authenticator migration import using files placed in Android Downloads | Local ARM64 API 34 emulator; no server | Green locally; intentionally not in the required x86_64 hosted gate because the published nightly’s x86 DocumentsUI returns an unreadable selected-file path. See [`maestro/auth/offline/imports.yaml`](maestro/auth/offline/imports.yaml). |
+
+### Not yet green or intentionally deferred
+
+- Logout remains tracked separately: the current published x86 nightly does
+  not expose a Logout action in its accessibility hierarchy.
+- Online TOTP two-factor login and recovery-key password reset are planned but
+  are not covered by the last green online run.
+- Automatic local export, app lock/biometrics, QR scanning, and other native
+  platform integrations are not part of the required hosted gate yet.
+- Tag rename/delete and permanent Trash deletion remain deferred until the
+  published nightly exposes stable UI surfaces for them.
+
+When a hosted run is promoted, update this table with its run link and move
+any newly covered flow out of the deferred list. Keep historical failed or
+cancelled runs in GitHub Actions; this table should represent the latest
+clean result, not hide the debugging history.
