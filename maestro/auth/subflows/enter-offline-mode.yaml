@@ -1,5 +1,6 @@
 appId: io.ente.auth.independent
 ---
+- launchApp
 - extendedWaitUntil:
     visible: "Use without backups"
     timeout: 60000
