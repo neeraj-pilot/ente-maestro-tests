@@ -72,7 +72,7 @@ if [[ ${#changed_files[@]} -gt 0 ]]; then
             maestro/auth/offline/tags.yaml|maestro/auth/offline/bulk-tag-edit.yaml)
                 add_suite tags
                 ;;
-            maestro/auth/offline/trash-restore.yaml)
+            maestro/auth/offline/trash-restore.yaml|maestro/auth/offline/bulk-trash-restore.yaml)
                 add_suite trash
                 ;;
             # These flows need an Android platform validation, not the hosted
@@ -117,8 +117,8 @@ for suite in "${suite_order[@]}"; do
             ;;
         trash)
             name="Offline trash"
-            flows="maestro/auth/offline/trash-restore.yaml"
-            coverage="trash and restore an offline code without permanent deletion"
+            flows="maestro/auth/offline/trash-restore.yaml maestro/auth/offline/bulk-trash-restore.yaml"
+            coverage="trash and restore one or multiple offline codes without permanent deletion"
             ;;
     esac
     matrix="$(jq -c \
