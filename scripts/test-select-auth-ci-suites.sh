@@ -29,6 +29,7 @@ assert_flows() {
 }
 
 assert_suites "tags" --changed-file maestro/auth/offline/tags.yaml
+assert_suites "tags" --changed-file maestro/auth/offline/bulk-tag-edit.yaml
 assert_suites "setup" --changed-file maestro/auth/offline/manual-validation.yaml
 assert_suites "settings" --changed-file maestro/auth/offline/duplicate-codes.yaml
 assert_suites "tags,trash" --changed-file maestro/auth/offline/tags.yaml --changed-file maestro/auth/offline/trash-restore.yaml
@@ -39,7 +40,7 @@ assert_suites "" --changed-file README.md
 assert_suites "" --changed-file maestro/auth/offline/local-backup.yaml
 assert_suites "" --changed-file maestro/auth/fixtures/plain_text_import.txt
 assert_suites "setup,organization,settings,tags,trash" --changed-file maestro/auth/fixtures/new-fixture.json
-assert_flows tags "maestro/auth/offline/tags.yaml" --changed-file maestro/auth/offline/tags.yaml
+assert_flows tags "maestro/auth/offline/tags.yaml maestro/auth/offline/bulk-tag-edit.yaml" --changed-file maestro/auth/offline/tags.yaml
 assert_flows settings "maestro/auth/offline/settings.yaml maestro/auth/offline/duplicate-codes.yaml" --changed-file maestro/auth/offline/duplicate-codes.yaml
 
 echo "Auth CI suite selection tests passed"
