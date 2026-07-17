@@ -10,3 +10,4 @@ appId: ${APP_ID}
     commands:
       - tapOn:
           id: auth_code_coach_mark_dismiss
+          waitToSettleTimeoutMs: 500
