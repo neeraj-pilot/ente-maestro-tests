@@ -6,9 +6,9 @@ services.
 
 ## Baseline and compatibility rule
 
-Evidence was checked on 2026-07-16 against Ente `upstream/main@2660f5dd65`,
-the Auth UI branch `auth-ui-refresh@68bfe8ad89`, and the published
-`auth-v4.4.25-beta` APK.
+Evidence was checked on 2026-07-17 against Ente `upstream/main@fd4988b6ce`
+and the published `auth-v4.4.25-beta` APK (`4.4.25+1061`, SHA-256
+`8b7d44e6fe180f3a592a130c89775692ac24b816bb3259bdc42f8c5ba99cbaea`).
 
 The CI target is the newest published `auth-v*-beta` APK from `ente/nightly`.
 The package ID is `io.ente.auth.independent`.
@@ -18,9 +18,8 @@ not copy flows that rely on app changes which have not reached the nightly
 build. In particular, the existing Ente development suite uses semantics IDs
 and `enteauth://debug/*` deep links from the Auth UI work. Those are useful
 for development and demos, but only IDs actually exposed by the installed
-nightly may be used. The current universal APK exposes refreshed form IDs on
-the hosted x86_64 emulator while its arm64 UI still needs a small legacy
-fallback.
+nightly may be used. The current APK exposes refreshed form, code-card, and
+selection-bar identifiers; individual actions still need their own selectors.
 
 Local-only platform checks may target an explicit current-source debug APK
 when the nightly lacks the required UI. They must create public state, use no
@@ -55,8 +54,8 @@ full hosted matrix before its result is recorded in the README.
 
 ### Phase 1: offline core, no native picker or server
 
-Add these in order. Keep them in the existing Android job until the measured
-test time, excluding emulator boot, exceeds five minutes.
+Add these in order. Keep them in the existing five-shard Android matrix until
+measured runner time justifies a topology change under Runner strategy.
 
 1. **Manual setup happy path**
    - Status: complete on Android. Promoted after two clean hosted runs of
@@ -87,32 +86,32 @@ test time, excluding emulator boot, exceeds five minutes.
    - Status: complete on Android. Promoted after two clean hosted matrix runs:
      [first](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29524172187)
      and [repeat](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29524701204).
-     Multi-code Pin/Unpin is also complete: its pull-request run and full
-     `main` matrix passed in
-     [29559515515](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29559515515)
-     and [29560026639](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29560026639).
+     Multi-code Pin/Unpin is also complete. The current flow starts with
+     Select all, then covers uniform and mixed selections; it passed in the
+     full `main` matrix in
+     [29568421839](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29568421839).
    - Search by issuer and account.
    - Exercise issuer/account/custom sorting and visible filters.
    - Verify the empty-search state and clearing the query.
 6. **Tags and editing**
-   - Status: tag creation, filtering, and multi-account tag application are
-     complete on Android. Single-account coverage was promoted after two clean
-     hosted tag shards in
+   - Status: tag creation, filtering, multi-account tag application, and
+     multi-account tag removal are complete on Android. Single-account
+     coverage was promoted after two clean hosted tag shards in
      [29527901812](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29527901812)
      and [29528427436](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29528427436).
      The public two-account bulk flow passed on its pull request and on the
      full `main` matrix in
      [29557688425](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29557688425)
      and [29558020187](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29558020187).
+     Bulk removal passed in the latest `main` matrix:
+     [29568421839](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29568421839).
      Rename/delete remain deferred because the published nightly exposes a
      different selected-tag overflow surface than the refreshed source UI.
-   - Next: cover rename and remove once the published overflow surface is
-     stable. Bulk trash/restore has local release validation and awaits the
-     hosted promotion gate below.
+   - Next: cover rename/delete once the published overflow surface is stable.
 7. **Trash and restore**
-   - Trash a code, find it in Trash, and restore it.
-   - Add permanent deletion only after its local-auth behavior is handled in
-     Phase 2.
+   - Status: complete. The hosted flows cover one-code Trash/restore, bulk
+     Trash/restore, and two-code permanent deletion in
+     [29568421839](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29568421839).
 8. **Duplicate detection**
    - Status: complete on Android. The full hosted matrix passed on
      [29555954743](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29555954743),
@@ -132,9 +131,8 @@ test time, excluding emulator boot, exceeds five minutes.
      and app-icon list.
    - Do not open FAQ, social, store, email, or browser links in this phase.
 
-The settings flow should be added after the Auth UI work reaches a nightly.
-Testing the old settings hierarchy immediately before it is replaced would
-protect the wrong contract.
+The settings flow now protects the current published hierarchy. Update its
+selectors only when a new nightly deliberately changes that public contract.
 
 ### Phase 2: offline platform integrations
 
@@ -223,14 +221,14 @@ Hosted offline CI currently uses five parallel Android shards: setup,
 organization, settings, tags, and trash. Pull requests use the selector to run
 only the affected shard; every merge to `main` runs all five.
 
-The first post-bulk-Pin full-matrix baseline is
-[29560026639](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29560026639):
-setup took 4m44s, settings 4m25s, trash 4m34s, tags 5m08s, and organization
-9m52s. This is a single measurement, not a median. Keep the current topology
-until two more clean `main` baselines exist. If organization remains the
-bottleneck, compare splitting that shard with a one-emulator sequential run
-before changing runner count; retain targeted pull-request selection either
-way.
+The latest full-matrix baseline is
+[29568421839](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29568421839):
+setup took 4m42s, settings 3m56s, tags 8m28s, trash 10m07s, and organization
+11m00s. This is a single measurement, not a median. Keep targeted
+pull-request selection and collect three more clean `main` baselines before
+changing the five-shard topology. If trash or organization remain the
+bottleneck, compare splitting one shard with a one-emulator sequential run
+before changing runner count.
 
 Use the AOSP system image for offline suites. Add Google APIs or Play Store
 images only when a tested behavior demonstrates that dependency; the heavier
@@ -245,8 +243,8 @@ or download and boot an emulator per flow.
 The first reporting layer has no additional reporting service:
 
 - Maestro emits JUnit plus flattened debug output.
-- GitHub's job summary records the tested nightly, Android API, Maestro
-  version, and outcome.
+- GitHub's job summary records the tested nightly, APK SHA-256, Android API,
+  Maestro version, and outcome.
 - A failed run uploads JUnit, Maestro logs, hierarchy dumps, and screenshots as
   `auth-maestro-diagnostics` for seven days.
 - The workflow re-fails after reporting, so a captured failure cannot become a
@@ -289,6 +287,17 @@ local iteration, demos, and hosted tests faster and more deterministic.
    the returned bytes (or copy them to an app-owned temporary file), with
    explicit size bounds and cleanup ownership. That is the prerequisite for
    promoting import coverage to hosted CI.
+3. **Mobile Select all can leave selection mode active with zero codes.**
+   On the published `4.4.25+1061` APK: select one code, search for a query
+   with no matches, dismiss the keyboard, then tap Select all. The action bar
+   remains visible with `0 selected`. The source's mobile handler writes an
+   empty `selectedCodeIds` set directly in
+   `mobile/apps/auth/lib/ui/home_page.dart`, while selection mode is a separate
+   `isSelectionModeActive` value in `code_display_store.dart`. Route all
+   selection writes through one store method that updates both values, and add
+   a regression asserting that the action bar exits when Select all has no
+   visible codes. Keep that regression out of required CI until the app fix
+   lands.
 
 ### Validated behavior clarifications
 
@@ -298,8 +307,8 @@ local iteration, demos, and hosted tests faster and more deterministic.
    active codes remain, so both codes correctly remain visible there. A
    deterministic flow must switch to All and prove both are absent, switch to
    Trash and prove both are present, then restore both and prove they return to
-   All. The flow is locally validated against `auth-v4.4.25-beta` on ARM64 and
-   awaits its hosted pull-request and `main` promotion runs.
+   All. It passed on the hosted `main` matrix in
+   [29568421839](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29568421839).
 
 ### App changes that improve testability without weakening production UX
 
@@ -308,16 +317,15 @@ local iteration, demos, and hosted tests faster and more deterministic.
    tag-name input, and tag creation/Done actions. Keep the public labels as a
    fallback; do not expose account names, OTP values, passwords, or recovery
    material as identifiers.
-   - Observed compatibility gap: the published `auth-v4.4.25-beta` exposed a
-     visible Select all action on local ARM64, but not in the hosted x86_64
-     selection hierarchy. Both surfaces exposed the selection count and Add
-     tag. Until the action has a shared shipped identifier, cross-platform
-     coverage should select two accounts individually; this is not a data
-     mutation defect, but it makes selector-based tests non-portable.
-   - The hosted x86_64 accessibility value for `auth_selection_count` currently
-     duplicates its visible label (for example, `2 selected\n2 selected`).
-     Expose the count once so assistive technology and exact selectors receive
-     the same value; until then, tests use a count-specific multiline regex.
+   - Observed compatibility gap: Select all has no identifier and exposes the
+     duplicated accessibility value `Select all\nSelect all`. The normal bulk
+     flow therefore needs a multiline label regex. Ship
+     `auth_selection_select_all` so tests and assistive technology receive one
+     action-oriented value.
+   - `auth_selection_count` likewise duplicates its visible label (for
+     example, `2 selected\n2 selected`). Expose the count once so assistive
+     technology and exact selectors receive the same value; until then, tests
+     use a count-specific multiline regex.
 2. Keep onboarding tips and safety warnings in production. Their primary
    actions should be identifiable and dismissible through semantics. A
    debug-only/demo build may opt out of one-time education after exercising it
@@ -340,10 +348,12 @@ local iteration, demos, and hosted tests faster and more deterministic.
    [29558854231](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29558854231).
    Verification against an official release checksum remains a security
    hardening follow-up if Maestro publishes a suitable manifest.
-2. **Complete: resolve the Auth nightly once per workflow.** The selector job
-   emits one immutable tag and every matrix shard downloads that tag. This
-   removes the race where a new nightly published mid-matrix could make one
-   workflow test different APKs; the same two clean runs above validate it.
+2. **Complete: pin the Auth nightly asset once per workflow.** The resolver
+   emits the release tag, APK name, and release-asset SHA-256; every matrix
+   shard verifies the downloaded bytes against that digest and records it in
+   the job summary. This matters because a beta tag can be reused with a
+   replaced asset. The complete implementation passed on `main` in
+   [29568421839](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29568421839).
 3. Retain targeted pull-request selection and a full `main` matrix. Before
    changing the number of shards, record emulator boot time, test duration, and
    runner-minutes from several clean runs. Do not combine unrelated suites just
@@ -352,24 +362,21 @@ local iteration, demos, and hosted tests faster and more deterministic.
    shared offline-entry helper is a narrow recovery for a cleared-state app
    that was not foregrounded; it is not an assertion retry.
 
-### Next coverage increments
+### Recent coverage and next increment
 
-1. The public offline **bulk tag edit** flow is complete: it creates GitHub and
-   Stripe accounts, selects both through the cross-platform long-press path,
-   applies a newly created `Finance` tag, then filters by that tag and verifies
-   both accounts. It proves selection and one mutation across multiple codes
-   without destructive cleanup.
-2. The public offline **bulk Pin/Unpin** flow is complete: it selects GitHub
-   and Stripe, pins both, reselects both to unpin them, then verifies the shared
-   Pin action is available again. It passed on the pull request in
-   [29559515515](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29559515515)
-   and on the full `main` matrix in
-   [29560026639](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29560026639).
-3. The public offline **bulk Trash/Restore** flow is locally validated: it
-   selects GitHub and Stripe, confirms Trash, proves both are absent from All
-   and present in Trash, then restores both. It awaits its hosted
-   pull-request and `main` promotion runs; it deliberately does not cover
-   permanent deletion.
+1. The public offline **bulk tag** flows are complete: GitHub and Stripe gain
+   `Finance`, are verified through that filter, then have the tag removed and
+   the filter dismissed. They passed on the full `main` matrix in
+   [29568421839](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29568421839).
+2. The public offline **bulk Pin/Unpin** flow is complete: it starts with
+   Select all, covers uniform Pin/Unpin, then exercises both mixed-state
+   actions. It passed on the full `main` matrix in
+   [29568421839](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29568421839).
+3. The public offline **bulk Trash/Restore and permanent deletion** flows are
+   complete: they prove two codes move between All and Trash, restore together,
+   and can be irreversibly deleted together. They passed on the full `main`
+   matrix in
+   [29568421839](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/29568421839).
 4. Once the two import defects are fixed, promote the existing sequential
    plain-text and Google Authenticator import flow to hosted Android and add
    the duplicate-count regression above.
