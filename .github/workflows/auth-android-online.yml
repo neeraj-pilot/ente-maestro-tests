@@ -2,6 +2,43 @@ name: "Auth Android online"
 
 on:
     workflow_dispatch:
+        inputs:
+            lane:
+                description: Online suite to run
+                required: true
+                default: all
+                type: choice
+                options:
+                    - all
+                    - account-auth
+                    - data-sync
+    pull_request:
+        paths:
+            - ".github/scripts/run-auth-online-tests.sh"
+            - ".github/workflows/auth-android-online.yml"
+            - "maestro/auth/online/**"
+            - "maestro/auth/subflows/add-online-code.yaml"
+            - "maestro/auth/subflows/assert-synced-code.yaml"
+            - "maestro/auth/subflows/configure-online-test-endpoint.yaml"
+            - "maestro/auth/subflows/dismiss-code-guidance.yaml"
+            - "maestro/auth/subflows/login-online-account.yaml"
+            - "museum/**"
+            - "scripts/current-totp.mjs"
+            - "scripts/fixtures/**"
+    push:
+        branches: [main]
+        paths:
+            - ".github/scripts/run-auth-online-tests.sh"
+            - ".github/workflows/auth-android-online.yml"
+            - "maestro/auth/online/**"
+            - "maestro/auth/subflows/add-online-code.yaml"
+            - "maestro/auth/subflows/assert-synced-code.yaml"
+            - "maestro/auth/subflows/configure-online-test-endpoint.yaml"
+            - "maestro/auth/subflows/dismiss-code-guidance.yaml"
+            - "maestro/auth/subflows/login-online-account.yaml"
+            - "museum/**"
+            - "scripts/current-totp.mjs"
+            - "scripts/fixtures/**"
 
 permissions:
     contents: read
@@ -15,17 +52,63 @@ env:
     AUTH_APK_DIR: ${{ github.workspace }}/artifacts/auth
     MAESTRO_CLI_NO_ANALYTICS: 1
     MAESTRO_VERSION: 2.6.1
+    MAESTRO_SHA256: 3440825f514f537c6a96bcf5de995780c2a4a7f83a43208fdc95d4f1fecfad3b
     ONLINE_ENDPOINT: http://10.0.2.2:8080
     ONLINE_OTT: 123456
-    ONLINE_EMAIL: auth-ci-${{ github.run_id }}-${{ github.run_attempt }}@example.org
-    MISSING_EMAIL: missing-${{ github.run_id }}-${{ github.run_attempt }}@example.org
-    AUTH_FIXTURE_COMPOSE_PROJECT: auth-online-${{ github.run_id }}-${{ github.run_attempt }}
 
 jobs:
-    auth-online:
-        name: Auth fixture, signup, TOTP, and recovery flows
+    resolve:
+        name: Resolve test inputs
         runs-on: ubuntu-latest
-        timeout-minutes: 40
+        outputs:
+            apk_name: ${{ steps.nightly.outputs.apk_name }}
+            apk_sha256: ${{ steps.nightly.outputs.apk_sha256 }}
+            lanes: ${{ steps.lanes.outputs.lanes }}
+            release_tag: ${{ steps.nightly.outputs.release_tag }}
+        steps:
+            - name: Checkout tests
+              uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+              with:
+                  persist-credentials: false
+
+            - name: Resolve online lanes
+              id: lanes
+              env:
+                  REQUESTED_LANE: ${{ inputs.lane || 'all' }}
+              run: |
+                  case "$REQUESTED_LANE" in
+                      all) lanes='["account-auth","data-sync"]' ;;
+                      account-auth|data-sync) lanes="[\"$REQUESTED_LANE\"]" ;;
+                      *) echo "Unknown lane: $REQUESTED_LANE" >&2; exit 2 ;;
+                  esac
+                  echo "lanes=$lanes" >> "$GITHUB_OUTPUT"
+
+            - name: Resolve latest Auth nightly
+              id: nightly
+              env:
+                  GH_TOKEN: ${{ github.token }}
+              run: |
+                  IFS=$'\t' read -r release_tag apk_name apk_sha256 < <(scripts/resolve-auth-nightly.sh)
+                  echo "release_tag=$release_tag" >> "$GITHUB_OUTPUT"
+                  echo "apk_name=$apk_name" >> "$GITHUB_OUTPUT"
+                  echo "apk_sha256=${apk_sha256#sha256:}" >> "$GITHUB_OUTPUT"
+
+    auth-online:
+        name: ${{ matrix.lane }}
+        needs: resolve
+        runs-on: ubuntu-latest
+        timeout-minutes: 45
+        strategy:
+            fail-fast: false
+            matrix:
+                lane: ${{ fromJSON(needs.resolve.outputs.lanes) }}
+        env:
+            ASSERT_TWO_FACTOR_STATUS: "false"
+            AUTH_FIXTURE_COMPOSE_PROJECT: auth-online-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.lane }}
+            FIXTURE_MUTATION_TAG: FixturePersisted
+            MISSING_EMAIL: missing-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.lane }}@example.org
+            ONLINE_CODE_ACCOUNT: first-key-${{ github.run_id }}-${{ github.run_attempt }}@example.org
+            ONLINE_EMAIL: auth-ci-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.lane }}@example.org
         steps:
             - name: Checkout tests
               uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -38,34 +121,27 @@ jobs:
                   distribution: temurin
                   java-version: 17
 
-            - name: Download latest Auth nightly
+            - name: Download resolved Auth nightly
               env:
+                  APK_NAME: ${{ needs.resolve.outputs.apk_name }}
+                  APK_SHA256: ${{ needs.resolve.outputs.apk_sha256 }}
+                  AUTH_RELEASE_TAG: ${{ needs.resolve.outputs.release_tag }}
                   GH_TOKEN: ${{ github.token }}
               run: |
                   mkdir -p "$AUTH_APK_DIR"
-                  IFS=$'\t' read -r release_tag apk_name apk_sha256 < <(scripts/resolve-auth-nightly.sh)
-                  echo "Testing $release_tag ($apk_name, $apk_sha256)"
-
-                  gh release download "$release_tag" \
+                  gh release download "$AUTH_RELEASE_TAG" \
                       --repo ente/nightly \
-                      --pattern "$apk_name" \
+                      --pattern "$APK_NAME" \
                       --pattern SHA256SUMS \
                       --dir "$AUTH_APK_DIR"
 
-                  apk_path="$AUTH_APK_DIR/$apk_name"
-                  if [[ ! -f "$apk_path" ]]; then
-                      echo "Auth APK was not downloaded" >&2
-                      exit 1
-                  fi
-
-                  expected_sha256="${apk_sha256#sha256:}"
+                  apk_path="$AUTH_APK_DIR/$APK_NAME"
                   actual_sha256=$(sha256sum "$apk_path" | awk '{print $1}')
-                  if [[ "$actual_sha256" != "$expected_sha256" ]]; then
+                  if [[ "$actual_sha256" != "$APK_SHA256" ]]; then
                       echo "Downloaded Auth APK does not match the resolved release asset" >&2
                       exit 1
                   fi
-
-                  checksum=$(grep -E "^${expected_sha256}[[:space:]]+\\*?${apk_name}$" "$AUTH_APK_DIR/SHA256SUMS")
+                  checksum=$(grep -E "^${APK_SHA256}[[:space:]]+\\*?${APK_NAME}$" "$AUTH_APK_DIR/SHA256SUMS")
                   if [[ -z "$checksum" ]]; then
                       echo "SHA256SUMS does not contain the resolved Auth APK" >&2
                       exit 1
@@ -76,22 +152,27 @@ jobs:
                   )
 
                   echo "AUTH_APK_PATH=$apk_path" >> "$GITHUB_ENV"
-                  echo "AUTH_RELEASE_TAG=$release_tag" >> "$GITHUB_ENV"
-                  echo "AUTH_APK_SHA256=$expected_sha256" >> "$GITHUB_ENV"
+                  echo "AUTH_RELEASE_TAG=$AUTH_RELEASE_TAG" >> "$GITHUB_ENV"
+                  echo "AUTH_APK_SHA256=$APK_SHA256" >> "$GITHUB_ENV"
 
-            - name: Install Maestro
+            - name: Install pinned Maestro
               run: |
-                  curl -fsSL "https://get.maestro.mobile.dev" | bash
-                  installed_version="$("$HOME/.maestro/bin/maestro" --version)"
+                  curl --fail --location --silent --show-error \
+                      "https://github.com/mobile-dev-inc/maestro/releases/download/cli-$MAESTRO_VERSION/maestro.zip" \
+                      --output "$RUNNER_TEMP/maestro.zip"
+                  echo "$MAESTRO_SHA256  $RUNNER_TEMP/maestro.zip" | sha256sum --check -
+                  mkdir -p "$HOME/.maestro"
+                  unzip -q "$RUNNER_TEMP/maestro.zip" -d "$HOME/.maestro"
+                  maestro_bin="$HOME/.maestro/maestro/bin/maestro"
+                  installed_version=$("$maestro_bin" --version)
                   if [[ "$installed_version" != "$MAESTRO_VERSION" ]]; then
                       echo "Expected Maestro $MAESTRO_VERSION, installed $installed_version" >&2
                       exit 1
                   fi
-                  echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+                  echo "$HOME/.maestro/maestro/bin" >> "$GITHUB_PATH"
 
             - name: Start local Auth backend
-              run: |
-                  ALLOW_AUTH_FIXTURE_RESTORE=1 scripts/fixtures/restore-auth-fixture.sh
+              run: ALLOW_AUTH_FIXTURE_RESTORE=1 scripts/fixtures/restore-auth-fixture.sh
 
             - name: Enable KVM
               run: |
@@ -105,7 +186,7 @@ jobs:
                   echo "::add-mask::$password"
                   echo "ONLINE_PASSWORD=$password" >> "$GITHUB_ENV"
 
-            - name: Run Auth online tests
+            - name: Run ${{ matrix.lane }} tests
               id: online-tests
               continue-on-error: true
               uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
@@ -116,46 +197,37 @@ jobs:
                   profile: pixel_5
                   cores: 4
                   disable-animations: true
-                  script: .github/scripts/run-auth-online-tests.sh
+                  script: .github/scripts/run-auth-online-tests.sh "${{ matrix.lane }}"
 
-            - name: Summarize Auth online tests
+            - name: Summarize ${{ matrix.lane }} tests
               if: always() && steps.online-tests.outcome != 'skipped'
               env:
                   TEST_OUTCOME: ${{ steps.online-tests.outcome }}
               run: |
-                  if [[ "$TEST_OUTCOME" == "success" ]]; then
-                      status="passed"
-                  else
-                      status="failed"
-                  fi
+                  if [[ "$TEST_OUTCOME" == "success" ]]; then status="passed"; else status="failed"; fi
                   {
-                      echo "### Auth Android online $status"
+                      echo "### Auth Android ${{ matrix.lane }} $status"
                       echo
                       echo "- Release: \`$AUTH_RELEASE_TAG\`"
                       echo "- Auth APK SHA-256: \`$AUTH_APK_SHA256\`"
                       echo "- Android API: \`34\`"
                       echo "- Maestro: \`$MAESTRO_VERSION\`"
-                      echo "- Backend dependency: local Museum with PostgreSQL"
-                      echo "- Backend state: checked-in public local Auth fixture v1"
+                      echo "- Backend: checked-in public Museum fixture v2"
                       echo
-                      echo "#### Coverage in this run"
+                      if [[ "${{ matrix.lane }}" == "account-auth" ]]; then
+                          echo "- Live TOTP challenge, synced-code visibility, signup, first Auth-key creation, cold password login, unknown-account error, and recovery-key password reset with code preservation"
+                      else
+                          echo "- Prepared password login, active and trashed synced codes, account/security settings, and a persisted two-code bulk tag across a cold login"
+                      fi
                       echo
-                      echo "- Unknown-account login shows the expected Auth error"
-                      echo "- Prepared password login exposes Account settings"
-                      echo "- Prepared TOTP account completes a live two-factor challenge"
-                      echo "- Signup with deterministic email verification"
-                      echo "- Recovery key is generated and acknowledged"
-                      echo "- Password login succeeds after a fresh Auth app state"
-                      echo "- Prepared recovery account rejects its old password after recovery-key reset and accepts the new password"
-                      echo
-                      echo "JUnit results are attached as \`auth-online-results\`."
+                      echo "JUnit results are attached as \`auth-online-${{ matrix.lane }}-results\`."
                   } >> "$GITHUB_STEP_SUMMARY"
 
-            - name: Upload Auth online results
+            - name: Upload ${{ matrix.lane }} results
               if: always() && steps.online-tests.outcome != 'skipped'
               uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
               with:
-                  name: auth-online-results
+                  name: auth-online-${{ matrix.lane }}-results
                   path: artifacts/maestro/online-results/*.xml
                   if-no-files-found: warn
                   retention-days: 7
@@ -168,6 +240,6 @@ jobs:
               if: always()
               run: docker compose --project-name "$AUTH_FIXTURE_COMPOSE_PROJECT" -f museum/compose.yaml down --volumes --remove-orphans
 
-            - name: Propagate Auth online test failure
+            - name: Propagate ${{ matrix.lane }} failure
               if: steps.online-tests.outcome == 'failure'
               run: exit 1

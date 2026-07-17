@@ -6,11 +6,13 @@ publish = false
 
 [dependencies]
 anyhow = "1.0"
-ente-accounts = { git = "https://github.com/ente-io/ente.git", rev = "fd4988b6cea005576ea293dd32add131b89dd66c" }
-ente-core = { git = "https://github.com/ente-io/ente.git", rev = "fd4988b6cea005576ea293dd32add131b89dd66c" }
+ente-accounts = { git = "https://github.com/ente-io/ente.git", rev = "d4873f6ca147aaf02ff82549f6c575e29790cff0" }
+ente-core = { git = "https://github.com/ente-io/ente.git", rev = "d4873f6ca147aaf02ff82549f6c575e29790cff0" }
 hmac = "0.12"
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 sha1 = "0.10"
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+url = "2.5"
 zeroize = "1.8"

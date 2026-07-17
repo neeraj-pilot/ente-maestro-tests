@@ -1,0 +1,7 @@
+appId: ${APP_ID}
+---
+- extendedWaitUntil:
+    visible: ".*${ACCOUNT}.*"
+    timeout: 30000
+- assertVisible: ${ISSUER}
+- assertVisible: ".*${ACCOUNT}.*"

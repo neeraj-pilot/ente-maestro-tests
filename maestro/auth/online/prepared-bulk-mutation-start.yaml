@@ -1,0 +1,32 @@
+appId: ${APP_ID}
+name: Auth applies a tag to two synced fixture codes
+tags: [auth, android, online, fixture, sync, bulk]
+---
+- runFlow:
+    file: ../subflows/login-online-account.yaml
+    env:
+      LOGIN_EMAIL: ${FIXTURE_BASIC_EMAIL}
+      LOGIN_PASSWORD: ${FIXTURE_BASIC_PASSWORD}
+- runFlow:
+    file: ../subflows/dismiss-code-guidance.yaml
+    env:
+      READY_ACCOUNT: developer.fixture@example.org
+- tapOn: "Work"
+- assertVisible: GitHub
+- assertVisible: Microsoft
+- longPressOn: GitHub
+- tapOn: ".*Select all.*"
+- assertVisible: ".*2 selected.*"
+- tapOn: ".*Add tag.*"
+- assertVisible: "Add new"
+- tapOn: "Add new"
+- assertVisible: "Create new tag"
+- inputText: ${FIXTURE_MUTATION_TAG}
+- tapOn: "Create"
+- tapOn: "Done"
+- extendedWaitUntil:
+    visible: ${FIXTURE_MUTATION_TAG}
+    timeout: 30000
+- tapOn: ${FIXTURE_MUTATION_TAG}
+- assertVisible: GitHub
+- assertVisible: Microsoft

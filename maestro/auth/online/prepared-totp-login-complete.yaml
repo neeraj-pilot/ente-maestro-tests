@@ -7,6 +7,27 @@ tags: [auth, android, online, fixture, totp]
 - extendedWaitUntil:
     visible: "Settings"
     timeout: 120000
+- runFlow:
+    file: ../subflows/dismiss-code-guidance.yaml
+    env:
+      READY_ACCOUNT: security.fixture@example.org
+- runFlow:
+    file: ../subflows/assert-synced-code.yaml
+    env:
+      ISSUER: GitHub
+      ACCOUNT: security.fixture@example.org
 - tapOn: "Settings"
-- assertVisible:
-    id: auth_settings_security
+- tapOn: "Security"
+- assertVisible: "Email verification"
+- assertVisible: "App lock"
+- runFlow:
+    when:
+      true: ${ASSERT_TWO_FACTOR_STATUS}
+    commands:
+      - extendedWaitUntil:
+          visible:
+            id: auth_security_two_factor_status
+          timeout: 30000
+      - assertVisible:
+          id: auth_security_two_factor_status
+          checked: true

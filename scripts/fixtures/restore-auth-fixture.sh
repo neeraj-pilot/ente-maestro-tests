@@ -9,7 +9,7 @@ fi
 
 repo_root=$(cd "$(dirname "$0")/../.." && pwd)
 compose_file="$repo_root/museum/compose.yaml"
-dump="$repo_root/museum/fixtures/auth-fixture-v1.dump"
+dump="$repo_root/museum/fixtures/auth-fixture-v2.dump"
 project=${AUTH_FIXTURE_COMPOSE_PROJECT:-ente-auth-fixture}
 compose=(docker compose --project-name "$project" --file "$compose_file")
 
@@ -45,17 +45,17 @@ account_state=$(
     "${compose[@]}" exec -T postgres \
         psql --tuples-only --no-align --field-separator='|' \
         --username=ente_auth --dbname=ente_auth_test \
-        --command="SELECT COUNT(*), COUNT(*) FILTER (WHERE source = 'authMaestroFixture'), COUNT(*) FILTER (WHERE is_two_factor_enabled) FROM users;"
+        --command="SELECT (SELECT COUNT(*) FROM users), (SELECT COUNT(*) FROM users WHERE source = 'authMaestroFixture'), (SELECT COUNT(*) FROM users WHERE is_two_factor_enabled), (SELECT COUNT(*) FROM authenticator_key), (SELECT COUNT(*) FROM authenticator_entity), (SELECT COUNT(*) FROM authenticator_entity WHERE is_deleted);"
 )
-if [[ "$account_state" != "3|3|1" ]]; then
-    echo "Restored database does not contain exactly three tagged fixtures and one TOTP account" >&2
+if [[ "$account_state" != "3|3|1|3|7|0" ]]; then
+    echo "Restored database does not contain the exact fixture-v2 account, key, and entity state" >&2
     exit 1
 fi
 
 "${compose[@]}" up --detach museum
 for _ in {1..60}; do
     if curl --fail --silent http://127.0.0.1:8080/ping >/dev/null; then
-        echo "Restored Auth fixture v1 and started local Museum"
+        echo "Restored Auth fixture v2 and started local Museum"
         trap - EXIT
         exit 0
     fi

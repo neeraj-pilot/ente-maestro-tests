@@ -1,0 +1,65 @@
+appId: ${APP_ID}
+---
+- runFlow:
+    when:
+      notVisible: "Enter a setup key"
+    commands:
+      - tapOn: "Add code"
+      - tapOn: "Enter details manually"
+- runFlow:
+    when:
+      visible: "Enter a setup key"
+    commands:
+      - tapOn: "Enter a setup key"
+- extendedWaitUntil:
+    visible: "Enter account details"
+    timeout: 10000
+- runFlow:
+    when:
+      notVisible:
+        id: auth_manual_secret
+    commands:
+      - inputText: ${ISSUER}
+      - tapOn:
+          point: "65%,25%"
+      - inputText: ${SECRET}
+      - tapOn:
+          point: "65%,30%"
+      - inputText: ${ACCOUNT}
+- runFlow:
+    when:
+      visible:
+        id: auth_manual_secret
+    commands:
+      - tapOn:
+          id: auth_manual_issuer
+          point: "50%,70%"
+      - inputText: ${ISSUER}
+      - tapOn:
+          id: auth_manual_secret
+          point: "50%,70%"
+      - inputText: ${SECRET}
+      - tapOn:
+          id: auth_manual_account
+          point: "50%,70%"
+      - inputText: ${ACCOUNT}
+- hideKeyboard
+- runFlow:
+    when:
+      notVisible: "Save"
+    commands:
+      - scrollUntilVisible:
+          element: "Save"
+          direction: DOWN
+          visibilityPercentage: 60
+          centerElement: true
+- tapOn: "Save"
+- runFlow:
+    file: dismiss-code-guidance.yaml
+    env:
+      READY_ACCOUNT: ${ACCOUNT}
+- runFlow:
+    file: assert-synced-code.yaml
+    env:
+      ISSUER: ${ISSUER}
+      ACCOUNT: ${ACCOUNT}

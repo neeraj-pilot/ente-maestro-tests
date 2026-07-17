@@ -1,0 +1,22 @@
+appId: ${APP_ID}
+---
+- launchApp:
+    clearState: true
+- assertVisible: "Log in"
+- runFlow:
+    file: configure-online-test-endpoint.yaml
+- tapOn: "Log in"
+- waitForAnimationToEnd
+- eraseText: 100
+- inputText: ${LOGIN_EMAIL}
+- assertVisible: ${LOGIN_EMAIL}
+- tapOn: "done"
+- extendedWaitUntil:
+    visible: ".*Enter the password for.*"
+    timeout: 30000
+- eraseText: 100
+- inputText: ${LOGIN_PASSWORD}
+- tapOn: "done"
+- extendedWaitUntil:
+    visible: "Settings"
+    timeout: 120000
