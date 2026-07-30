@@ -14,7 +14,13 @@ tags: [auth, android, offline, settings]
 - assertVisible: "Support"
 - assertVisible: "About"
 - assertVisible: "Theme"
-- assertVisible: "Version:.*"
+- scrollUntilVisible:
+    element:
+      id: "auth_settings_app_version"
+    direction: DOWN
+    visibilityPercentage: 60
+- assertVisible:
+    id: "auth_settings_app_version"
 - tapOn: "General"
 - assertVisible: "General"
 - assertVisible: "Language"
