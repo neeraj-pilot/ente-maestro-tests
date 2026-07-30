@@ -8,8 +8,8 @@ tags: [auth, android, online, signup, recovery]
 - runFlow:
     file: subflows/configure-online-test-endpoint.yaml
 - tapOn: "Sign up"
-- assertVisible: "Enter your email id"
-- tapOn: "Enter your email id"
+- assertVisible: "Enter your email address"
+- tapOn: "Enter your email address"
 - inputText: ${ONLINE_EMAIL}
 - assertVisible: ${ONLINE_EMAIL}
 - tapOn: "Enter your password"
