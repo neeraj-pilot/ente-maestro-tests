@@ -261,7 +261,7 @@ jobs:
                               echo "- Live TOTP challenge, synchronized-code visibility, unknown-account error, signup, first Auth-key creation, and cold password login"
                               ;;
                           recovery-password)
-                              echo "- Recovery-key password reset and synchronized-code preservation"
+                              echo "- Recovery-key password reset, old-password rejection, replacement-password login, and synchronized-code preservation"
                               ;;
                           data-sync)
                               echo "- Prepared password login, active and trashed synchronized codes, account/security settings, and a persisted two-code bulk tag across a cold login"

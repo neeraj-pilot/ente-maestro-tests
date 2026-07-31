@@ -2,8 +2,7 @@ appId: ${APP_ID}
 name: Auth shows an unknown-account login error
 tags: [auth, android, online, login]
 ---
-- launchApp:
-    clearState: true
+- launchApp
 - assertVisible: "Log in"
 - runFlow:
     file: subflows/configure-online-test-endpoint.yaml

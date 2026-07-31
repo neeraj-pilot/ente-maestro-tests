@@ -19,6 +19,8 @@ assert_lanes() {
 assert_lanes "account-auth,recovery-password,data-sync,entity-lifecycle" --all
 assert_lanes "account-auth" --changed-file maestro/auth/online/prepared-totp-login-start.yaml
 assert_lanes "recovery-password" --changed-file maestro/auth/online/prepared-recovery-password-reset.yaml
+assert_lanes "recovery-password" --changed-file maestro/auth/online/prepared-recovery-old-password.yaml
+assert_lanes "recovery-password" --changed-file maestro/auth/online/prepared-recovery-login.yaml
 assert_lanes "account-auth,entity-lifecycle" --changed-file maestro/auth/online/subflows/add-online-code.yaml
 assert_lanes "account-auth" --changed-file scripts/current-totp.mjs
 assert_lanes "data-sync" --changed-file maestro/auth/online/prepared-password-login.yaml

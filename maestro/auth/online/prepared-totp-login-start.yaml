@@ -2,8 +2,7 @@ appId: ${APP_ID}
 name: Auth prepared TOTP account reaches two-factor challenge
 tags: [auth, android, online, fixture, totp]
 ---
-- launchApp:
-    clearState: true
+- launchApp
 - assertVisible: "Log in"
 - runFlow:
     file: subflows/configure-online-test-endpoint.yaml

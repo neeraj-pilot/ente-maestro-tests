@@ -63,7 +63,7 @@ if [[ ${#changed_files[@]} -gt 0 ]]; then
                 add_lane account-auth
                 add_lane entity-lifecycle
                 ;;
-            maestro/auth/online/prepared-recovery-password-reset.yaml)
+            maestro/auth/online/prepared-recovery-login.yaml|maestro/auth/online/prepared-recovery-old-password.yaml|maestro/auth/online/prepared-recovery-password-reset.yaml)
                 add_lane recovery-password
                 ;;
             maestro/auth/online/prepared-bulk-mutation-complete.yaml|maestro/auth/online/prepared-bulk-mutation-start.yaml|maestro/auth/online/prepared-password-login.yaml)
