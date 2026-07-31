@@ -46,7 +46,7 @@ permissions:
     contents: read
 
 concurrency:
-    group: auth-android-online-${{ github.ref }}
+    group: auth-android-online-${{ github.ref }}-${{ inputs.lane || 'automatic' }}
     cancel-in-progress: true
 
 env:
@@ -219,7 +219,7 @@ jobs:
               id: online-tests
               uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
               with:
-                  api-level: 34
+                  api-level: 33
                   emulator-build: 15507667 # 36.6.11 stable
                   target: default
                   arch: x86_64
@@ -250,7 +250,7 @@ jobs:
                       echo "- Asset created: \`$AUTH_APK_CREATED_AT\`"
                       echo "- Asset ID: \`$AUTH_APK_ASSET_ID\`"
                       echo "- Auth APK SHA-256: \`$AUTH_APK_SHA256\`"
-                      echo "- Android API: \`34\`"
+                      echo "- Android API: \`33\`"
                       echo "- Maestro: \`$MAESTRO_VERSION\`"
                       echo "- Backend: checked-in public Museum fixture v2"
                       echo
