@@ -225,7 +225,7 @@ jobs:
                   profile: pixel_5
                   cores: 4
                   ram-size: 4096M
-                  emulator-options: -no-window -gpu swiftshader -no-snapshot -noaudio -no-boot-anim -no-metrics -skin 720x1280
+                  emulator-options: -no-window -gpu swiftshader -no-snapshot -noaudio -no-boot-anim -no-metrics
                   disable-animations: true
                   script: .github/scripts/run-auth-online-tests.sh "${{ matrix.lane }}"
 
