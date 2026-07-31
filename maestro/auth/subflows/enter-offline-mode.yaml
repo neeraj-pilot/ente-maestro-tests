@@ -1,5 +1,10 @@
 appId: io.ente.auth.independent
 ---
+- runFlow:
+    when:
+      notVisible: "Use without backups"
+    commands:
+      - launchApp
 - extendedWaitUntil:
     visible: "Use without backups"
     timeout: 120000
