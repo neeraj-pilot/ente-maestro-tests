@@ -224,12 +224,17 @@ jobs:
               uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
               with:
                   api-level: 34
+                  emulator-build: 15917651 # 37.1.11 stable
                   target: default
                   arch: x86_64
                   profile: pixel_5
                   cores: 4
                   ram-size: 4096M
                   emulator-options: -no-window -gpu swiftshader -no-snapshot -noaudio -no-boot-anim -no-metrics
+                  pre-emulator-launch-script: |
+                      echo 'hw.lcd.width=720' >> "$HOME/.android/avd/test.avd/config.ini"
+                      echo 'hw.lcd.height=1280' >> "$HOME/.android/avd/test.avd/config.ini"
+                      echo 'hw.lcd.density=320' >> "$HOME/.android/avd/test.avd/config.ini"
                   disable-animations: true
                   script: EMULATOR_ATTEMPT=1 .github/scripts/run-auth-online-tests.sh "${{ matrix.lane }}"
 
@@ -255,12 +260,17 @@ jobs:
               uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
               with:
                   api-level: 34
+                  emulator-build: 15917651 # 37.1.11 stable
                   target: default
                   arch: x86_64
                   profile: pixel_5
                   cores: 4
                   ram-size: 4096M
                   emulator-options: -no-window -gpu swiftshader -no-snapshot -noaudio -no-boot-anim -no-metrics
+                  pre-emulator-launch-script: |
+                      echo 'hw.lcd.width=720' >> "$HOME/.android/avd/test.avd/config.ini"
+                      echo 'hw.lcd.height=1280' >> "$HOME/.android/avd/test.avd/config.ini"
+                      echo 'hw.lcd.density=320' >> "$HOME/.android/avd/test.avd/config.ini"
                   disable-animations: true
                   script: EMULATOR_ATTEMPT=2 .github/scripts/run-auth-online-tests.sh "${{ matrix.lane }}"
 
