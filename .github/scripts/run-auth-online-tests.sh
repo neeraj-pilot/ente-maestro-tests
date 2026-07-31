@@ -210,7 +210,7 @@ run_recovery_password() {
 }
 
 run_data_sync() {
-    local lifecycle_marker mutation_marker restore_marker
+    local mutation_marker
 
     prepare_basic_fixture_app
     run_maestro prepared-password \
@@ -225,6 +225,23 @@ run_data_sync() {
         maestro/auth/online/prepared-bulk-mutation-start.yaml
     wait_for_bulk_mutation "$fixture_basic_user_id" "$mutation_marker"
 
+    prepare_basic_fixture_app
+    run_maestro prepared-bulk-mutation-complete \
+        -e FIXTURE_BASIC_EMAIL="$fixture_basic_email" \
+        -e FIXTURE_BASIC_PASSWORD="$fixture_basic_password" \
+        -e FIXTURE_MUTATION_TAG="$FIXTURE_MUTATION_TAG" \
+        maestro/auth/online/prepared-bulk-mutation-complete.yaml
+}
+
+run_entity_lifecycle() {
+    local lifecycle_marker restore_marker
+
+    prepare_basic_fixture_app
+    run_maestro prepared-entity-lifecycle-login \
+        -e FIXTURE_BASIC_EMAIL="$fixture_basic_email" \
+        -e FIXTURE_BASIC_PASSWORD="$fixture_basic_password" \
+        maestro/auth/online/prepared-basic-login.yaml
+
     lifecycle_marker=$(query_fixture_db \
         "SELECT MAX(updated_at) FROM authenticator_entity WHERE user_id = $fixture_basic_user_id;")
     run_maestro prepared-entity-lifecycle-start \
@@ -235,11 +252,10 @@ run_data_sync() {
     wait_for_entity_count_and_quiet "$fixture_basic_user_id" "$lifecycle_marker" 4
 
     prepare_basic_fixture_app
-    run_maestro prepared-bulk-mutation-complete \
+    run_maestro prepared-entity-lifecycle-reload \
         -e FIXTURE_BASIC_EMAIL="$fixture_basic_email" \
         -e FIXTURE_BASIC_PASSWORD="$fixture_basic_password" \
-        -e FIXTURE_MUTATION_TAG="$FIXTURE_MUTATION_TAG" \
-        maestro/auth/online/prepared-bulk-mutation-complete.yaml
+        maestro/auth/online/prepared-basic-login.yaml
 
     restore_marker=$(query_fixture_db \
         "SELECT MAX(updated_at) FROM authenticator_entity WHERE user_id = $fixture_basic_user_id;")
@@ -259,10 +275,12 @@ case "$lane" in
     account-auth) run_account_auth ;;
     recovery-password) run_recovery_password ;;
     data-sync) run_data_sync ;;
+    entity-lifecycle) run_entity_lifecycle ;;
     all)
         run_account_auth
         run_recovery_password
         run_data_sync
+        run_entity_lifecycle
         ;;
     *)
         echo "Unknown Auth online test lane: $lane" >&2
