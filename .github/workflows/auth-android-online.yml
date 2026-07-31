@@ -21,8 +21,9 @@ on:
             - "museum/**"
             - "scripts/current-totp.mjs"
             - "scripts/fixtures/**"
-            - "scripts/resolve-auth-nightly.sh"
+            - "scripts/resolve-nightly-apk.sh"
             - "scripts/select-auth-online-lanes.sh"
+            - "scripts/test-resolve-nightly-apk.sh"
             - "scripts/test-select-auth-online-lanes.sh"
     push:
         branches: [main]
@@ -33,8 +34,9 @@ on:
             - "museum/**"
             - "scripts/current-totp.mjs"
             - "scripts/fixtures/**"
-            - "scripts/resolve-auth-nightly.sh"
+            - "scripts/resolve-nightly-apk.sh"
             - "scripts/select-auth-online-lanes.sh"
+            - "scripts/test-resolve-nightly-apk.sh"
             - "scripts/test-select-auth-online-lanes.sh"
 
 permissions:
@@ -58,10 +60,14 @@ jobs:
         name: Resolve test inputs
         runs-on: ubuntu-latest
         outputs:
+            apk_asset_id: ${{ steps.nightly.outputs.apk_asset_id }}
+            apk_created_at: ${{ steps.nightly.outputs.apk_created_at }}
             apk_name: ${{ steps.nightly.outputs.apk_name }}
             apk_sha256: ${{ steps.nightly.outputs.apk_sha256 }}
+            channel: ${{ steps.nightly.outputs.channel }}
             lanes: ${{ steps.lanes.outputs.lanes }}
             release_tag: ${{ steps.nightly.outputs.release_tag }}
+            source_repository: ${{ steps.nightly.outputs.source_repository }}
         steps:
             - name: Checkout tests
               uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -94,15 +100,14 @@ jobs:
                   fi
                   echo "lanes=$lanes" >> "$GITHUB_OUTPUT"
 
+            - name: Validate nightly resolution
+              run: scripts/test-resolve-nightly-apk.sh
+
             - name: Resolve latest Auth nightly
               id: nightly
               env:
                   GH_TOKEN: ${{ github.token }}
-              run: |
-                  IFS=$'\t' read -r release_tag apk_name apk_sha256 < <(scripts/resolve-auth-nightly.sh)
-                  echo "release_tag=$release_tag" >> "$GITHUB_OUTPUT"
-                  echo "apk_name=$apk_name" >> "$GITHUB_OUTPUT"
-                  echo "apk_sha256=${apk_sha256#sha256:}" >> "$GITHUB_OUTPUT"
+              run: scripts/resolve-nightly-apk.sh --app auth --github-output "$GITHUB_OUTPUT"
 
     auth-online:
         name: ${{ matrix.lane }}
@@ -133,37 +138,35 @@ jobs:
 
             - name: Download resolved Auth nightly
               env:
+                  APK_ASSET_ID: ${{ needs.resolve.outputs.apk_asset_id }}
+                  APK_CREATED_AT: ${{ needs.resolve.outputs.apk_created_at }}
                   APK_NAME: ${{ needs.resolve.outputs.apk_name }}
                   APK_SHA256: ${{ needs.resolve.outputs.apk_sha256 }}
+                  AUTH_CHANNEL: ${{ needs.resolve.outputs.channel }}
                   AUTH_RELEASE_TAG: ${{ needs.resolve.outputs.release_tag }}
                   GH_TOKEN: ${{ github.token }}
+                  SOURCE_REPOSITORY: ${{ needs.resolve.outputs.source_repository }}
               run: |
                   mkdir -p "$AUTH_APK_DIR"
-                  gh release download "$AUTH_RELEASE_TAG" \
-                      --repo ente/nightly \
-                      --pattern "$APK_NAME" \
-                      --pattern SHA256SUMS \
-                      --dir "$AUTH_APK_DIR"
-
                   apk_path="$AUTH_APK_DIR/$APK_NAME"
+                  gh api \
+                      -H 'Accept: application/octet-stream' \
+                      "repos/$SOURCE_REPOSITORY/releases/assets/$APK_ASSET_ID" > "$apk_path"
+
+                  expected_sha256="${APK_SHA256#sha256:}"
                   actual_sha256=$(sha256sum "$apk_path" | awk '{print $1}')
-                  if [[ "$actual_sha256" != "$APK_SHA256" ]]; then
+                  if [[ "$actual_sha256" != "$expected_sha256" ]]; then
                       echo "Downloaded Auth APK does not match the resolved release asset" >&2
                       exit 1
                   fi
-                  checksum=$(grep -E "^${APK_SHA256}[[:space:]]+\\*?${APK_NAME}$" "$AUTH_APK_DIR/SHA256SUMS")
-                  if [[ -z "$checksum" ]]; then
-                      echo "SHA256SUMS does not contain the resolved Auth APK" >&2
-                      exit 1
-                  fi
-                  (
-                      cd "$AUTH_APK_DIR"
-                      printf "%s\n" "$checksum" | sha256sum --check -
-                  )
 
                   echo "AUTH_APK_PATH=$apk_path" >> "$GITHUB_ENV"
+                  echo "AUTH_APK_ASSET_ID=$APK_ASSET_ID" >> "$GITHUB_ENV"
+                  echo "AUTH_APK_CREATED_AT=$APK_CREATED_AT" >> "$GITHUB_ENV"
+                  echo "AUTH_APK_NAME=$APK_NAME" >> "$GITHUB_ENV"
+                  echo "AUTH_CHANNEL=$AUTH_CHANNEL" >> "$GITHUB_ENV"
                   echo "AUTH_RELEASE_TAG=$AUTH_RELEASE_TAG" >> "$GITHUB_ENV"
-                  echo "AUTH_APK_SHA256=$APK_SHA256" >> "$GITHUB_ENV"
+                  echo "AUTH_APK_SHA256=$expected_sha256" >> "$GITHUB_ENV"
 
             - name: Install pinned Maestro
               run: |
@@ -225,6 +228,10 @@ jobs:
                       echo "### Auth Android ${{ matrix.lane }} $status"
                       echo
                       echo "- Release: \`$AUTH_RELEASE_TAG\`"
+                      echo "- Channel: \`$AUTH_CHANNEL\`"
+                      echo "- Build: \`$AUTH_APK_NAME\`"
+                      echo "- Asset created: \`$AUTH_APK_CREATED_AT\`"
+                      echo "- Asset ID: \`$AUTH_APK_ASSET_ID\`"
                       echo "- Auth APK SHA-256: \`$AUTH_APK_SHA256\`"
                       echo "- Android API: \`34\`"
                       echo "- Maestro: \`$MAESTRO_VERSION\`"

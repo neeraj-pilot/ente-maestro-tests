@@ -7,16 +7,18 @@ on:
             - ".github/workflows/auth-android-smoke.yml"
             - "maestro/auth/**"
             - "maestro/fixtures/**"
-            - "scripts/resolve-auth-nightly.sh"
+            - "scripts/resolve-nightly-apk.sh"
             - "scripts/select-auth-ci-suites.sh"
+            - "scripts/test-resolve-nightly-apk.sh"
             - "scripts/test-select-auth-ci-suites.sh"
     pull_request:
         paths:
             - ".github/workflows/auth-android-smoke.yml"
             - "maestro/auth/**"
             - "maestro/fixtures/**"
-            - "scripts/resolve-auth-nightly.sh"
+            - "scripts/resolve-nightly-apk.sh"
             - "scripts/select-auth-ci-suites.sh"
+            - "scripts/test-resolve-nightly-apk.sh"
             - "scripts/test-select-auth-ci-suites.sh"
     workflow_dispatch:
         inputs:
@@ -53,9 +55,13 @@ jobs:
         outputs:
             matrix: ${{ steps.select.outputs.matrix }}
             has_suites: ${{ steps.select.outputs.has_suites }}
+            channel: ${{ steps.release.outputs.channel }}
             release_tag: ${{ steps.release.outputs.release_tag }}
+            apk_asset_id: ${{ steps.release.outputs.apk_asset_id }}
             apk_name: ${{ steps.release.outputs.apk_name }}
+            apk_created_at: ${{ steps.release.outputs.apk_created_at }}
             apk_sha256: ${{ steps.release.outputs.apk_sha256 }}
+            source_repository: ${{ steps.release.outputs.source_repository }}
         steps:
             - name: Checkout tests
               uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -65,6 +71,9 @@ jobs:
 
             - name: Validate suite selection
               run: scripts/test-select-auth-ci-suites.sh
+
+            - name: Validate nightly resolution
+              run: scripts/test-resolve-nightly-apk.sh
 
             - name: Select suites for this event
               id: select
@@ -94,7 +103,7 @@ jobs:
               env:
                   GH_TOKEN: ${{ github.token }}
               run: |
-                  scripts/resolve-auth-nightly.sh --github-output "$GITHUB_OUTPUT"
+                  scripts/resolve-nightly-apk.sh --app auth --github-output "$GITHUB_OUTPUT"
 
     smoke:
         needs: select
@@ -120,25 +129,27 @@ jobs:
             - name: Download resolved Auth nightly
               env:
                   GH_TOKEN: ${{ github.token }}
+                  AUTH_APK_ASSET_ID: ${{ needs.select.outputs.apk_asset_id }}
+                  AUTH_APK_CREATED_AT: ${{ needs.select.outputs.apk_created_at }}
                   AUTH_RELEASE_TAG: ${{ needs.select.outputs.release_tag }}
                   AUTH_APK_NAME: ${{ needs.select.outputs.apk_name }}
                   AUTH_APK_SHA256: ${{ needs.select.outputs.apk_sha256 }}
+                  AUTH_CHANNEL: ${{ needs.select.outputs.channel }}
+                  AUTH_SOURCE_REPOSITORY: ${{ needs.select.outputs.source_repository }}
               run: |
                   mkdir -p "$AUTH_APK_DIR"
                   release_tag="$AUTH_RELEASE_TAG"
-                  if [[ -z "$release_tag" || "$release_tag" == "null" || -z "$AUTH_APK_NAME" || -z "$AUTH_APK_SHA256" ]]; then
+                  if [[ -z "$release_tag" || -z "$AUTH_APK_ASSET_ID" || -z "$AUTH_APK_NAME" || -z "$AUTH_APK_CREATED_AT" || -z "$AUTH_APK_SHA256" ]]; then
                       echo "Auth nightly release was not resolved" >&2
                       exit 1
                   fi
-                  echo "Testing $release_tag ($AUTH_APK_NAME, $AUTH_APK_SHA256)"
-
-                  gh release download "$release_tag" \
-                      --repo ente/nightly \
-                      --pattern "$AUTH_APK_NAME" \
-                      --pattern SHA256SUMS \
-                      --dir "$AUTH_APK_DIR"
+                  echo "Testing $release_tag asset $AUTH_APK_ASSET_ID ($AUTH_APK_NAME, created $AUTH_APK_CREATED_AT, $AUTH_APK_SHA256)"
 
                   apk_path="$AUTH_APK_DIR/$AUTH_APK_NAME"
+                  gh api \
+                      -H 'Accept: application/octet-stream' \
+                      "repos/$AUTH_SOURCE_REPOSITORY/releases/assets/$AUTH_APK_ASSET_ID" > "$apk_path"
+
                   if [[ ! -f "$apk_path" ]]; then
                       echo "Auth APK was not downloaded" >&2
                       exit 1
@@ -151,17 +162,11 @@ jobs:
                       exit 1
                   fi
 
-                  checksum=$(grep -E "^${expected_sha256}[[:space:]]+\\*?${AUTH_APK_NAME}$" "$AUTH_APK_DIR/SHA256SUMS")
-                  if [[ -z "$checksum" ]]; then
-                      echo "SHA256SUMS does not contain the resolved Auth APK" >&2
-                      exit 1
-                  fi
-                  (
-                      cd "$AUTH_APK_DIR"
-                      printf "%s\n" "$checksum" | sha256sum --check -
-                  )
-
                   echo "AUTH_APK_PATH=$apk_path" >> "$GITHUB_ENV"
+                  echo "AUTH_APK_ASSET_ID=$AUTH_APK_ASSET_ID" >> "$GITHUB_ENV"
+                  echo "AUTH_APK_CREATED_AT=$AUTH_APK_CREATED_AT" >> "$GITHUB_ENV"
+                  echo "AUTH_APK_NAME=$AUTH_APK_NAME" >> "$GITHUB_ENV"
+                  echo "AUTH_CHANNEL=$AUTH_CHANNEL" >> "$GITHUB_ENV"
                   echo "AUTH_RELEASE_TAG=$release_tag" >> "$GITHUB_ENV"
                   echo "AUTH_APK_SHA256=$expected_sha256" >> "$GITHUB_ENV"
 
@@ -219,6 +224,10 @@ jobs:
                       echo "### Auth Android smoke $status"
                       echo
                       echo "- Release: \`$AUTH_RELEASE_TAG\`"
+                      echo "- Channel: \`$AUTH_CHANNEL\`"
+                      echo "- Build: \`$AUTH_APK_NAME\`"
+                      echo "- Asset created: \`$AUTH_APK_CREATED_AT\`"
+                      echo "- Asset ID: \`$AUTH_APK_ASSET_ID\`"
                       echo "- Auth APK SHA-256: \`$AUTH_APK_SHA256\`"
                       echo "- Suite: ${{ matrix.name }}"
                       echo "- Coverage: ${{ matrix.coverage }}"

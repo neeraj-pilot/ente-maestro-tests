@@ -1,7 +1,7 @@
 # Auth Maestro test guide
 
-This repository verifies the published Ente Auth Android beta. It is not an
-Ente checkout and does not build the app.
+This repository verifies published Ente Auth Android beta and release-candidate
+APKs. It is not an Ente checkout and does not build the app.
 
 The [README coverage table](../README.md#latest-verified-coverage) is the
 live record of the latest clean `main` run. Keep historical run links, one-off
@@ -19,12 +19,17 @@ stale quickly and belong in GitHub Actions or the relevant product issue.
 
 ## Nightly and fixture contract
 
-Every hosted workflow resolves the newest published `auth-v*-beta` release at
-workflow start with `scripts/resolve-auth-nightly.sh`. It passes that release
-tag, APK name, and asset digest to every matrix shard. Each shard downloads the
-exact asset, verifies both its digest and `SHA256SUMS`, and records the result
-in its job summary. This deliberately means “latest at run start”, not a
-possibly different latest release for each shard.
+Every hosted workflow resolves the newest compatible published Auth APK at
+workflow start with `scripts/resolve-nightly-apk.sh`. Beta and release-candidate
+tags are eligible. Because tags can be reused, the resolver orders APKs by asset
+creation time and passes the exact asset ID, APK name, creation time, and digest
+to every matrix shard. Each shard downloads that asset ID, verifies its digest,
+and records the provenance in its job summary. This deliberately means “latest
+at run start”, not a possibly different latest release for each shard.
+
+The suite does not follow temporary Ente branches. A product change becomes the
+test target after it reaches Ente `main` and is present in a compatible published
+APK.
 
 Online tests restore the checked-in public Museum fixture before each lane.
 Fixture identities are intentionally obvious and their credentials live only
@@ -67,8 +72,8 @@ hide product state or silently broaden the selected CI matrix.
 
 Run the selector tests and the smallest relevant local suite before pushing.
 Use `scripts/download-auth-nightly.sh` immediately before a local run; it
-resolves and verifies the newest nightly asset rather than trusting a reused
-beta tag.
+resolves and verifies the newest compatible asset rather than trusting a reused
+release tag.
 
 ```sh
 apk_path=$(scripts/download-auth-nightly.sh)
