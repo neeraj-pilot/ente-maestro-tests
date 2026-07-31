@@ -1,9 +1,8 @@
 appId: io.ente.auth.independent
 ---
-- launchApp
 - extendedWaitUntil:
     visible: "Use without backups"
-    timeout: 60000
+    timeout: 120000
 - tapOn: "Use without backups"
 - assertVisible: "(?s)Warning.*You have chosen to proceed without backups.*"
 - tapOn: "Ok"

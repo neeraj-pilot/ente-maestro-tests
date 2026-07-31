@@ -51,7 +51,6 @@ appId: io.ente.auth.independent
                 id: "auth_manual_notes"
                 point: "50%,50%"
             - inputText: ${NOTE}
-- hideKeyboard
 - runFlow:
     when:
       notVisible: "Save"
