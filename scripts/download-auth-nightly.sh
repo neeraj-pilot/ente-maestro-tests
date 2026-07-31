@@ -6,8 +6,8 @@ usage() {
     cat <<'EOF'
 Usage: scripts/download-auth-nightly.sh [--output-dir <path>]
 
-Downloads the newest Auth beta APK from ente/nightly and verifies it against
-the release asset's SHA-256 digest. Prints the verified APK path.
+Downloads the newest compatible Auth APK from ente/nightly and verifies it
+against the release asset's SHA-256 digest. Prints the verified APK path.
 EOF
 }
 
@@ -31,17 +31,16 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-IFS=$'\t' read -r release_tag apk_name apk_sha256 < <("$(dirname "${BASH_SOURCE[0]}")/resolve-auth-nightly.sh")
+IFS=$'\t' read -r app channel release_tag apk_asset_id apk_name apk_created_at apk_sha256 source_repository < <(
+    "$(dirname "${BASH_SOURCE[0]}")/resolve-nightly-apk.sh" --app auth
+)
 
 mkdir -p "$output_dir"
-gh release download "$release_tag" \
-    --repo ente/nightly \
-    --pattern "$apk_name" \
-    --pattern SHA256SUMS \
-    --dir "$output_dir" \
-    --clobber
-
 apk_path="$output_dir/$apk_name"
+gh api \
+    -H 'Accept: application/octet-stream' \
+    "repos/$source_repository/releases/assets/$apk_asset_id" > "$apk_path"
+
 expected_sha256="${apk_sha256#sha256:}"
 actual_sha256=$(shasum -a 256 "$apk_path" | awk '{print $1}')
 if [[ "$actual_sha256" != "$expected_sha256" ]]; then
@@ -49,11 +48,5 @@ if [[ "$actual_sha256" != "$expected_sha256" ]]; then
     exit 1
 fi
 
-checksum=$(grep -E "^${expected_sha256}[[:space:]]+\\*?${apk_name}$" "$output_dir/SHA256SUMS")
-if [[ -z "$checksum" ]]; then
-    echo "SHA256SUMS does not contain the resolved Auth APK" >&2
-    exit 1
-fi
-
-echo "Verified $release_tag ($expected_sha256)" >&2
+echo "Verified $release_tag asset $apk_asset_id created $apk_created_at ($expected_sha256)" >&2
 printf '%s\n' "$apk_path"

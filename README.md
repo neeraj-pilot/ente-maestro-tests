@@ -2,14 +2,19 @@
 
 Maestro smoke and end-to-end tests that run against published Ente apps.
 
-At the start of every run, the Android workflows resolve the newest
-`auth-v*-beta` release from [`ente/nightly`](https://github.com/ente/nightly/releases).
-They pin every shard in that run to the same release asset and SHA-256 digest,
-then run it on a local GitHub Actions emulator. The required smoke workflow is
-offline. A parallel online Auth workflow isolates the recovery-key password
-reset on a fresh emulator, alongside account-authentication and synchronized-
-data lanes. It starts local PostgreSQL and Museum only as backend dependencies.
-Neither workflow builds Ente or uses Maestro Cloud.
+At the start of every run, the Android workflows resolve the newest compatible
+Auth beta or release-candidate APK from
+[`ente/nightly`](https://github.com/ente/nightly/releases). They order builds by
+the APK asset creation time, then pin every shard in that run to the same asset
+ID and SHA-256 digest. The required smoke workflow is offline. A parallel online
+Auth workflow isolates the recovery-key password reset on a fresh emulator,
+alongside account-authentication and synchronized-data lanes. It starts local
+PostgreSQL and Museum only as backend dependencies. Neither workflow builds
+Ente or uses Maestro Cloud.
+
+The tests target published builds, not a temporary Ente branch. UI changes are
+therefore exercised automatically after they reach Ente `main` and appear in a
+compatible nightly APK.
 
 On a pull request, both workflows run only the affected hosted suites; shared
 helpers and workflow changes run their full matrices. Manual runs can target one
@@ -25,9 +30,9 @@ Museum-backed coverage boundaries.
 
 ## Run locally
 
-Always resolve the APK immediately before a local run. Auth beta release tags
-can be reused, so the helper verifies the immutable release-asset digest rather
-than trusting a filename such as `ente-auth-v4.4.25-beta.apk`.
+Always resolve the APK immediately before a local run. Release tags can be
+reused, so the helper downloads the exact resolved asset ID and verifies its
+immutable digest rather than trusting a tag or filename.
 
 ```sh
 apk_path=$(scripts/download-auth-nightly.sh)

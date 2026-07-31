@@ -29,6 +29,8 @@ assert_lanes "account-auth,recovery-password,data-sync" --changed-file maestro/a
 assert_lanes "account-auth,recovery-password,data-sync" --changed-file maestro/auth/online/subflows/new-online-helper.yaml
 assert_lanes "account-auth,recovery-password,data-sync" --changed-file museum/fixtures/manifest.json
 assert_lanes "account-auth,recovery-password,data-sync" --changed-file maestro/auth/online/new-online-flow.yaml
+assert_lanes "account-auth,recovery-password,data-sync" --changed-file scripts/resolve-nightly-apk.sh
+assert_lanes "account-auth,recovery-password,data-sync" --changed-file scripts/test-resolve-nightly-apk.sh
 assert_lanes "" --changed-file README.md
 
 echo "Auth online lane selection tests passed"

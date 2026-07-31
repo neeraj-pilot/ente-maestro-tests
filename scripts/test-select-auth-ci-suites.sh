@@ -40,6 +40,8 @@ assert_suites "tags,trash" --changed-file maestro/auth/offline/tags.yaml --chang
 assert_suites "setup,organization,settings,tags,trash" --changed-file maestro/auth/subflows/add-offline-account.yaml
 assert_suites "setup,organization,settings,tags,trash" --changed-file maestro/auth/subflows/new-shared-helper.yaml
 assert_suites "setup,organization,settings,tags,trash" --changed-file maestro/auth/offline/new-hosted-flow.yaml
+assert_suites "setup,organization,settings,tags,trash" --changed-file scripts/resolve-nightly-apk.sh
+assert_suites "setup,organization,settings,tags,trash" --changed-file scripts/test-resolve-nightly-apk.sh
 assert_suites "setup,organization,settings,tags,trash" --all
 assert_suites "organization" --suite organization
 assert_suites "" --changed-file README.md
