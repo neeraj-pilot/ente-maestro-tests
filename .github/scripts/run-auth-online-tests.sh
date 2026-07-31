@@ -4,6 +4,7 @@ set -euo pipefail
 
 lane=${1:-all}
 attempt=${EMULATOR_ATTEMPT:-1}
+artifacts_dir=${MAESTRO_ARTIFACTS_DIR:-artifacts/maestro}
 : "${FIXTURE_MUTATION_TAG:=FixturePersisted}"
 : "${FIXTURE_LIFECYCLE_ACCOUNT:=lifecycle.fixture@example.org}"
 : "${FIXTURE_LIFECYCLE_EDITED_ACCOUNT:=automation.fixture@example.org}"
@@ -20,9 +21,9 @@ fixture_recovery_email=$(jq --raw-output '.accounts.recovery.email' "$credential
 fixture_recovery_password=$(jq --raw-output '.accounts.recovery.password' "$credentials")
 fixture_recovery_key=$(jq --raw-output '.accounts.recovery.recoveryKey' "$credentials")
 fixture_recovered_password=$(jq --raw-output '.accounts.recovery.recoveredPassword' "$credentials")
-debug_dir="artifacts/maestro/online-debug/attempt-$attempt"
-results_dir="artifacts/maestro/online-results/attempt-$attempt"
-runtime_dir="artifacts/maestro/runtime-health"
+debug_dir="$artifacts_dir/online-debug/attempt-$attempt"
+results_dir="$artifacts_dir/online-results/attempt-$attempt"
+runtime_dir="$artifacts_dir/runtime-health"
 emulator_loss_marker="$runtime_dir/${lane}-attempt-${attempt}-emulator-lost"
 
 mkdir -p "$debug_dir" "$results_dir" "$runtime_dir"
