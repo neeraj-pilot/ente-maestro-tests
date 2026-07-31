@@ -3,6 +3,7 @@
 set -euo pipefail
 
 lane=${1:-all}
+attempt=${EMULATOR_ATTEMPT:-1}
 : "${FIXTURE_MUTATION_TAG:=FixturePersisted}"
 : "${FIXTURE_LIFECYCLE_ACCOUNT:=lifecycle.fixture@example.org}"
 : "${FIXTURE_LIFECYCLE_EDITED_ACCOUNT:=automation.fixture@example.org}"
@@ -19,8 +20,32 @@ fixture_recovery_email=$(jq --raw-output '.accounts.recovery.email' "$credential
 fixture_recovery_password=$(jq --raw-output '.accounts.recovery.password' "$credentials")
 fixture_recovery_key=$(jq --raw-output '.accounts.recovery.recoveryKey' "$credentials")
 fixture_recovered_password=$(jq --raw-output '.accounts.recovery.recoveredPassword' "$credentials")
+debug_dir="artifacts/maestro/online-debug/attempt-$attempt"
+results_dir="artifacts/maestro/online-results/attempt-$attempt"
+runtime_dir="artifacts/maestro/runtime-health"
+emulator_loss_marker="$runtime_dir/${lane}-attempt-${attempt}-emulator-lost"
 
-mkdir -p artifacts/maestro/online-debug artifacts/maestro/online-results
+mkdir -p "$debug_dir" "$results_dir" "$runtime_dir"
+
+record_emulator_loss() {
+    local status=$?
+    local adb_state=""
+    trap - EXIT
+
+    if [[ $status -ne 0 ]]; then
+        adb_state=$(adb get-state 2>/dev/null || true)
+        adb_state=${adb_state//$'\r'/}
+        if [[ "$adb_state" != "device" ]]; then
+            {
+                echo "attempt=$attempt"
+                echo "adb_state=${adb_state:-unavailable}"
+            } > "$emulator_loss_marker"
+        fi
+    fi
+    exit "$status"
+}
+trap record_emulator_loss EXIT
+
 adb shell settings put system screen_off_timeout 2147483647
 adb install -r "$AUTH_APK_PATH"
 
@@ -34,8 +59,8 @@ run_maestro() {
     maestro test --no-ansi \
         "${maestro_device_args[@]}" \
         --format JUNIT \
-        --output "artifacts/maestro/online-results/$result_name.xml" \
-        --debug-output "artifacts/maestro/online-debug/$result_name" \
+        --output "$results_dir/$result_name.xml" \
+        --debug-output "$debug_dir/$result_name" \
         --flatten-debug-output \
         -e APP_ID="$APP_ID" \
         -e ONLINE_ENDPOINT="$ONLINE_ENDPOINT" \

@@ -216,7 +216,8 @@ jobs:
                   echo "ONLINE_PASSWORD=$password" >> "$GITHUB_ENV"
 
             - name: Run ${{ matrix.lane }} tests
-              id: online-tests
+              id: online-tests-first
+              continue-on-error: true
               uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
               with:
                   api-level: 34
@@ -227,7 +228,61 @@ jobs:
                   ram-size: 4096M
                   emulator-options: -no-window -gpu swiftshader -no-snapshot -noaudio -no-boot-anim -no-metrics
                   disable-animations: true
-                  script: .github/scripts/run-auth-online-tests.sh "${{ matrix.lane }}"
+                  script: EMULATOR_ATTEMPT=1 .github/scripts/run-auth-online-tests.sh "${{ matrix.lane }}"
+
+            - name: Classify first test failure
+              id: emulator-loss
+              if: always() && steps.online-tests-first.outcome == 'failure'
+              run: |
+                  marker="artifacts/maestro/runtime-health/${{ matrix.lane }}-attempt-1-emulator-lost"
+                  if [[ -f "$marker" ]]; then
+                      echo "retry=true" >> "$GITHUB_OUTPUT"
+                  else
+                      echo "retry=false" >> "$GITHUB_OUTPUT"
+                  fi
+
+            - name: Restore fixture for emulator retry
+              if: steps.emulator-loss.outputs.retry == 'true'
+              run: ALLOW_AUTH_FIXTURE_RESTORE=1 scripts/fixtures/restore-auth-fixture.sh
+
+            - name: Retry ${{ matrix.lane }} after emulator loss
+              id: online-tests-retry
+              if: steps.emulator-loss.outputs.retry == 'true'
+              continue-on-error: true
+              uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+              with:
+                  api-level: 34
+                  target: default
+                  arch: x86_64
+                  profile: pixel_5
+                  cores: 4
+                  ram-size: 4096M
+                  emulator-options: -no-window -gpu swiftshader -no-snapshot -noaudio -no-boot-anim -no-metrics
+                  disable-animations: true
+                  script: EMULATOR_ATTEMPT=2 .github/scripts/run-auth-online-tests.sh "${{ matrix.lane }}"
+
+            - name: Verify ${{ matrix.lane }} result
+              id: online-tests
+              if: always()
+              env:
+                  FIRST_OUTCOME: ${{ steps.online-tests-first.outcome }}
+                  RETRY_NEEDED: ${{ steps.emulator-loss.outputs.retry }}
+                  RETRY_OUTCOME: ${{ steps.online-tests-retry.outcome }}
+              run: |
+                  if [[ "$FIRST_OUTCOME" == "success" ]]; then
+                      echo "attempts=1" >> "$GITHUB_OUTPUT"
+                      exit 0
+                  fi
+                  if [[ "$RETRY_NEEDED" != "true" ]]; then
+                      echo "attempts=1" >> "$GITHUB_OUTPUT"
+                      echo "Tests failed while the emulator remained reachable; not retrying" >&2
+                      exit 1
+                  fi
+                  echo "attempts=2" >> "$GITHUB_OUTPUT"
+                  if [[ "$RETRY_OUTCOME" != "success" ]]; then
+                      echo "The single emulator-loss retry failed" >&2
+                      exit 1
+                  fi
 
             - name: Summarize ${{ matrix.lane }} tests
               if: always() && steps.online-tests.outcome != 'skipped'
@@ -253,6 +308,7 @@ jobs:
                       echo "- Android API: \`34\`"
                       echo "- Maestro: \`$MAESTRO_VERSION\`"
                       echo "- Backend: checked-in public Museum fixture v2"
+                      echo "- Emulator attempts: \`${{ steps.online-tests.outputs.attempts }}\`"
                       echo
                       echo "#### $coverage_label"
                       echo
@@ -279,7 +335,7 @@ jobs:
               uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
               with:
                   name: auth-online-${{ matrix.lane }}-results
-                  path: artifacts/maestro/online-results/*.xml
+                  path: artifacts/maestro/online-results
                   if-no-files-found: warn
                   retention-days: 7
 
