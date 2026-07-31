@@ -1,0 +1,73 @@
+appId: ${APP_ID}
+name: Auth mutates and trashes a synchronized code
+tags: [auth, android, online, fixture, sync, lifecycle]
+---
+- tapOn: "All"
+- runFlow:
+    file: subflows/add-online-code.yaml
+    env:
+      ISSUER: Google
+      SECRET: JBSWY3DPEHPK3PXP
+      ACCOUNT: ${FIXTURE_LIFECYCLE_ACCOUNT}
+- longPressOn: "(?s)^Google.*${FIXTURE_LIFECYCLE_ACCOUNT}.*"
+- tapOn: "(?s)^Edit\nEdit$"
+- extendedWaitUntil:
+    visible:
+      id: auth_manual_code_page
+    timeout: 10000
+- tapOn:
+    id: auth_manual_issuer
+    point: "50%,70%"
+- tapOn:
+    id: auth_manual_issuer
+    point: "95%,50%"
+- tapOn:
+    id: auth_manual_issuer
+    point: "50%,70%"
+- inputText: Slack
+- tapOn:
+    id: auth_manual_account
+    point: "50%,70%"
+- tapOn:
+    id: auth_manual_account
+    point: "95%,50%"
+- tapOn:
+    id: auth_manual_account
+    point: "50%,70%"
+- inputText: ${FIXTURE_LIFECYCLE_EDITED_ACCOUNT}
+- hideKeyboard
+- tapOn:
+    id: auth_manual_notes
+    point: "50%,70%"
+- inputText: "CI lifecycle fixture. Safe to mutate and delete."
+- assertVisible: "CI lifecycle fixture. Safe to mutate and delete."
+- scrollUntilVisible:
+    element:
+      id: auth_manual_save
+    direction: DOWN
+    visibilityPercentage: 60
+- tapOn:
+    id: auth_manual_save
+- runFlow:
+    when:
+      notVisible: "(?s)^Slack.*${FIXTURE_LIFECYCLE_EDITED_ACCOUNT}.*"
+    commands:
+      - tapOn: "Search"
+- extendedWaitUntil:
+    visible: "(?s)^Slack.*${FIXTURE_LIFECYCLE_EDITED_ACCOUNT}.*"
+    timeout: 10000
+- assertNotVisible: ".*${FIXTURE_LIFECYCLE_ACCOUNT}.*"
+- longPressOn: "(?s)^Slack.*${FIXTURE_LIFECYCLE_EDITED_ACCOUNT}.*"
+- tapOn: "(?s)^Add tag.*"
+- tapOn: "Add new"
+- assertVisible: "Create new tag"
+- inputText: ${FIXTURE_LIFECYCLE_TAG}
+- tapOn: "Create"
+- tapOn: "Done"
+- longPressOn: "(?s)^Slack.*${FIXTURE_LIFECYCLE_EDITED_ACCOUNT}.*"
+- tapOn: "(?s)^Pin.*"
+- longPressOn: "(?s)^Slack.*${FIXTURE_LIFECYCLE_EDITED_ACCOUNT}.*"
+- tapOn: "(?s)^Trash.*"
+- tapOn: "^Trash$"
+- tapOn: "^Trash$"
+- assertVisible: "(?s)^Slack.*${FIXTURE_LIFECYCLE_EDITED_ACCOUNT}.*"

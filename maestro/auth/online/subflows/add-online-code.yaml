@@ -43,7 +43,6 @@ appId: ${APP_ID}
           id: auth_manual_account
           point: "50%,70%"
       - inputText: ${ACCOUNT}
-- hideKeyboard
 - runFlow:
     when:
       notVisible: "Save"
