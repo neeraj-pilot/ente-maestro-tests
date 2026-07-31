@@ -23,6 +23,7 @@ on:
             - "scripts/fixtures/**"
             - "scripts/resolve-nightly-apk.sh"
             - "scripts/select-auth-online-lanes.sh"
+            - "scripts/test-hosted-flow-registration.sh"
             - "scripts/test-resolve-nightly-apk.sh"
             - "scripts/test-select-auth-online-lanes.sh"
     push:
@@ -36,6 +37,7 @@ on:
             - "scripts/fixtures/**"
             - "scripts/resolve-nightly-apk.sh"
             - "scripts/select-auth-online-lanes.sh"
+            - "scripts/test-hosted-flow-registration.sh"
             - "scripts/test-resolve-nightly-apk.sh"
             - "scripts/test-select-auth-online-lanes.sh"
 
@@ -100,8 +102,11 @@ jobs:
                   fi
                   echo "lanes=$lanes" >> "$GITHUB_OUTPUT"
 
-            - name: Validate nightly resolution
-              run: scripts/test-resolve-nightly-apk.sh
+            - name: Validate hosted test configuration
+              run: |
+                  scripts/test-select-auth-online-lanes.sh
+                  scripts/test-hosted-flow-registration.sh
+                  scripts/test-resolve-nightly-apk.sh
 
             - name: Resolve latest Auth nightly
               id: nightly

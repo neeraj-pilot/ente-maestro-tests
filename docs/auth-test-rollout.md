@@ -64,9 +64,9 @@ hide product state or silently broaden the selected CI matrix.
    label; use coordinates only for Android system UI that exposes neither.
 4. Wait for a meaningful ready state such as a code item, sheet title, or
    selected tag. Do not add blanket retries or arbitrary delays.
-5. Add the flow to the correct selector mapping. A new hosted flow must choose
-   a lane or shard explicitly; unknown hosted paths deliberately trigger the
-   full relevant matrix.
+5. Add the flow to a hosted shard or online runner. Registration validation
+   fails if a new flow is not reachable from CI; selector changes still trigger
+   the full relevant matrix until the flow has a narrower mapping.
 6. Keep encrypted data and secrets out of Maestro debug artifacts. Online
    account/recovery failures retain only a secret-free runtime snapshot.
 

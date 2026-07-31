@@ -9,6 +9,7 @@ on:
             - "maestro/fixtures/**"
             - "scripts/resolve-nightly-apk.sh"
             - "scripts/select-auth-ci-suites.sh"
+            - "scripts/test-hosted-flow-registration.sh"
             - "scripts/test-resolve-nightly-apk.sh"
             - "scripts/test-select-auth-ci-suites.sh"
     pull_request:
@@ -18,6 +19,7 @@ on:
             - "maestro/fixtures/**"
             - "scripts/resolve-nightly-apk.sh"
             - "scripts/select-auth-ci-suites.sh"
+            - "scripts/test-hosted-flow-registration.sh"
             - "scripts/test-resolve-nightly-apk.sh"
             - "scripts/test-select-auth-ci-suites.sh"
     workflow_dispatch:
@@ -69,8 +71,10 @@ jobs:
                   fetch-depth: 0
                   persist-credentials: false
 
-            - name: Validate suite selection
-              run: scripts/test-select-auth-ci-suites.sh
+            - name: Validate hosted test configuration
+              run: |
+                  scripts/test-select-auth-ci-suites.sh
+                  scripts/test-hosted-flow-registration.sh
 
             - name: Validate nightly resolution
               run: scripts/test-resolve-nightly-apk.sh
