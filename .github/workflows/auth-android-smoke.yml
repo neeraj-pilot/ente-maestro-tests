@@ -150,9 +150,18 @@ jobs:
                   echo "Testing $release_tag asset $AUTH_APK_ASSET_ID ($AUTH_APK_NAME, created $AUTH_APK_CREATED_AT, $AUTH_APK_SHA256)"
 
                   apk_path="$AUTH_APK_DIR/$AUTH_APK_NAME"
-                  gh api \
-                      -H 'Accept: application/octet-stream' \
-                      "repos/$AUTH_SOURCE_REPOSITORY/releases/assets/$AUTH_APK_ASSET_ID" > "$apk_path"
+                  for attempt in 1 2 3; do
+                      if gh api \
+                          -H 'Accept: application/octet-stream' \
+                          "repos/$AUTH_SOURCE_REPOSITORY/releases/assets/$AUTH_APK_ASSET_ID" > "$apk_path"; then
+                          break
+                      fi
+                      if [[ "$attempt" -eq 3 ]]; then
+                          echo "Failed to download the resolved Auth APK" >&2
+                          exit 1
+                      fi
+                      sleep $((attempt * 2))
+                  done
 
                   if [[ ! -f "$apk_path" ]]; then
                       echo "Auth APK was not downloaded" >&2
@@ -177,6 +186,7 @@ jobs:
             - name: Install pinned Maestro
               run: |
                   curl --fail --location --silent --show-error \
+                      --retry 3 --retry-all-errors --retry-delay 2 \
                       "https://github.com/mobile-dev-inc/maestro/releases/download/cli-$MAESTRO_VERSION/maestro.zip" \
                       --output "$RUNNER_TEMP/maestro.zip"
                   echo "$MAESTRO_SHA256  $RUNNER_TEMP/maestro.zip" | sha256sum --check -
@@ -202,10 +212,11 @@ jobs:
               uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
               with:
                   api-level: 34
+                  emulator-build: 15507667 # 36.6.11 stable
                   target: default
                   arch: x86_64
                   profile: pixel_5
-                  emulator-options: -no-window -gpu swiftshader -no-snapshot -noaudio -no-boot-anim
+                  emulator-options: -no-window -gpu software -feature -Vulkan -no-snapshot -noaudio -no-boot-anim
                   disable-animations: true
                   script: |
                       mkdir -p artifacts/maestro/debug
