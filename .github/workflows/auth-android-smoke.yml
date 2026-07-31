@@ -205,6 +205,7 @@ jobs:
                   target: default
                   arch: x86_64
                   profile: pixel_5
+                  emulator-options: -no-window -gpu swiftshader -no-snapshot -noaudio -no-boot-anim
                   disable-animations: true
                   script: |
                       mkdir -p artifacts/maestro/debug
