@@ -4,6 +4,9 @@ set -euo pipefail
 
 lane=${1:-all}
 : "${FIXTURE_MUTATION_TAG:=FixturePersisted}"
+: "${FIXTURE_LIFECYCLE_ACCOUNT:=lifecycle.fixture@example.org}"
+: "${FIXTURE_LIFECYCLE_EDITED_ACCOUNT:=automation.fixture@example.org}"
+: "${FIXTURE_LIFECYCLE_TAG:=Lifecycle}"
 : "${ONLINE_CODE_ACCOUNT:=first-key-${GITHUB_RUN_ID:-local}-${GITHUB_RUN_ATTEMPT:-1}@example.org}"
 credentials=museum/fixtures/public-test-credentials.json
 fixture_basic_email=$(jq --raw-output '.accounts.basic.email' "$credentials")
@@ -117,6 +120,52 @@ wait_for_bulk_mutation() {
     return 1
 }
 
+wait_for_entity_count_and_quiet() {
+    local user_id=$1
+    local previous_marker=$2
+    local expected_count=$3
+    local count last_marker="" marker stable_polls=0 state
+
+    for _ in {1..90}; do
+        state=$(query_fixture_db \
+            "SELECT COUNT(*), MAX(updated_at) FROM authenticator_entity WHERE user_id = $user_id;")
+        IFS='|' read -r count marker <<< "$state"
+        if [[ "$count" == "$expected_count" && "$marker" =~ ^[0-9]+$ && "$marker" -gt "$previous_marker" ]]; then
+            if [[ "$marker" == "$last_marker" ]]; then
+                stable_polls=$((stable_polls + 1))
+            else
+                stable_polls=0
+            fi
+            if [[ $stable_polls -ge 4 ]]; then
+                return
+            fi
+        else
+            stable_polls=0
+        fi
+        last_marker=$marker
+        sleep 1
+    done
+    echo "Timed out waiting for $expected_count quiet Auth entities for fixture user $user_id; last state: $state" >&2
+    return 1
+}
+
+wait_for_deleted_entity_count() {
+    local user_id=$1
+    local expected_count=$2
+    local deleted_count
+
+    for _ in {1..60}; do
+        deleted_count=$(query_fixture_db \
+            "SELECT COUNT(*) FROM authenticator_entity WHERE user_id = $user_id AND is_deleted;")
+        if [[ "$deleted_count" == "$expected_count" ]]; then
+            return
+        fi
+        sleep 1
+    done
+    echo "Timed out waiting for $expected_count deleted Auth entity for fixture user $user_id; observed: $deleted_count" >&2
+    return 1
+}
+
 run_account_auth() {
     local fixture_totp_code previous_max_user_id
 
@@ -161,7 +210,7 @@ run_recovery_password() {
 }
 
 run_data_sync() {
-    local mutation_marker
+    local lifecycle_marker mutation_marker restore_marker
 
     prepare_basic_fixture_app
     run_maestro prepared-password \
@@ -175,12 +224,35 @@ run_data_sync() {
         -e FIXTURE_MUTATION_TAG="$FIXTURE_MUTATION_TAG" \
         maestro/auth/online/prepared-bulk-mutation-start.yaml
     wait_for_bulk_mutation "$fixture_basic_user_id" "$mutation_marker"
+
+    lifecycle_marker=$(query_fixture_db \
+        "SELECT MAX(updated_at) FROM authenticator_entity WHERE user_id = $fixture_basic_user_id;")
+    run_maestro prepared-entity-lifecycle-start \
+        -e FIXTURE_LIFECYCLE_ACCOUNT="$FIXTURE_LIFECYCLE_ACCOUNT" \
+        -e FIXTURE_LIFECYCLE_EDITED_ACCOUNT="$FIXTURE_LIFECYCLE_EDITED_ACCOUNT" \
+        -e FIXTURE_LIFECYCLE_TAG="$FIXTURE_LIFECYCLE_TAG" \
+        maestro/auth/online/prepared-entity-lifecycle-start.yaml
+    wait_for_entity_count_and_quiet "$fixture_basic_user_id" "$lifecycle_marker" 4
+
     prepare_basic_fixture_app
     run_maestro prepared-bulk-mutation-complete \
         -e FIXTURE_BASIC_EMAIL="$fixture_basic_email" \
         -e FIXTURE_BASIC_PASSWORD="$fixture_basic_password" \
         -e FIXTURE_MUTATION_TAG="$FIXTURE_MUTATION_TAG" \
         maestro/auth/online/prepared-bulk-mutation-complete.yaml
+
+    restore_marker=$(query_fixture_db \
+        "SELECT MAX(updated_at) FROM authenticator_entity WHERE user_id = $fixture_basic_user_id;")
+    run_maestro prepared-entity-lifecycle-restore \
+        -e FIXTURE_LIFECYCLE_EDITED_ACCOUNT="$FIXTURE_LIFECYCLE_EDITED_ACCOUNT" \
+        -e FIXTURE_LIFECYCLE_TAG="$FIXTURE_LIFECYCLE_TAG" \
+        maestro/auth/online/prepared-entity-lifecycle-restore.yaml
+    wait_for_entity_count_and_quiet "$fixture_basic_user_id" "$restore_marker" 4
+
+    run_maestro prepared-entity-lifecycle-delete \
+        -e FIXTURE_LIFECYCLE_EDITED_ACCOUNT="$FIXTURE_LIFECYCLE_EDITED_ACCOUNT" \
+        maestro/auth/online/prepared-entity-lifecycle-delete.yaml
+    wait_for_deleted_entity_count "$fixture_basic_user_id" 1
 }
 
 case "$lane" in

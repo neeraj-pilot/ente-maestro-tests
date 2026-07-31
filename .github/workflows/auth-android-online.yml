@@ -252,7 +252,7 @@ jobs:
                               echo "- Recovery-key password reset and synchronized-code preservation"
                               ;;
                           data-sync)
-                              echo "- Prepared password login, active and trashed synchronized codes, account/security settings, and a persisted two-code bulk tag across a cold login"
+                              echo "- Prepared password login, active and trashed synchronized codes, account/security settings, a persisted two-code bulk tag, and synchronized edit/tag/pin/trash/restore/delete lifecycle coverage across a cold login"
                               ;;
                       esac
                       echo
