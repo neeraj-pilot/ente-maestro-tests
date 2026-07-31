@@ -122,7 +122,7 @@ for suite in "${suite_order[@]}"; do
         organization)
             name="Offline lifecycle and organization"
             flows="maestro/auth/offline/code-lifecycle.yaml maestro/auth/offline/home-organization.yaml maestro/auth/offline/bulk-pin-edit.yaml"
-            coverage="code details, bulk pinning, issuer/account search, empty results, and sorting"
+            coverage="offline code edit and cold-relaunch persistence, bulk pinning, issuer/account search, empty results, and sorting"
             ;;
         settings)
             name="Offline settings"
