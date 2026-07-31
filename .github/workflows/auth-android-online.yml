@@ -219,13 +219,14 @@ jobs:
               id: online-tests
               uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
               with:
-                  api-level: 33
-                  emulator-build: 15507667 # 36.6.11 stable
+                  api-level: 34
+                  emulator-build: 12836668 # 35.3.11 stable
                   target: default
                   arch: x86_64
                   profile: pixel_5
                   cores: 4
-                  emulator-options: -no-window -gpu software -feature -Vulkan -no-snapshot -noaudio -no-boot-anim -memory 6144
+                  ram-size: 6144M
+                  emulator-options: -no-window -gpu swiftshader_indirect -feature -Vulkan -no-snapshot -noaudio -no-boot-anim -no-metrics
                   disable-animations: true
                   script: .github/scripts/run-auth-online-tests.sh "${{ matrix.lane }}"
 
@@ -250,7 +251,7 @@ jobs:
                       echo "- Asset created: \`$AUTH_APK_CREATED_AT\`"
                       echo "- Asset ID: \`$AUTH_APK_ASSET_ID\`"
                       echo "- Auth APK SHA-256: \`$AUTH_APK_SHA256\`"
-                      echo "- Android API: \`33\`"
+                      echo "- Android API: \`34\`"
                       echo "- Maestro: \`$MAESTRO_VERSION\`"
                       echo "- Backend: checked-in public Museum fixture v2"
                       echo
