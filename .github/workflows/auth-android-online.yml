@@ -58,7 +58,7 @@ env:
     AUTH_ANDROID_API: 34
     AUTH_ANDROID_TARGET: default
     AUTH_EMULATOR_BUILD: 12414864
-    AUTH_EMULATOR_OPTIONS: -no-window -gpu swiftshader_indirect -feature -Vulkan -no-snapshot -noaudio -no-boot-anim -memory 4096
+    AUTH_EMULATOR_OPTIONS: -no-window -gpu swiftshader_indirect -feature -Vulkan -no-metrics -no-snapshot -noaudio -no-boot-anim -memory 4096
     ONLINE_ENDPOINT: http://10.0.2.2:8080
     ONLINE_OTT: 123456
 
