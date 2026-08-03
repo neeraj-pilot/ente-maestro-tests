@@ -119,6 +119,18 @@ prepare_fixture_app() {
 
 query_fixture_db() {
     local query=$1
+    if [[ ${AUTH_FIXTURE_DB_MODE:-compose} == native ]]; then
+        "$AUTH_POSTGRES_BIN/psql" \
+            --host=127.0.0.1 \
+            --port="$AUTH_POSTGRES_PORT" \
+            --tuples-only \
+            --no-align \
+            --field-separator='|' \
+            --username=ente_auth \
+            --dbname=ente_auth_test \
+            --command="$query"
+        return
+    fi
     docker compose \
         --project-name "$AUTH_FIXTURE_COMPOSE_PROJECT" \
         --file museum/compose.yaml \
