@@ -55,8 +55,8 @@ env:
     APP_ID: io.ente.auth.independent
     AUTH_APK_DIR: ${{ github.workspace }}/artifacts/auth
     MAESTRO_CLI_NO_ANALYTICS: 1
-    MAESTRO_VERSION: 2.6.1
-    MAESTRO_SHA256: 3440825f514f537c6a96bcf5de995780c2a4a7f83a43208fdc95d4f1fecfad3b
+    MAESTRO_VERSION: 2.8.0
+    MAESTRO_SHA256: b3e561161904fb391875ca5834d5b22cf0b01c052dd1b408ad83e30d8f8951b3
     ONLINE_ENDPOINT: http://10.0.2.2:8080
     ONLINE_OTT: 123456
 
