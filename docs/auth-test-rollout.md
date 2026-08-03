@@ -91,7 +91,7 @@ matrix. Every merge to `main` runs all five offline shards and all four online
 lanes. Account-auth and data-sync each use one emulator session. Recovery uses
 two fresh sessions, and the synchronized entity lifecycle uses three, so a
 single long-lived emulator transport cannot invalidate an otherwise healthy
-stateful sequence. Each online emulator receives 6 GiB of guest memory for
+stateful sequence. Each online emulator receives 4 GiB of guest memory for
 Argon2-heavy account operations.
 
 The online fixture uses local PostgreSQL and Museum only. Do not add object

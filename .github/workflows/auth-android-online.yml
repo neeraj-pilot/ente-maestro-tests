@@ -56,7 +56,7 @@ env:
     MAESTRO_VERSION: 2.8.0
     MAESTRO_SHA256: b3e561161904fb391875ca5834d5b22cf0b01c052dd1b408ad83e30d8f8951b3
     AUTH_EMULATOR_BUILD: 15507667
-    AUTH_EMULATOR_OPTIONS: -no-window -gpu software -feature -Vulkan -no-snapshot -noaudio -no-boot-anim -memory 6144
+    AUTH_EMULATOR_OPTIONS: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -memory 4096
     ONLINE_ENDPOINT: http://10.0.2.2:8080
     ONLINE_OTT: 123456
 
