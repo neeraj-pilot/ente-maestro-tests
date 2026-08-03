@@ -73,7 +73,7 @@ if [[ ${#changed_files[@]} -gt 0 ]]; then
                 add_lane data-sync
                 add_lane entity-lifecycle
                 ;;
-            maestro/auth/online/prepared-entity-lifecycle-create.yaml|maestro/auth/online/prepared-entity-lifecycle-delete.yaml|maestro/auth/online/prepared-entity-lifecycle-mutate.yaml|maestro/auth/online/prepared-entity-lifecycle-restore.yaml)
+            maestro/auth/online/fixtures/lifecycle-import.txt|maestro/auth/online/prepared-entity-lifecycle-create.yaml|maestro/auth/online/prepared-entity-lifecycle-delete.yaml|maestro/auth/online/prepared-entity-lifecycle-mutate.yaml|maestro/auth/online/prepared-entity-lifecycle-restore.yaml)
                 add_lane entity-lifecycle
                 ;;
             .github/scripts/run-auth-online-tests.sh|.github/workflows/auth-android-online.yml|maestro/auth/online/subflows/assert-synced-code.yaml|maestro/auth/online/subflows/dismiss-code-guidance.yaml|maestro/auth/online/subflows/login-online-account.yaml|museum/*|scripts/fixtures/*|scripts/resolve-nightly-apk.sh|scripts/select-auth-online-lanes.sh|scripts/test-hosted-flow-registration.sh|scripts/test-resolve-nightly-apk.sh|scripts/test-select-auth-online-lanes.sh)

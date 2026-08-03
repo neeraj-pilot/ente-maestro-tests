@@ -292,8 +292,11 @@ run_entity_lifecycle_create() {
 
     lifecycle_marker=$(query_fixture_db \
         "SELECT MAX(updated_at) FROM authenticator_entity WHERE user_id = $fixture_basic_user_id;")
+    adb shell mkdir -p /sdcard/Download
+    adb push \
+        maestro/auth/online/fixtures/lifecycle-import.txt \
+        /sdcard/Download/auth_lifecycle_import.txt
     run_maestro prepared-entity-lifecycle-create \
-        -e FIXTURE_LIFECYCLE_ACCOUNT="$FIXTURE_LIFECYCLE_ACCOUNT" \
         maestro/auth/online/prepared-entity-lifecycle-create.yaml
     wait_for_entity_count_and_quiet "$fixture_basic_user_id" "$lifecycle_marker" 4
 }

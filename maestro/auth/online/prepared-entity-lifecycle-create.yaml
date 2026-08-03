@@ -2,10 +2,38 @@ appId: ${APP_ID}
 name: Auth creates a synchronized lifecycle code
 tags: [auth, android, online, fixture, sync, lifecycle]
 ---
-- tapOn: "All"
+- tapOn: "Settings"
+- tapOn: "Data"
+- extendedWaitUntil:
+    visible: "Import codes"
+    timeout: 10000
+- tapOn: "Import codes"
+- tapOn:
+    id: auth_import_plainText
+- tapOn: "Select file"
+- tapOn: "Show roots"
+- tapOn:
+    text: "Downloads"
+    index: 0
+- tapOn: "Search"
+- inputText: "auth_lifecycle_import.txt"
+- extendedWaitUntil:
+    visible: "^(?!Preview the file ).*auth_lifecycle_import.txt.*"
+    timeout: 15000
+- tapOn:
+    id: "com.google.android.documentsui:id/item_root"
+    index: 1
 - runFlow:
-    file: subflows/add-online-code.yaml
-    env:
-      ISSUER: Google
-      SECRET: JBSWY3DPEHPK3PXP
-      ACCOUNT: ${FIXTURE_LIFECYCLE_ACCOUNT}
+    when:
+      notVisible:
+        id: auth_import_success
+    commands:
+      - tapOn:
+          id: "com.google.android.documentsui:id/item_root"
+          index: 1
+- extendedWaitUntil:
+    visible:
+      id: auth_import_success
+    timeout: 30000
+- assertVisible: ".*imported 1 code.*"
+- tapOn: "Ok"
