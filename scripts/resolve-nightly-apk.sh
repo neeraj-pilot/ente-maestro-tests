@@ -81,7 +81,7 @@ else
         exit 2
     fi
     nightly_releases=$(gh api "repos/ente/nightly/releases?per_page=100" --paginate | jq -sc 'add')
-    stable_releases=$(gh api "repos/ente/ente/releases?per_page=100" --paginate | jq -sc 'add')
+    stable_releases=""
 fi
 
 resolve_from_releases() {
@@ -122,6 +122,9 @@ resolve_from_releases() {
 
 resolved=$(resolve_from_releases "$nightly_releases" "ente/nightly" "$nightly_tag_pattern" prerelease)
 if [[ -z "$resolved" ]]; then
+    if [[ -z "$releases_file" ]]; then
+        stable_releases=$(gh api "repos/ente/ente/releases?per_page=100" --paginate | jq -sc 'add')
+    fi
     resolved=$(resolve_from_releases "$stable_releases" "ente/ente" "$stable_tag_pattern" stable)
 fi
 
