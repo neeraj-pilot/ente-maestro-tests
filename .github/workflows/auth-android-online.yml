@@ -414,6 +414,7 @@ jobs:
                   } > "artifacts/maestro/runtime-health/${{ matrix.lane }}.txt"
                   sudo dmesg --ctime > artifacts/maestro/runtime-health/kernel.log 2>&1 || true
                   sudo coredumpctl --no-pager list > artifacts/maestro/runtime-health/coredumps.txt 2>&1 || true
+                  sudo coredumpctl --no-pager info > artifacts/maestro/runtime-health/coredump-info.txt 2>&1 || true
                   find /tmp/android-runner -maxdepth 1 -type d -name 'emu-crash-*.db' \
                       -exec cp -a '{}' artifacts/maestro/runtime-health/ \; 2>/dev/null || true
 
