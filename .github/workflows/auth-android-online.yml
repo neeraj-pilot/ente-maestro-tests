@@ -206,12 +206,6 @@ jobs:
             - name: Start local Auth backend
               run: ALLOW_AUTH_FIXTURE_RESTORE=1 scripts/fixtures/restore-auth-fixture.sh
 
-            - name: Enable KVM
-              run: |
-                  echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
-                  sudo udevadm control --reload-rules
-                  sudo udevadm trigger --name-match=kvm
-
             - name: Prepare private test password
               run: |
                   password="AuthCi-$(openssl rand -hex 10)!"
@@ -244,6 +238,7 @@ jobs:
                   profile: pixel_5
                   cores: 2
                   emulator-options: ${{ env.AUTH_EMULATOR_OPTIONS }}
+                  disable-linux-hw-accel: true
                   disable-animations: true
                   script: .github/scripts/run-auth-online-tests.sh "${{ matrix.lane }}"
 
@@ -257,6 +252,7 @@ jobs:
                   profile: pixel_5
                   cores: 2
                   emulator-options: ${{ env.AUTH_EMULATOR_OPTIONS }}
+                  disable-linux-hw-accel: true
                   disable-animations: true
                   script: .github/scripts/run-auth-online-tests.sh recovery-reset
 
@@ -270,6 +266,7 @@ jobs:
                   profile: pixel_5
                   cores: 2
                   emulator-options: ${{ env.AUTH_EMULATOR_OPTIONS }}
+                  disable-linux-hw-accel: true
                   disable-animations: true
                   script: .github/scripts/run-auth-online-tests.sh recovery-verification
 
