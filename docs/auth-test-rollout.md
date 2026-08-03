@@ -13,7 +13,7 @@ stale quickly and belong in GitHub Actions or the relevant product issue.
 | Layer | Purpose | Runs in hosted CI |
 | --- | --- | --- |
 | Offline core | Public offline setup, organization, settings, tags, and trash behavior. | Yes, in five selected Android shards. |
-| Online fixture | Auth login, TOTP challenge, signup, recovery reset, synchronized codes, and persisted mutations against local Museum. | Yes, in account-auth, recovery-password, and data-sync lanes. |
+| Online fixture | Auth login, TOTP challenge, signup, recovery reset, synchronized codes, and persisted mutations against local Museum. | Yes, in account-auth, recovery-password, data-sync, and entity-lifecycle lanes. |
 | Platform local | Android file pickers, encrypted local backups, and other device-specific behavior. | No; validate on local ARM64 emulators or a device. |
 | Product demos | Curated, paced presentations assembled from proven behavior flows. | No; keep separate from regression tests. |
 
@@ -44,7 +44,7 @@ diagnostics.
 | `maestro/auth/offline/` | Public offline behavior flows. |
 | `maestro/auth/online/` | Museum-backed login, recovery, sync, and mutation flows. |
 | `maestro/auth/subflows/` | Small cross-flow public UI setup helpers. |
-| `maestro/auth/online/subflows/` | Online-only login, endpoint, and synchronized-code helpers. |
+| `maestro/auth/online/subflows/` | Online-only login and synchronized-code helpers. |
 | `maestro/fixtures/` | Public files used by local platform flows. |
 | `museum/fixtures/` | Versioned public Museum fixture and its manifest. |
 | `scripts/select-auth-*.sh` | Maps a changed path to the smallest safe hosted matrix. |
@@ -84,9 +84,12 @@ scripts/run-auth-android-local.sh --apk "$apk_path" --suite tags
 
 Pull requests run only the affected offline shards or online lanes. Changes to
 shared helpers, fixtures, selectors, or workflows run the full relevant
-matrix. Every merge to `main` runs all five offline shards and all three online
-lanes. The online lanes are isolated because recovery performs several Argon2
-derivations; each online emulator receives 4 GiB of guest memory.
+matrix. Every merge to `main` runs all five offline shards and all four online
+lanes. Account-auth and data-sync each use one emulator session. Recovery uses
+two fresh sessions, and the synchronized entity lifecycle uses three, so a
+single long-lived emulator transport cannot invalidate an otherwise healthy
+stateful sequence. Each online emulator receives 6 GiB of guest memory for
+Argon2-heavy account operations.
 
 The online fixture uses local PostgreSQL and Museum only. Do not add object
 storage, a full Ente checkout, or external services unless the covered behavior

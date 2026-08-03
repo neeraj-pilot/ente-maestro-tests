@@ -1,8 +1,6 @@
 appId: ${APP_ID}
 ---
 - assertVisible: "Log in"
-- runFlow:
-    file: configure-online-test-endpoint.yaml
 - tapOn: "Log in"
 - waitForAnimationToEnd
 - inputText: ${LOGIN_EMAIL}

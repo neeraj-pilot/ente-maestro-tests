@@ -1,14 +1,11 @@
 appId: ${APP_ID}
-name: Auth mutates and trashes a synchronized code
+name: Auth edits and trashes a synchronized lifecycle code
 tags: [auth, android, online, fixture, sync, lifecycle]
 ---
 - tapOn: "All"
-- runFlow:
-    file: subflows/add-online-code.yaml
-    env:
-      ISSUER: Google
-      SECRET: JBSWY3DPEHPK3PXP
-      ACCOUNT: ${FIXTURE_LIFECYCLE_ACCOUNT}
+- extendedWaitUntil:
+    visible: "(?s)^Google.*${FIXTURE_LIFECYCLE_ACCOUNT}.*"
+    timeout: 30000
 - longPressOn: "(?s)^Google.*${FIXTURE_LIFECYCLE_ACCOUNT}.*"
 - tapOn: "(?s)^Edit\nEdit$"
 - extendedWaitUntil:

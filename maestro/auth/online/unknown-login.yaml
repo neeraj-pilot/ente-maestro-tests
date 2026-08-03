@@ -4,8 +4,6 @@ tags: [auth, android, online, login]
 ---
 - launchApp
 - assertVisible: "Log in"
-- runFlow:
-    file: subflows/configure-online-test-endpoint.yaml
 - tapOn: "Log in"
 - waitForAnimationToEnd
 - inputText: ${MISSING_EMAIL}

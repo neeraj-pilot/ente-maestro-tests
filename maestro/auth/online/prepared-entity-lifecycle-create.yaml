@@ -1,0 +1,11 @@
+appId: ${APP_ID}
+name: Auth creates a synchronized lifecycle code
+tags: [auth, android, online, fixture, sync, lifecycle]
+---
+- tapOn: "All"
+- runFlow:
+    file: subflows/add-online-code.yaml
+    env:
+      ISSUER: Google
+      SECRET: JBSWY3DPEHPK3PXP
+      ACCOUNT: ${FIXTURE_LIFECYCLE_ACCOUNT}
