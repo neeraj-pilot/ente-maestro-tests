@@ -5,12 +5,12 @@ appId: ${APP_ID}
 - waitForAnimationToEnd
 - inputText: ${LOGIN_EMAIL}
 - assertVisible: ${LOGIN_EMAIL}
-- tapOn: "done"
+- pressKey: enter
 - extendedWaitUntil:
     visible: ".*Enter the password for.*"
     timeout: 30000
 - inputText: ${LOGIN_PASSWORD}
-- tapOn: "done"
+- pressKey: enter
 - extendedWaitUntil:
     visible: "Settings"
     timeout: 120000

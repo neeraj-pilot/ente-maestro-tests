@@ -8,7 +8,7 @@ tags: [auth, android, online, login]
 - waitForAnimationToEnd
 - inputText: ${MISSING_EMAIL}
 - assertVisible: ${MISSING_EMAIL}
-- tapOn: "done"
+- pressKey: enter
 - extendedWaitUntil:
     visible: "Email not registered."
     timeout: 30000
