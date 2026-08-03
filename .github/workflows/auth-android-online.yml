@@ -321,7 +321,7 @@ jobs:
                               echo "- Prepared password login, active and trashed synchronized codes, account/security settings, and a persisted two-code bulk tag across a cold login"
                               ;;
                           entity-lifecycle)
-                              echo "- Synchronized edit, tag, pin, trash, cold-login reload, note verification, restore, and permanent deletion"
+                              echo "- Synchronized import, edit, tag, pin, trash, cold-start reload, note verification, restore, and permanent deletion"
                               ;;
                       esac
                       echo

@@ -1,7 +1,7 @@
 # Auth Maestro test guide
 
-This repository verifies published Ente Auth Android beta and release-candidate
-APKs. It is not an Ente checkout and does not build the app.
+This repository verifies compatible published Ente Auth Android APKs. It is not
+an Ente checkout and does not build the app.
 
 The [README coverage table](../README.md#latest-verified-coverage) is the
 live record of the latest clean `main` run. Keep historical run links, one-off
@@ -14,7 +14,7 @@ stale quickly and belong in GitHub Actions or the relevant product issue.
 | --- | --- | --- |
 | Offline core | Public offline setup, organization, settings, tags, and trash behavior. | Yes, in five selected Android shards. |
 | Online fixture | Auth login, TOTP challenge, signup, recovery reset, synchronized codes, and persisted mutations against local Museum. | Yes, in account-auth, recovery-password, data-sync, and entity-lifecycle lanes. |
-| Platform local | Android file pickers, encrypted local backups, and other device-specific behavior. | No; validate on local ARM64 emulators or a device. |
+| Platform local | Google Authenticator migration imports, encrypted local backups, and other device-specific behavior. | No; validate on local ARM64 emulators or a device. |
 | Product demos | Curated, paced presentations assembled from proven behavior flows. | No; keep separate from regression tests. |
 
 ## Published build and fixture contract
@@ -88,11 +88,11 @@ scripts/run-auth-android-local.sh --apk "$apk_path" --suite tags
 Pull requests run only the affected offline shards or online lanes. Changes to
 shared helpers, fixtures, selectors, or workflows run the full relevant
 matrix. Every merge to `main` runs all five offline shards and all four online
-lanes. Account-auth and data-sync each use one emulator session. Recovery uses
-two fresh sessions, and the synchronized entity lifecycle uses three, so a
-single long-lived emulator transport cannot invalidate an otherwise healthy
-stateful sequence. Each online emulator receives 4 GiB of guest memory for
-Argon2-heavy account operations.
+lanes. Account-auth, data-sync, and synchronized entity lifecycle each use one
+emulator session; lifecycle persistence is checked with explicit cold app
+starts. Recovery reset and verification use separate fresh sessions. Each
+online emulator receives 6 GiB of guest memory for Argon2-heavy account
+operations.
 
 The online fixture uses local PostgreSQL and Museum only. Do not add object
 storage, a full Ente checkout, or external services unless the covered behavior
@@ -100,8 +100,9 @@ needs them.
 
 ## Intentional exclusions
 
-- Native file imports and encrypted local backups remain local-only until the
-  published x86 Android picker/runtime supports them reliably.
+- Google Authenticator migration imports and encrypted local backups remain
+  local-only until the published x86 Android picker/runtime supports them
+  reliably.
 - Logout, passkeys, app lock/biometrics, QR scanning, gallery selection, and
   external intents are not hosted coverage yet.
 - Do not add a separate Auth settings status for whether account 2FA is
