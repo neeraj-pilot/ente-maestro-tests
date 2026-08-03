@@ -2,6 +2,7 @@ appId: ${APP_ID}
 name: Auth reloads and restores a synchronized trashed code
 tags: [auth, android, online, fixture, sync, lifecycle]
 ---
+- launchApp
 - tapOn: "^Trash$"
 - extendedWaitUntil:
     visible: "(?s)^Slack.*${FIXTURE_LIFECYCLE_EDITED_ACCOUNT}.*"

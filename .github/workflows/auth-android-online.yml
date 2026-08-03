@@ -57,8 +57,8 @@ env:
     MAESTRO_SHA256: 3440825f514f537c6a96bcf5de995780c2a4a7f83a43208fdc95d4f1fecfad3b
     AUTH_ANDROID_API: 34
     AUTH_ANDROID_TARGET: default
-    AUTH_EMULATOR_BUILD: 14214601
-    AUTH_EMULATOR_OPTIONS: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -memory 4096
+    AUTH_EMULATOR_BUILD: 15917651
+    AUTH_EMULATOR_OPTIONS: -no-window -gpu swiftshader -no-snapshot -noaudio -no-boot-anim -memory 6144
     ONLINE_ENDPOINT: http://10.0.2.2:8080
     ONLINE_OTT: 123456
 
@@ -236,7 +236,7 @@ jobs:
                   } > artifacts/maestro/runtime-health/memory-before.txt
 
             - name: Run ${{ matrix.lane }} session
-              if: matrix.lane == 'account-auth' || matrix.lane == 'data-sync'
+              if: matrix.lane != 'recovery-password'
               uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
               with:
                   api-level: ${{ env.AUTH_ANDROID_API }}
@@ -277,48 +277,6 @@ jobs:
                   disable-animations: true
                   script: .github/scripts/run-auth-online-tests.sh recovery-verification
 
-            - name: Run lifecycle create session
-              if: matrix.lane == 'entity-lifecycle'
-              uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
-              with:
-                  api-level: ${{ env.AUTH_ANDROID_API }}
-                  emulator-build: ${{ env.AUTH_EMULATOR_BUILD }}
-                  target: ${{ env.AUTH_ANDROID_TARGET }}
-                  arch: x86_64
-                  profile: pixel_5
-                  cores: 4
-                  emulator-options: ${{ env.AUTH_EMULATOR_OPTIONS }}
-                  disable-animations: true
-                  script: .github/scripts/run-auth-online-tests.sh entity-lifecycle-create
-
-            - name: Run lifecycle mutation session
-              if: matrix.lane == 'entity-lifecycle'
-              uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
-              with:
-                  api-level: ${{ env.AUTH_ANDROID_API }}
-                  emulator-build: ${{ env.AUTH_EMULATOR_BUILD }}
-                  target: ${{ env.AUTH_ANDROID_TARGET }}
-                  arch: x86_64
-                  profile: pixel_5
-                  cores: 4
-                  emulator-options: ${{ env.AUTH_EMULATOR_OPTIONS }}
-                  disable-animations: true
-                  script: .github/scripts/run-auth-online-tests.sh entity-lifecycle-mutate
-
-            - name: Run lifecycle restore and delete session
-              if: matrix.lane == 'entity-lifecycle'
-              uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
-              with:
-                  api-level: ${{ env.AUTH_ANDROID_API }}
-                  emulator-build: ${{ env.AUTH_EMULATOR_BUILD }}
-                  target: ${{ env.AUTH_ANDROID_TARGET }}
-                  arch: x86_64
-                  profile: pixel_5
-                  cores: 4
-                  emulator-options: ${{ env.AUTH_EMULATOR_OPTIONS }}
-                  disable-animations: true
-                  script: .github/scripts/run-auth-online-tests.sh entity-lifecycle-finish
-
             - name: Summarize ${{ matrix.lane }} tests
               if: always()
               env:
@@ -346,7 +304,7 @@ jobs:
                       case "${{ matrix.lane }}" in
                           account-auth|data-sync) sessions=1 ;;
                           recovery-password) sessions=2 ;;
-                          entity-lifecycle) sessions=3 ;;
+                          entity-lifecycle) sessions=1 ;;
                       esac
                       echo "- Fresh emulator sessions: \`$sessions\`"
                       echo
@@ -417,8 +375,6 @@ jobs:
                   sudo dmesg --ctime > artifacts/maestro/runtime-health/kernel.log 2>&1 || true
                   sudo coredumpctl --no-pager list > artifacts/maestro/runtime-health/coredumps.txt 2>&1 || true
                   sudo coredumpctl --no-pager info > artifacts/maestro/runtime-health/coredump-info.txt 2>&1 || true
-                  find /tmp/android-runner -maxdepth 1 -type d -name 'emu-crash-*.db' \
-                      -exec cp -a '{}' artifacts/maestro/runtime-health/ \; 2>/dev/null || true
 
             - name: Upload account runtime health
               if: failure()
