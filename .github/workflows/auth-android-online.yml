@@ -16,7 +16,6 @@ on:
                     - entity-lifecycle
     pull_request:
         paths:
-            - ".github/scripts/configure-auth-avd.sh"
             - ".github/scripts/run-auth-online-tests.sh"
             - ".github/workflows/auth-android-online.yml"
             - "maestro/auth/online/**"
@@ -31,7 +30,6 @@ on:
     push:
         branches: [main]
         paths:
-            - ".github/scripts/configure-auth-avd.sh"
             - ".github/scripts/run-auth-online-tests.sh"
             - ".github/workflows/auth-android-online.yml"
             - "maestro/auth/online/**"
@@ -57,10 +55,10 @@ env:
     MAESTRO_CLI_NO_ANALYTICS: 1
     MAESTRO_VERSION: 2.6.1
     MAESTRO_SHA256: 3440825f514f537c6a96bcf5de995780c2a4a7f83a43208fdc95d4f1fecfad3b
-    AUTH_ANDROID_API: 30
-    AUTH_ANDROID_TARGET: aosp_atd
-    AUTH_EMULATOR_BUILD: 15917651
-    AUTH_EMULATOR_OPTIONS: -no-window -no-snapshot -noaudio -no-boot-anim -memory 4096
+    AUTH_ANDROID_API: 34
+    AUTH_ANDROID_TARGET: default
+    AUTH_EMULATOR_BUILD: 14214601
+    AUTH_EMULATOR_OPTIONS: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -memory 4096
     ONLINE_ENDPOINT: http://10.0.2.2:8080
     ONLINE_OTT: 123456
 
@@ -248,7 +246,6 @@ jobs:
                   profile: pixel_5
                   cores: 4
                   emulator-options: ${{ env.AUTH_EMULATOR_OPTIONS }}
-                  pre-emulator-launch-script: .github/scripts/configure-auth-avd.sh
                   disable-animations: true
                   script: .github/scripts/run-auth-online-tests.sh "${{ matrix.lane }}"
 
@@ -263,7 +260,6 @@ jobs:
                   profile: pixel_5
                   cores: 4
                   emulator-options: ${{ env.AUTH_EMULATOR_OPTIONS }}
-                  pre-emulator-launch-script: .github/scripts/configure-auth-avd.sh
                   disable-animations: true
                   script: .github/scripts/run-auth-online-tests.sh recovery-reset
 
@@ -278,7 +274,6 @@ jobs:
                   profile: pixel_5
                   cores: 4
                   emulator-options: ${{ env.AUTH_EMULATOR_OPTIONS }}
-                  pre-emulator-launch-script: .github/scripts/configure-auth-avd.sh
                   disable-animations: true
                   script: .github/scripts/run-auth-online-tests.sh recovery-verification
 
@@ -293,7 +288,6 @@ jobs:
                   profile: pixel_5
                   cores: 4
                   emulator-options: ${{ env.AUTH_EMULATOR_OPTIONS }}
-                  pre-emulator-launch-script: .github/scripts/configure-auth-avd.sh
                   disable-animations: true
                   script: .github/scripts/run-auth-online-tests.sh entity-lifecycle-create
 
@@ -308,7 +302,6 @@ jobs:
                   profile: pixel_5
                   cores: 4
                   emulator-options: ${{ env.AUTH_EMULATOR_OPTIONS }}
-                  pre-emulator-launch-script: .github/scripts/configure-auth-avd.sh
                   disable-animations: true
                   script: .github/scripts/run-auth-online-tests.sh entity-lifecycle-mutate
 
@@ -323,7 +316,6 @@ jobs:
                   profile: pixel_5
                   cores: 4
                   emulator-options: ${{ env.AUTH_EMULATOR_OPTIONS }}
-                  pre-emulator-launch-script: .github/scripts/configure-auth-avd.sh
                   disable-animations: true
                   script: .github/scripts/run-auth-online-tests.sh entity-lifecycle-finish
 
