@@ -122,6 +122,37 @@ if [[ "$actual_stable_auth" != "$expected_stable_auth" ]]; then
     exit 1
 fi
 
+mkdir -p "$temp_dir/bin"
+cat > "$temp_dir/bin/gh" <<'SH'
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+printf '%s\n' "$*" >> "$GH_CALLS"
+case "$*" in
+    "api repos/ente/nightly/releases?per_page=100 --paginate") cat "$NIGHTLY_RELEASES" ;;
+    "api repos/ente/ente/releases?per_page=100 --paginate") cat "$STABLE_RELEASES" ;;
+    *) exit 2 ;;
+esac
+SH
+chmod +x "$temp_dir/bin/gh"
+: > "$temp_dir/gh-calls"
+actual_auth="$(
+    PATH="$temp_dir/bin:$PATH" \
+        GH_CALLS="$temp_dir/gh-calls" \
+        NIGHTLY_RELEASES="$temp_dir/releases.json" \
+        STABLE_RELEASES="$temp_dir/stable-releases.json" \
+        "$resolver" --app auth
+)"
+if [[ "$actual_auth" != "$expected_auth" ]]; then
+    echo "Unexpected API-backed Auth resolution: $actual_auth" >&2
+    exit 1
+fi
+if grep -Fq 'repos/ente/ente/releases' "$temp_dir/gh-calls"; then
+    echo "Stable releases were queried despite an available Auth nightly" >&2
+    exit 1
+fi
+
 expected_locker=$'locker\tbeta\tlocker-v1.0.8-beta\t201\tente-locker-v1.0.8-beta.apk\t2026-07-31T09:00:00Z\tsha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\tente/nightly'
 actual_locker="$($resolver --app locker --releases-file "$temp_dir/releases.json")"
 if [[ "$actual_locker" != "$expected_locker" ]]; then
