@@ -14,7 +14,7 @@ tags: [auth, android, online, fixture, sync, lifecycle]
 - tapOn: "Show roots"
 - tapOn:
     text: "Downloads"
-    index: 0
+    id: "android:id/title"
 - extendedWaitUntil:
     visible: "^auth_lifecycle_import\\.txt$"
     timeout: 15000
