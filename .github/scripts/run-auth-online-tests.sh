@@ -53,6 +53,12 @@ record_transport_failure() {
 trap record_transport_failure EXIT
 
 adb shell settings put system screen_off_timeout 2147483647
+nodraw_response=$(adb emu nodraw on 2>&1)
+if [[ "$nodraw_response" != *OK* ]]; then
+    echo "Unable to enable Android emulator NoDraw mode: $nodraw_response" >&2
+    exit 1
+fi
+adb exec-out screencap -p >/dev/null
 adb install -r "$AUTH_APK_PATH"
 
 run_maestro() {
