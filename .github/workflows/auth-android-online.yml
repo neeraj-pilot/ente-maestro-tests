@@ -217,6 +217,22 @@ jobs:
                   echo "::add-mask::$password"
                   echo "ONLINE_PASSWORD=$password" >> "$GITHUB_ENV"
 
+            - name: Capture runner memory baseline
+              run: |
+                  mkdir -p artifacts/maestro/runtime-health
+                  cgroup_path=$(awk -F: '$1 == "0" { print $3 }' /proc/self/cgroup)
+                  cgroup_dir="/sys/fs/cgroup$cgroup_path"
+                  {
+                      date --iso-8601=seconds
+                      echo "cgroup=$cgroup_path"
+                      for metric in memory.current memory.peak memory.events memory.events.local; do
+                          if [[ -r "$cgroup_dir/$metric" ]]; then
+                              echo "[$metric]"
+                              cat "$cgroup_dir/$metric"
+                          fi
+                      done
+                  } > artifacts/maestro/runtime-health/memory-before.txt
+
             - name: Run ${{ matrix.lane }} session
               if: matrix.lane == 'account-auth' || matrix.lane == 'data-sync'
               uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
@@ -374,6 +390,8 @@ jobs:
               if: failure()
               run: |
                   mkdir -p artifacts/maestro/runtime-health
+                  cgroup_path=$(awk -F: '$1 == "0" { print $3 }' /proc/self/cgroup)
+                  cgroup_dir="/sys/fs/cgroup$cgroup_path"
                   {
                       date --iso-8601=seconds
                       echo "lane=${{ matrix.lane }}"
@@ -386,7 +404,17 @@ jobs:
                       pgrep -af 'emulator.*-avd' || true
                       free -h || true
                       df -h || true
+                      echo "cgroup=$cgroup_path"
+                      for metric in memory.current memory.peak memory.events memory.events.local; do
+                          if [[ -r "$cgroup_dir/$metric" ]]; then
+                              echo "[$metric]"
+                              cat "$cgroup_dir/$metric"
+                          fi
+                      done
                   } > "artifacts/maestro/runtime-health/${{ matrix.lane }}.txt"
+                  sudo dmesg --ctime > artifacts/maestro/runtime-health/kernel.log 2>&1 || true
+                  find /tmp/android-runner -maxdepth 1 -type f -name 'emu-crash-*' \
+                      -exec cp '{}' artifacts/maestro/runtime-health/ \; 2>/dev/null || true
 
             - name: Upload account runtime health
               if: failure()
