@@ -4,13 +4,15 @@ Maestro smoke and end-to-end tests that run against published Ente apps.
 
 At the start of every run, the Android workflows resolve the newest compatible
 Auth beta or release-candidate APK from
-[`ente/nightly`](https://github.com/ente/nightly/releases). They order builds by
-the APK asset creation time, then pin every shard in that run to the same asset
-ID and SHA-256 digest. The required smoke workflow is offline. A parallel online
-Auth workflow isolates the recovery-key password reset on a fresh emulator,
-alongside account-authentication and synchronized-data lanes. It starts local
-PostgreSQL and Museum only as backend dependencies. Neither workflow builds
-Ente or uses Maestro Cloud.
+[`ente/nightly`](https://github.com/ente/nightly/releases), falling back to the
+[`ente/ente`](https://github.com/ente/ente/releases) stable APK during the
+normal promotion gap. They order eligible builds by the APK asset creation time,
+then pin every shard in that run to the same source, asset ID, and SHA-256 digest.
+The required smoke workflow is offline. A parallel online Auth workflow runs on
+hosted macOS and isolates recovery and synchronized-code lifecycle phases in
+fresh emulator sessions. It starts local PostgreSQL and a fixture-pinned Museum
+server as backend dependencies. Neither workflow builds the Auth app or uses
+Maestro Cloud.
 
 The tests target published builds, not a temporary Ente branch. UI changes are
 therefore exercised automatically after they reach Ente `main` and appear in a
@@ -88,7 +90,7 @@ nightly results or required CI gates. Their badges open the versioned flow.
 
 | Flow | Verified behavior |
 | --- | --- |
-| Native file imports | [![Local ARM64: passed](https://img.shields.io/badge/Local%20ARM64-passed-0969da?style=flat-square&logo=android&logoColor=white)](maestro/auth/offline/imports.yaml) Imports plain text and a Google Authenticator migration from Android Downloads. Hosted x86_64 is excluded because DocumentsUI returns an unreadable selected-file path. |
+| Multi-format native imports | [![Local ARM64: passed](https://img.shields.io/badge/Local%20ARM64-passed-0969da?style=flat-square&logo=android&logoColor=white)](maestro/auth/offline/imports.yaml) Imports plain text and a Google Authenticator migration from Android Downloads. The full multi-format flow remains local because the hosted x86_64 picker cannot reliably return the Google migration file. |
 | Local encrypted backups | [![Local ARM64: passed](https://img.shields.io/badge/Local%20ARM64-passed-0969da?style=flat-square&logo=android&logoColor=white)](maestro/auth/offline/local-backup.yaml) Creates public offline state, enables automatic backups, sets a password and Android backup folder, then creates a manual backup. The runner requires both JSON files to have encrypted backup fields and not expose the test account in plaintext. |
 
 ### Not yet green or intentionally deferred

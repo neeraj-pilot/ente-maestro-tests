@@ -6,8 +6,8 @@ usage() {
     cat <<'EOF'
 Usage: scripts/download-auth-nightly.sh [--output-dir <path>]
 
-Downloads the newest compatible Auth APK from ente/nightly and verifies it
-against the release asset's SHA-256 digest. Prints the verified APK path.
+Downloads the newest compatible published Auth APK and verifies it against the
+release asset's SHA-256 digest. Prints the verified APK path.
 EOF
 }
 

@@ -49,7 +49,6 @@ assert_suites "" --changed-file README.md
 assert_suites "" --changed-file maestro/auth/online/prepared-totp-login-complete.yaml
 assert_suites "" --changed-file maestro/auth/online/subflows/add-online-code.yaml
 assert_suites "" --changed-file maestro/auth/online/subflows/assert-synced-code.yaml
-assert_suites "" --changed-file maestro/auth/online/subflows/configure-online-test-endpoint.yaml
 assert_suites "" --changed-file maestro/auth/online/subflows/dismiss-code-guidance.yaml
 assert_suites "" --changed-file maestro/auth/online/subflows/login-online-account.yaml
 assert_suites "" --changed-file maestro/auth/offline/local-backup.yaml

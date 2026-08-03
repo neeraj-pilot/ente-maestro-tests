@@ -5,6 +5,7 @@
   "databaseDump": "auth-fixture-v2.dump",
   "dumpSha256": "272d2bdb9d9415ff2580d30ae64057aad2ec8ef995fbc633b2c30b3c5966a214",
   "museumImage": "ghcr.io/ente/server@sha256:e9e06eb01834c38f41a3a09f9a64885b631346ce0005ccff2153faea403bd6e2",
+  "museumServerRevision": "0137a0c754ac0fe4f2c4c7421727c349327eb990",
   "postgresImage": "postgres:15-alpine@sha256:3d0f7584ed7d04e27fa050d6683a74746608faf21f202be78460d679cc56461f",
   "enteSourceRevision": "d4873f6ca147aaf02ff82549f6c575e29790cff0",
   "generator": "tools/auth-fixture-generator",

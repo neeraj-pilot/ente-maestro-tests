@@ -52,8 +52,8 @@ while IFS= read -r email; do
     fi
 done <<< "$emails"
 
-user_ids=$(jq --raw-output '.accounts[].userId' "$credentials" | sort --numeric-sort --unique)
-if [[ $(wc -l <<< "$user_ids" | tr -d ' ') -ne 3 ]] || grep --invert-match --extended-regexp --quiet '^[1-9][0-9]*$' <<< "$user_ids"; then
+user_ids=$(jq --raw-output '.accounts[].userId' "$credentials" | sort -n -u)
+if [[ $(wc -l <<< "$user_ids" | tr -d ' ') -ne 3 ]] || grep -Evq '^[1-9][0-9]*$' <<< "$user_ids"; then
     echo "Auth fixture must contain three distinct positive user IDs" >&2
     exit 1
 fi
@@ -79,12 +79,17 @@ if [[ "$manifest_code_counts" != "$credential_code_counts" ]]; then
 fi
 
 museum_image=$(jq --raw-output '.museumImage' "$manifest")
+museum_server_revision=$(jq --raw-output '.museumServerRevision' "$manifest")
 postgres_image=$(jq --raw-output '.postgresImage' "$manifest")
-if ! grep --fixed-strings --quiet "image: $museum_image" "$repo_root/museum/compose.yaml"; then
+if [[ ! "$museum_server_revision" =~ ^[0-9a-f]{40}$ ]]; then
+    echo "Museum source revision is not a full Git commit" >&2
+    exit 1
+fi
+if ! grep -Fq "image: $museum_image" "$repo_root/museum/compose.yaml"; then
     echo "Museum image differs from the fixture manifest" >&2
     exit 1
 fi
-if ! grep --fixed-strings --quiet "image: $postgres_image" "$repo_root/museum/compose.yaml"; then
+if ! grep -Fq "image: $postgres_image" "$repo_root/museum/compose.yaml"; then
     echo "PostgreSQL image differs from the fixture manifest" >&2
     exit 1
 fi

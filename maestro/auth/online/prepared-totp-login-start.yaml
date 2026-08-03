@@ -2,21 +2,18 @@ appId: ${APP_ID}
 name: Auth prepared TOTP account reaches two-factor challenge
 tags: [auth, android, online, fixture, totp]
 ---
-- launchApp:
-    clearState: true
+- launchApp
 - assertVisible: "Log in"
-- runFlow:
-    file: subflows/configure-online-test-endpoint.yaml
 - tapOn: "Log in"
 - waitForAnimationToEnd
 - inputText: ${FIXTURE_TOTP_EMAIL}
 - assertVisible: ${FIXTURE_TOTP_EMAIL}
-- tapOn: "done"
+- pressKey: enter
 - extendedWaitUntil:
     visible: ".*Enter the password for.*"
     timeout: 30000
 - inputText: ${FIXTURE_TOTP_PASSWORD}
-- tapOn: "done"
+- pressKey: enter
 - extendedWaitUntil:
     visible: "Two-factor authentication"
     timeout: 120000

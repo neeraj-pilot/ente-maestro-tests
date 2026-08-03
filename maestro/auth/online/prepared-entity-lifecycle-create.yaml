@@ -1,0 +1,33 @@
+appId: ${APP_ID}
+name: Auth creates a synchronized lifecycle code
+tags: [auth, android, online, fixture, sync, lifecycle]
+---
+- launchApp
+- runFlow:
+    file: subflows/open-prepared-basic-account.yaml
+    env:
+      FIXTURE_BASIC_EMAIL: ${FIXTURE_BASIC_EMAIL}
+      FIXTURE_BASIC_PASSWORD: ${FIXTURE_BASIC_PASSWORD}
+- tapOn: "Settings"
+- tapOn: "Data"
+- extendedWaitUntil:
+    visible: "Import codes"
+    timeout: 10000
+- tapOn: "Import codes"
+- tapOn:
+    id: auth_import_plainText
+- tapOn: "Select file"
+- tapOn: "Show roots"
+- tapOn:
+    text: "Downloads"
+    id: "android:id/title"
+- extendedWaitUntil:
+    visible: "^auth_lifecycle_import\\.txt$"
+    timeout: 15000
+- tapOn: "^auth_lifecycle_import\\.txt$"
+- extendedWaitUntil:
+    visible:
+      id: auth_import_success
+    timeout: 30000
+- assertVisible: ".*imported 1 code.*"
+- tapOn: "Ok"

@@ -2,16 +2,13 @@ appId: ${APP_ID}
 name: Auth shows an unknown-account login error
 tags: [auth, android, online, login]
 ---
-- launchApp:
-    clearState: true
+- launchApp
 - assertVisible: "Log in"
-- runFlow:
-    file: subflows/configure-online-test-endpoint.yaml
 - tapOn: "Log in"
 - waitForAnimationToEnd
 - inputText: ${MISSING_EMAIL}
 - assertVisible: ${MISSING_EMAIL}
-- tapOn: "done"
+- pressKey: enter
 - extendedWaitUntil:
     visible: "Email not registered."
     timeout: 30000

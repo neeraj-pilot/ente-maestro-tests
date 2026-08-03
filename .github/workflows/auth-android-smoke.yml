@@ -101,7 +101,7 @@ jobs:
                       echo "has_suites=false" >> "$GITHUB_OUTPUT"
                   fi
 
-            - name: Resolve Auth nightly
+            - name: Resolve published Auth build
               id: release
               if: steps.select.outputs.has_suites == 'true'
               env:
@@ -130,7 +130,7 @@ jobs:
                   distribution: temurin
                   java-version: 17
 
-            - name: Download resolved Auth nightly
+            - name: Download resolved Auth build
               env:
                   GH_TOKEN: ${{ github.token }}
                   AUTH_APK_ASSET_ID: ${{ needs.select.outputs.apk_asset_id }}
@@ -144,15 +144,24 @@ jobs:
                   mkdir -p "$AUTH_APK_DIR"
                   release_tag="$AUTH_RELEASE_TAG"
                   if [[ -z "$release_tag" || -z "$AUTH_APK_ASSET_ID" || -z "$AUTH_APK_NAME" || -z "$AUTH_APK_CREATED_AT" || -z "$AUTH_APK_SHA256" ]]; then
-                      echo "Auth nightly release was not resolved" >&2
+                      echo "Auth release was not resolved" >&2
                       exit 1
                   fi
                   echo "Testing $release_tag asset $AUTH_APK_ASSET_ID ($AUTH_APK_NAME, created $AUTH_APK_CREATED_AT, $AUTH_APK_SHA256)"
 
                   apk_path="$AUTH_APK_DIR/$AUTH_APK_NAME"
-                  gh api \
-                      -H 'Accept: application/octet-stream' \
-                      "repos/$AUTH_SOURCE_REPOSITORY/releases/assets/$AUTH_APK_ASSET_ID" > "$apk_path"
+                  for attempt in 1 2 3; do
+                      if gh api \
+                          -H 'Accept: application/octet-stream' \
+                          "repos/$AUTH_SOURCE_REPOSITORY/releases/assets/$AUTH_APK_ASSET_ID" > "$apk_path"; then
+                          break
+                      fi
+                      if [[ "$attempt" -eq 3 ]]; then
+                          echo "Failed to download the resolved Auth APK" >&2
+                          exit 1
+                      fi
+                      sleep $((attempt * 2))
+                  done
 
                   if [[ ! -f "$apk_path" ]]; then
                       echo "Auth APK was not downloaded" >&2
@@ -177,6 +186,7 @@ jobs:
             - name: Install pinned Maestro
               run: |
                   curl --fail --location --silent --show-error \
+                      --retry 3 --retry-all-errors --retry-delay 2 \
                       "https://github.com/mobile-dev-inc/maestro/releases/download/cli-$MAESTRO_VERSION/maestro.zip" \
                       --output "$RUNNER_TEMP/maestro.zip"
                   echo "$MAESTRO_SHA256  $RUNNER_TEMP/maestro.zip" | sha256sum --check -
