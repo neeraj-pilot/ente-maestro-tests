@@ -6,13 +6,16 @@ usage() {
     cat <<'EOF'
 Usage: scripts/resolve-nightly-apk.sh --app <auth|locker> [options]
 
-Resolves the newest compatible APK asset published in ente/nightly. Release
-tags can be reused, so assets are ordered by their creation time.
+Resolves the newest compatible APK asset published in ente/nightly, falling
+back to the stable ente/ente release when no prerelease exists. Release tags
+can be reused, so assets are ordered by their creation time.
 
 Options:
   --app <auth|locker>       App to resolve.
   --github-output <path>    Write named values to a GitHub Actions output file.
-  --releases-file <path>    Read GitHub releases JSON from a file instead of the API.
+  --releases-file <path>    Read nightly releases JSON from a file instead of the API.
+  --stable-releases-file <path>
+                            Read stable releases JSON from a file instead of the API.
   -h, --help                Show this help.
 EOF
 }
@@ -20,6 +23,7 @@ EOF
 app=""
 github_output=""
 releases_file=""
+stable_releases_file=""
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -33,6 +37,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --releases-file)
             releases_file="${2:?--releases-file requires a path}"
+            shift 2
+            ;;
+        --stable-releases-file)
+            stable_releases_file="${2:?--stable-releases-file requires a path}"
             shift 2
             ;;
         -h|--help)
@@ -49,7 +57,8 @@ done
 
 case "$app" in
     auth|locker)
-        tag_pattern="^${app}-v[0-9]+\\.[0-9]+\\.[0-9]+-(beta|rc)$"
+        nightly_tag_pattern="^${app}-v[0-9]+\\.[0-9]+\\.[0-9]+-(beta|rc)$"
+        stable_tag_pattern="^${app}-v[0-9]+\\.[0-9]+\\.[0-9]+$"
         asset_pattern="^ente-${app}-.*\\.apk$"
         ;;
     *)
@@ -60,15 +69,33 @@ case "$app" in
 esac
 
 if [[ -n "$releases_file" ]]; then
-    releases=$(jq -c 'if type == "array" then . else error("expected a releases array") end' "$releases_file")
+    nightly_releases=$(jq -c 'if type == "array" then . else error("expected a releases array") end' "$releases_file")
+    if [[ -n "$stable_releases_file" ]]; then
+        stable_releases=$(jq -c 'if type == "array" then . else error("expected a releases array") end' "$stable_releases_file")
+    else
+        stable_releases='[]'
+    fi
 else
-    releases=$(gh api "repos/ente/nightly/releases?per_page=100" --paginate | jq -sc 'add')
+    if [[ -n "$stable_releases_file" ]]; then
+        echo "--stable-releases-file requires --releases-file" >&2
+        exit 2
+    fi
+    nightly_releases=$(gh api "repos/ente/nightly/releases?per_page=100" --paginate | jq -sc 'add')
+    stable_releases=$(gh api "repos/ente/ente/releases?per_page=100" --paginate | jq -sc 'add')
 fi
 
-resolved=$(jq -c \
+resolve_from_releases() {
+    local releases=$1
+    local source_repository=$2
+    local tag_pattern=$3
+    local channel=$4
+
+    jq -c \
     --arg app "$app" \
     --arg asset_pattern "$asset_pattern" \
     --arg tag_pattern "$tag_pattern" \
+    --arg channel "$channel" \
+    --arg source_repository "$source_repository" \
     '
     [
       .[]
@@ -80,20 +107,26 @@ resolved=$(jq -c \
       | select(.name | test($asset_pattern))
       | {
           app: $app,
-          channel: ($release.tag_name | capture("-(?<channel>beta|rc)$").channel),
+          channel: (if $channel == "prerelease" then ($release.tag_name | capture("-(?<channel>beta|rc)$").channel) else $channel end),
           release_tag: $release.tag_name,
           apk_asset_id: .id,
           apk_name: .name,
           apk_created_at: .created_at,
           apk_sha256: .digest,
-          source_repository: "ente/nightly"
+          source_repository: $source_repository
         }
     ]
     | if length == 0 then empty else max_by(.apk_created_at) end
-    ' <<< "$releases")
+    ' <<< "$releases"
+}
+
+resolved=$(resolve_from_releases "$nightly_releases" "ente/nightly" "$nightly_tag_pattern" prerelease)
+if [[ -z "$resolved" ]]; then
+    resolved=$(resolve_from_releases "$stable_releases" "ente/ente" "$stable_tag_pattern" stable)
+fi
 
 if [[ -z "$resolved" ]]; then
-    echo "No compatible published $app APK was found in ente/nightly" >&2
+    echo "No compatible published $app APK was found" >&2
     exit 1
 fi
 

@@ -17,15 +17,18 @@ stale quickly and belong in GitHub Actions or the relevant product issue.
 | Platform local | Android file pickers, encrypted local backups, and other device-specific behavior. | No; validate on local ARM64 emulators or a device. |
 | Product demos | Curated, paced presentations assembled from proven behavior flows. | No; keep separate from regression tests. |
 
-## Nightly and fixture contract
+## Published build and fixture contract
 
 Every hosted workflow resolves the newest compatible published Auth APK at
-workflow start with `scripts/resolve-nightly-apk.sh`. Beta and release-candidate
-tags are eligible. Because tags can be reused, the resolver orders APKs by asset
-creation time and passes the exact asset ID, APK name, creation time, and digest
-to every matrix shard. Each shard downloads that asset ID, verifies its digest,
-and records the provenance in its job summary. This deliberately means “latest
-at run start”, not a possibly different latest release for each shard.
+workflow start with `scripts/resolve-nightly-apk.sh`. It prefers beta and
+release-candidate assets from `ente/nightly`, then falls back to the stable
+`ente/ente` release when promotion has removed the corresponding nightly tag.
+Because prerelease tags can be reused, the resolver orders eligible APKs by
+asset creation time and passes the exact source repository, asset ID, APK name,
+creation time, and digest to every matrix shard. Each shard downloads that
+asset ID, verifies its digest, and records the provenance in its job summary.
+This deliberately means “latest at run start”, not a possibly different build
+for each shard.
 
 The suite does not follow temporary Ente branches. A product change becomes the
 test target after it reaches Ente `main` and is present in a compatible published
@@ -72,8 +75,8 @@ hide product state or silently broaden the selected CI matrix.
 
 Run the selector tests and the smallest relevant local suite before pushing.
 Use `scripts/download-auth-nightly.sh` immediately before a local run; it
-resolves and verifies the newest compatible asset rather than trusting a reused
-release tag.
+resolves and verifies the newest compatible published asset rather than
+trusting a reused release tag.
 
 ```sh
 apk_path=$(scripts/download-auth-nightly.sh)

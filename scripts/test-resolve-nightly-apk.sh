@@ -82,10 +82,43 @@ cat > "$temp_dir/releases.json" <<'JSON'
 ]
 JSON
 
+cat > "$temp_dir/stable-releases.json" <<'JSON'
+[
+  {
+    "draft": false,
+    "tag_name": "auth-v4.4.26",
+    "published_at": "2026-08-02T08:00:00Z",
+    "assets": [
+      {
+        "id": 104,
+        "name": "ente-auth-v4.4.26.apk",
+        "created_at": "2026-08-02T08:00:00Z",
+        "digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+        "state": "uploaded"
+      }
+    ]
+  }
+]
+JSON
+
 expected_auth=$'auth\trc\tauth-v4.4.25-rc\t102\tente-auth-v4.4.25.apk\t2026-07-31T08:00:00Z\tsha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\tente/nightly'
 actual_auth="$($resolver --app auth --releases-file "$temp_dir/releases.json")"
 if [[ "$actual_auth" != "$expected_auth" ]]; then
     echo "Unexpected Auth resolution: $actual_auth" >&2
+    exit 1
+fi
+
+actual_auth="$($resolver --app auth --releases-file "$temp_dir/releases.json" --stable-releases-file "$temp_dir/stable-releases.json")"
+if [[ "$actual_auth" != "$expected_auth" ]]; then
+    echo "Expected an available Auth prerelease to take precedence: $actual_auth" >&2
+    exit 1
+fi
+
+expected_stable_auth=$'auth\tstable\tauth-v4.4.26\t104\tente-auth-v4.4.26.apk\t2026-08-02T08:00:00Z\tsha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd\tente/ente'
+echo '[]' > "$temp_dir/no-nightly.json"
+actual_stable_auth="$($resolver --app auth --releases-file "$temp_dir/no-nightly.json" --stable-releases-file "$temp_dir/stable-releases.json")"
+if [[ "$actual_stable_auth" != "$expected_stable_auth" ]]; then
+    echo "Unexpected stable Auth fallback: $actual_stable_auth" >&2
     exit 1
 fi
 

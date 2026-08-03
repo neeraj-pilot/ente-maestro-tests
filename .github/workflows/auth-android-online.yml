@@ -111,7 +111,7 @@ jobs:
                   scripts/test-hosted-flow-registration.sh
                   scripts/test-resolve-nightly-apk.sh
 
-            - name: Resolve latest Auth nightly
+            - name: Resolve latest published Auth build
               id: nightly
               env:
                   GH_TOKEN: ${{ github.token }}
@@ -144,7 +144,7 @@ jobs:
                   distribution: temurin
                   java-version: 17
 
-            - name: Download resolved Auth nightly
+            - name: Download resolved Auth build
               env:
                   APK_ASSET_ID: ${{ needs.resolve.outputs.apk_asset_id }}
                   APK_CREATED_AT: ${{ needs.resolve.outputs.apk_created_at }}

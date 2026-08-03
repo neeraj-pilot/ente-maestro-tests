@@ -101,7 +101,7 @@ jobs:
                       echo "has_suites=false" >> "$GITHUB_OUTPUT"
                   fi
 
-            - name: Resolve Auth nightly
+            - name: Resolve published Auth build
               id: release
               if: steps.select.outputs.has_suites == 'true'
               env:
@@ -130,7 +130,7 @@ jobs:
                   distribution: temurin
                   java-version: 17
 
-            - name: Download resolved Auth nightly
+            - name: Download resolved Auth build
               env:
                   GH_TOKEN: ${{ github.token }}
                   AUTH_APK_ASSET_ID: ${{ needs.select.outputs.apk_asset_id }}
@@ -144,7 +144,7 @@ jobs:
                   mkdir -p "$AUTH_APK_DIR"
                   release_tag="$AUTH_RELEASE_TAG"
                   if [[ -z "$release_tag" || -z "$AUTH_APK_ASSET_ID" || -z "$AUTH_APK_NAME" || -z "$AUTH_APK_CREATED_AT" || -z "$AUTH_APK_SHA256" ]]; then
-                      echo "Auth nightly release was not resolved" >&2
+                      echo "Auth release was not resolved" >&2
                       exit 1
                   fi
                   echo "Testing $release_tag asset $AUTH_APK_ASSET_ID ($AUTH_APK_NAME, created $AUTH_APK_CREATED_AT, $AUTH_APK_SHA256)"
