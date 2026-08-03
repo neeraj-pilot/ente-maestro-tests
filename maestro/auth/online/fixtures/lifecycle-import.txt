@@ -1,0 +1,1 @@
+otpauth://totp/Google:lifecycle.fixture@example.org?secret=JBSWY3DPEHPK3PXP&issuer=Google&algorithm=SHA1&digits=6&period=30

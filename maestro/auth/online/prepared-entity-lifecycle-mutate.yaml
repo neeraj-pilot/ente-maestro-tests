@@ -1,14 +1,17 @@
 appId: ${APP_ID}
-name: Auth mutates and trashes a synchronized code
+name: Auth edits and trashes a synchronized lifecycle code
 tags: [auth, android, online, fixture, sync, lifecycle]
 ---
-- tapOn: "All"
+- launchApp
 - runFlow:
-    file: subflows/add-online-code.yaml
+    file: subflows/open-prepared-basic-account.yaml
     env:
-      ISSUER: Google
-      SECRET: JBSWY3DPEHPK3PXP
-      ACCOUNT: ${FIXTURE_LIFECYCLE_ACCOUNT}
+      FIXTURE_BASIC_EMAIL: ${FIXTURE_BASIC_EMAIL}
+      FIXTURE_BASIC_PASSWORD: ${FIXTURE_BASIC_PASSWORD}
+- tapOn: "All"
+- extendedWaitUntil:
+    visible: "(?s)^Google.*${FIXTURE_LIFECYCLE_ACCOUNT}.*"
+    timeout: 30000
 - longPressOn: "(?s)^Google.*${FIXTURE_LIFECYCLE_ACCOUNT}.*"
 - tapOn: "(?s)^Edit\nEdit$"
 - extendedWaitUntil:
@@ -67,7 +70,10 @@ tags: [auth, android, online, fixture, sync, lifecycle]
 - longPressOn: "(?s)^Slack.*${FIXTURE_LIFECYCLE_EDITED_ACCOUNT}.*"
 - tapOn: "(?s)^Pin.*"
 - longPressOn: "(?s)^Slack.*${FIXTURE_LIFECYCLE_EDITED_ACCOUNT}.*"
-- tapOn: "(?s)^Trash.*"
+- tapOn:
+    text: "(?s)^Trash.*"
+    childOf:
+      id: auth_selection_action_bar
 - tapOn: "^Trash$"
 - tapOn: "^Trash$"
 - assertVisible: "(?s)^Slack.*${FIXTURE_LIFECYCLE_EDITED_ACCOUNT}.*"

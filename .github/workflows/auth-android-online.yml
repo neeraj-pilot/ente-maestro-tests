@@ -13,6 +13,7 @@ on:
                     - account-auth
                     - recovery-password
                     - data-sync
+                    - entity-lifecycle
     pull_request:
         paths:
             - ".github/scripts/run-auth-online-tests.sh"
@@ -45,7 +46,7 @@ permissions:
     contents: read
 
 concurrency:
-    group: auth-android-online-${{ github.ref }}
+    group: auth-android-online-${{ github.ref }}-${{ inputs.lane || 'automatic' }}
     cancel-in-progress: true
 
 env:
@@ -54,6 +55,10 @@ env:
     MAESTRO_CLI_NO_ANALYTICS: 1
     MAESTRO_VERSION: 2.6.1
     MAESTRO_SHA256: 3440825f514f537c6a96bcf5de995780c2a4a7f83a43208fdc95d4f1fecfad3b
+    AUTH_ANDROID_API: 34
+    AUTH_ANDROID_TARGET: default
+    AUTH_EMULATOR_BUILD: 12414864
+    AUTH_EMULATOR_OPTIONS: -no-window -gpu swiftshader_indirect -feature -Vulkan -no-metrics -no-snapshot -noaudio -no-boot-anim -memory 4096
     ONLINE_ENDPOINT: http://10.0.2.2:8080
     ONLINE_OTT: 123456
 
@@ -88,7 +93,7 @@ jobs:
                   if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
                       case "$REQUESTED_LANE" in
                           all) lanes=$(scripts/select-auth-online-lanes.sh --all) ;;
-                          account-auth|recovery-password|data-sync) lanes="[\"$REQUESTED_LANE\"]" ;;
+                          account-auth|recovery-password|data-sync|entity-lifecycle) lanes="[\"$REQUESTED_LANE\"]" ;;
                           *) echo "Unknown lane: $REQUESTED_LANE" >&2; exit 2 ;;
                       esac
                   elif [[ "$EVENT_NAME" == "pull_request" ]]; then
@@ -108,7 +113,7 @@ jobs:
                   scripts/test-hosted-flow-registration.sh
                   scripts/test-resolve-nightly-apk.sh
 
-            - name: Resolve latest Auth nightly
+            - name: Resolve latest published Auth build
               id: nightly
               env:
                   GH_TOKEN: ${{ github.token }}
@@ -117,14 +122,17 @@ jobs:
     auth-online:
         name: ${{ matrix.lane }}
         needs: resolve
-        runs-on: ubuntu-latest
-        timeout-minutes: 45
+        runs-on: macos-15-intel
+        timeout-minutes: 60
         strategy:
             fail-fast: false
             matrix:
                 lane: ${{ fromJSON(needs.resolve.outputs.lanes) }}
         env:
-            AUTH_FIXTURE_COMPOSE_PROJECT: auth-online-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.lane }}
+            AUTH_FIXTURE_RUNTIME_DIR: ${{ github.workspace }}/artifacts/auth-fixture-${{ matrix.lane }}
+            AUTH_MUSEUM_BINARY: ${{ github.workspace }}/artifacts/museum
+            AUTH_MUSEUM_SOURCE_DIR: ${{ github.workspace }}/artifacts/ente-server
+            AUTH_POSTGRES_PORT: 55432
             FIXTURE_MUTATION_TAG: FixturePersisted
             MISSING_EMAIL: missing-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.lane }}@example.org
             ONLINE_CODE_ACCOUNT: first-key-${{ github.run_id }}-${{ github.run_attempt }}@example.org
@@ -135,13 +143,47 @@ jobs:
               with:
                   persist-credentials: false
 
+            - name: Resolve fixture Museum revision
+              id: museum
+              run: echo "revision=$(jq --raw-output '.museumServerRevision' museum/fixtures/manifest.json)" >> "$GITHUB_OUTPUT"
+
+            - name: Checkout pinned Museum source
+              uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+              with:
+                  repository: ente-io/ente
+                  ref: ${{ steps.museum.outputs.revision }}
+                  path: artifacts/ente-server
+                  persist-credentials: false
+                  sparse-checkout: server
+
+            - name: Set up Go
+              uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+              with:
+                  go-version: 1.26.5
+                  cache-dependency-path: artifacts/ente-server/server/go.sum
+
             - name: Set up Java
               uses: actions/setup-java@ad2b38190b15e4d6bdf0c97fb4fca8412226d287 # v5.3.0
               with:
                   distribution: temurin
                   java-version: 17
 
-            - name: Download resolved Auth nightly
+            - name: Set up Node for live TOTP generation
+              if: matrix.lane == 'account-auth'
+              uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+              with:
+                  node-version: 24
+
+            - name: Build pinned Museum
+              working-directory: artifacts/ente-server/server
+              run: CGO_ENABLED=0 go build -o "$AUTH_MUSEUM_BINARY" ./cmd/museum
+
+            - name: Install PostgreSQL 15
+              env:
+                  HOMEBREW_NO_AUTO_UPDATE: 1
+              run: brew list --versions postgresql@15 >/dev/null || brew install postgresql@15
+
+            - name: Download resolved Auth build
               env:
                   APK_ASSET_ID: ${{ needs.resolve.outputs.apk_asset_id }}
                   APK_CREATED_AT: ${{ needs.resolve.outputs.apk_created_at }}
@@ -154,12 +196,21 @@ jobs:
               run: |
                   mkdir -p "$AUTH_APK_DIR"
                   apk_path="$AUTH_APK_DIR/$APK_NAME"
-                  gh api \
-                      -H 'Accept: application/octet-stream' \
-                      "repos/$SOURCE_REPOSITORY/releases/assets/$APK_ASSET_ID" > "$apk_path"
+                  for attempt in 1 2 3; do
+                      if gh api \
+                          -H 'Accept: application/octet-stream' \
+                          "repos/$SOURCE_REPOSITORY/releases/assets/$APK_ASSET_ID" > "$apk_path"; then
+                          break
+                      fi
+                      if [[ "$attempt" -eq 3 ]]; then
+                          echo "Failed to download the resolved Auth APK" >&2
+                          exit 1
+                      fi
+                      sleep $((attempt * 2))
+                  done
 
                   expected_sha256="${APK_SHA256#sha256:}"
-                  actual_sha256=$(sha256sum "$apk_path" | awk '{print $1}')
+                  actual_sha256=$(shasum -a 256 "$apk_path" | awk '{print $1}')
                   if [[ "$actual_sha256" != "$expected_sha256" ]]; then
                       echo "Downloaded Auth APK does not match the resolved release asset" >&2
                       exit 1
@@ -176,9 +227,11 @@ jobs:
             - name: Install pinned Maestro
               run: |
                   curl --fail --location --silent --show-error \
+                      --retry 3 --retry-all-errors --retry-delay 2 \
                       "https://github.com/mobile-dev-inc/maestro/releases/download/cli-$MAESTRO_VERSION/maestro.zip" \
                       --output "$RUNNER_TEMP/maestro.zip"
-                  echo "$MAESTRO_SHA256  $RUNNER_TEMP/maestro.zip" | sha256sum --check -
+                  actual_sha256=$(shasum -a 256 "$RUNNER_TEMP/maestro.zip" | awk '{print $1}')
+                  test "$actual_sha256" = "$MAESTRO_SHA256"
                   mkdir -p "$HOME/.maestro"
                   unzip -q "$RUNNER_TEMP/maestro.zip" -d "$HOME/.maestro"
                   maestro_bin="$HOME/.maestro/maestro/bin/maestro"
@@ -189,14 +242,8 @@ jobs:
                   fi
                   echo "$HOME/.maestro/maestro/bin" >> "$GITHUB_PATH"
 
-            - name: Start local Auth backend
-              run: ALLOW_AUTH_FIXTURE_RESTORE=1 scripts/fixtures/restore-auth-fixture.sh
-
-            - name: Enable KVM
-              run: |
-                  echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
-                  sudo udevadm control --reload-rules
-                  sudo udevadm trigger --name-match=kvm
+            - name: Start native Auth backend
+              run: scripts/fixtures/start-auth-fixture-macos.sh
 
             - name: Prepare private test password
               run: |
@@ -204,23 +251,94 @@ jobs:
                   echo "::add-mask::$password"
                   echo "ONLINE_PASSWORD=$password" >> "$GITHUB_ENV"
 
-            - name: Run ${{ matrix.lane }} tests
-              id: online-tests
+            - name: Run ${{ matrix.lane }} session
+              if: matrix.lane == 'account-auth' || matrix.lane == 'data-sync'
               uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
               with:
-                  api-level: 34
-                  target: default
+                  api-level: ${{ env.AUTH_ANDROID_API }}
+                  emulator-build: ${{ env.AUTH_EMULATOR_BUILD }}
+                  target: ${{ env.AUTH_ANDROID_TARGET }}
                   arch: x86_64
                   profile: pixel_5
-                  cores: 4
-                  emulator-options: -no-window -gpu swiftshader -no-snapshot -noaudio -no-boot-anim -memory 6144
+                  cores: 2
+                  emulator-options: ${{ env.AUTH_EMULATOR_OPTIONS }}
                   disable-animations: true
                   script: .github/scripts/run-auth-online-tests.sh "${{ matrix.lane }}"
 
+            - name: Run recovery reset session
+              if: matrix.lane == 'recovery-password'
+              uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+              with:
+                  api-level: ${{ env.AUTH_ANDROID_API }}
+                  emulator-build: ${{ env.AUTH_EMULATOR_BUILD }}
+                  target: ${{ env.AUTH_ANDROID_TARGET }}
+                  arch: x86_64
+                  profile: pixel_5
+                  cores: 2
+                  emulator-options: ${{ env.AUTH_EMULATOR_OPTIONS }}
+                  disable-animations: true
+                  script: .github/scripts/run-auth-online-tests.sh recovery-reset
+
+            - name: Run recovery verification session
+              if: matrix.lane == 'recovery-password'
+              uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+              with:
+                  api-level: ${{ env.AUTH_ANDROID_API }}
+                  emulator-build: ${{ env.AUTH_EMULATOR_BUILD }}
+                  target: ${{ env.AUTH_ANDROID_TARGET }}
+                  arch: x86_64
+                  profile: pixel_5
+                  cores: 2
+                  emulator-options: ${{ env.AUTH_EMULATOR_OPTIONS }}
+                  disable-animations: true
+                  script: .github/scripts/run-auth-online-tests.sh recovery-verification
+
+            - name: Run lifecycle create session
+              if: matrix.lane == 'entity-lifecycle'
+              uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+              with:
+                  api-level: ${{ env.AUTH_ANDROID_API }}
+                  emulator-build: ${{ env.AUTH_EMULATOR_BUILD }}
+                  target: ${{ env.AUTH_ANDROID_TARGET }}
+                  arch: x86_64
+                  profile: pixel_5
+                  cores: 2
+                  emulator-options: ${{ env.AUTH_EMULATOR_OPTIONS }}
+                  disable-animations: true
+                  script: .github/scripts/run-auth-online-tests.sh entity-lifecycle-create
+
+            - name: Run lifecycle mutation session
+              if: matrix.lane == 'entity-lifecycle'
+              uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+              with:
+                  api-level: ${{ env.AUTH_ANDROID_API }}
+                  emulator-build: ${{ env.AUTH_EMULATOR_BUILD }}
+                  target: ${{ env.AUTH_ANDROID_TARGET }}
+                  arch: x86_64
+                  profile: pixel_5
+                  cores: 2
+                  emulator-options: ${{ env.AUTH_EMULATOR_OPTIONS }}
+                  disable-animations: true
+                  script: .github/scripts/run-auth-online-tests.sh entity-lifecycle-mutate
+
+            - name: Run lifecycle restore and delete session
+              if: matrix.lane == 'entity-lifecycle'
+              uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+              with:
+                  api-level: ${{ env.AUTH_ANDROID_API }}
+                  emulator-build: ${{ env.AUTH_EMULATOR_BUILD }}
+                  target: ${{ env.AUTH_ANDROID_TARGET }}
+                  arch: x86_64
+                  profile: pixel_5
+                  cores: 2
+                  emulator-options: ${{ env.AUTH_EMULATOR_OPTIONS }}
+                  disable-animations: true
+                  script: .github/scripts/run-auth-online-tests.sh entity-lifecycle-finish
+
             - name: Summarize ${{ matrix.lane }} tests
-              if: always() && steps.online-tests.outcome != 'skipped'
+              if: always()
               env:
-                  TEST_OUTCOME: ${{ steps.online-tests.outcome }}
+                  TEST_OUTCOME: ${{ job.status }}
               run: |
                   if [[ "$TEST_OUTCOME" == "success" ]]; then
                       status="passed"
@@ -238,9 +356,15 @@ jobs:
                       echo "- Asset created: \`$AUTH_APK_CREATED_AT\`"
                       echo "- Asset ID: \`$AUTH_APK_ASSET_ID\`"
                       echo "- Auth APK SHA-256: \`$AUTH_APK_SHA256\`"
-                      echo "- Android API: \`34\`"
+                      echo "- Android runtime: API \`$AUTH_ANDROID_API\`, target \`$AUTH_ANDROID_TARGET\`"
                       echo "- Maestro: \`$MAESTRO_VERSION\`"
                       echo "- Backend: checked-in public Museum fixture v2"
+                      case "${{ matrix.lane }}" in
+                          account-auth|data-sync) sessions=1 ;;
+                          recovery-password) sessions=2 ;;
+                          entity-lifecycle) sessions=3 ;;
+                      esac
+                      echo "- Fresh emulator sessions: \`$sessions\`"
                       echo
                       echo "#### $coverage_label"
                       echo
@@ -249,10 +373,13 @@ jobs:
                               echo "- Live TOTP challenge, synchronized-code visibility, unknown-account error, signup, first Auth-key creation, and cold password login"
                               ;;
                           recovery-password)
-                              echo "- Recovery-key password reset and synchronized-code preservation"
+                              echo "- Recovery-key password reset, old-password rejection, replacement-password login, and synchronized-code preservation"
                               ;;
                           data-sync)
-                              echo "- Prepared password login, active and trashed synchronized codes, account/security settings, a persisted two-code bulk tag, and synchronized edit/tag/pin/trash/restore/delete lifecycle coverage across a cold login"
+                              echo "- Prepared password login, active and trashed synchronized codes, account/security settings, and a persisted two-code bulk tag across a cold login"
+                              ;;
+                          entity-lifecycle)
+                              echo "- Synchronized import, edit, tag, pin, trash, cold-start reload, note verification, restore, and permanent deletion"
                               ;;
                       esac
                       echo
@@ -260,30 +387,23 @@ jobs:
                   } >> "$GITHUB_STEP_SUMMARY"
 
             - name: Upload ${{ matrix.lane }} results
-              if: always() && steps.online-tests.outcome != 'skipped'
+              if: always()
               uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
               with:
                   name: auth-online-${{ matrix.lane }}-results
-                  path: artifacts/maestro/online-results/*.xml
+                  path: artifacts/maestro/online-results
                   if-no-files-found: warn
                   retention-days: 7
 
-            - name: Upload public-fixture failure diagnostics
-              if: failure() && matrix.lane != 'account-auth'
-              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-              with:
-                  name: auth-online-${{ matrix.lane }}-diagnostics
-                  path: artifacts/maestro/online-debug
-                  if-no-files-found: warn
-                  retention-days: 3
-
             - name: Capture account runtime health
-              if: failure() && matrix.lane != 'data-sync'
+              if: failure()
               run: |
                   mkdir -p artifacts/maestro/runtime-health
                   {
-                      date --iso-8601=seconds
+                      date -u '+%Y-%m-%dT%H:%M:%SZ'
                       echo "lane=${{ matrix.lane }}"
+                      uname -a
+                      sw_vers
                       adb devices -l || true
                       printf 'adb_state='
                       adb get-state || true
@@ -291,12 +411,13 @@ jobs:
                       adb shell pidof "$APP_ID" || true
                       printf 'emulator_processes='
                       pgrep -af 'emulator.*-avd' || true
-                      free -h || true
+                      vm_stat || true
                       df -h || true
                   } > "artifacts/maestro/runtime-health/${{ matrix.lane }}.txt"
+                  cp "$AUTH_FIXTURE_RUNTIME_DIR/museum.log" artifacts/maestro/runtime-health/ 2>/dev/null || true
 
             - name: Upload account runtime health
-              if: failure() && matrix.lane != 'data-sync'
+              if: failure()
               uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
               with:
                   name: auth-online-${{ matrix.lane }}-runtime-health
@@ -306,11 +427,13 @@ jobs:
 
             - name: Show backend status on failure
               if: failure()
-              run: docker compose --project-name "$AUTH_FIXTURE_COMPOSE_PROJECT" -f museum/compose.yaml ps
+              run: |
+                  tail -n 100 "$AUTH_FIXTURE_RUNTIME_DIR/museum.log" || true
+                  "$AUTH_POSTGRES_BIN/pg_isready" --host=127.0.0.1 --port="$AUTH_POSTGRES_PORT" || true
 
-            - name: Stop local Auth backend
+            - name: Stop native Auth backend
               if: always()
-              run: docker compose --project-name "$AUTH_FIXTURE_COMPOSE_PROJECT" -f museum/compose.yaml down --volumes --remove-orphans
+              run: scripts/fixtures/stop-auth-fixture-macos.sh
 
     auth-online-gate:
         name: Auth online gate

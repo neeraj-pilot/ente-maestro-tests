@@ -2,11 +2,8 @@ appId: ${APP_ID}
 name: Auth signup and recovery key acknowledgement
 tags: [auth, android, online, signup, recovery]
 ---
-- launchApp:
-    clearState: true
+- launchApp
 - assertVisible: "Log in"
-- runFlow:
-    file: subflows/configure-online-test-endpoint.yaml
 - tapOn: "Sign up"
 - assertVisible: "Enter your email address"
 - tapOn: "Enter your email address"

@@ -2,7 +2,12 @@
 
 set -euo pipefail
 
-lane=${1:-all}
+if [[ $# -ne 1 ]]; then
+    echo "Usage: $0 <phase>" >&2
+    exit 2
+fi
+phase=$1
+artifacts_dir=${MAESTRO_ARTIFACTS_DIR:-artifacts/maestro}
 : "${FIXTURE_MUTATION_TAG:=FixturePersisted}"
 : "${FIXTURE_LIFECYCLE_ACCOUNT:=lifecycle.fixture@example.org}"
 : "${FIXTURE_LIFECYCLE_EDITED_ACCOUNT:=automation.fixture@example.org}"
@@ -19,8 +24,35 @@ fixture_recovery_email=$(jq --raw-output '.accounts.recovery.email' "$credential
 fixture_recovery_password=$(jq --raw-output '.accounts.recovery.password' "$credentials")
 fixture_recovery_key=$(jq --raw-output '.accounts.recovery.recoveryKey' "$credentials")
 fixture_recovered_password=$(jq --raw-output '.accounts.recovery.recoveredPassword' "$credentials")
+debug_dir="$artifacts_dir/online-debug/$phase"
+results_dir="$artifacts_dir/online-results/$phase"
+runtime_dir="$artifacts_dir/runtime-health"
+transport_failure_marker="$runtime_dir/$phase-transport-failure"
+preparation_count=0
 
-mkdir -p artifacts/maestro/online-debug artifacts/maestro/online-results
+mkdir -p "$debug_dir" "$results_dir" "$runtime_dir"
+
+record_transport_failure() {
+    local status=$?
+    local adb_state=""
+    trap - EXIT
+
+    if [[ $status -ne 0 ]]; then
+        adb_state=$(adb get-state 2>/dev/null || true)
+        adb_state=${adb_state//$'\r'/}
+        if [[ "$adb_state" != "device" ]]; then
+            {
+                echo "phase=$phase"
+                echo "adb_state=${adb_state:-unavailable}"
+                printf 'emulator_processes='
+                pgrep -af 'qemu-system|emulator.*-avd' || true
+            } > "$transport_failure_marker"
+        fi
+    fi
+    exit "$status"
+}
+trap record_transport_failure EXIT
+
 adb shell settings put system screen_off_timeout 2147483647
 adb install -r "$AUTH_APK_PATH"
 
@@ -34,16 +66,24 @@ run_maestro() {
     maestro test --no-ansi \
         "${maestro_device_args[@]}" \
         --format JUNIT \
-        --output "artifacts/maestro/online-results/$result_name.xml" \
-        --debug-output "artifacts/maestro/online-debug/$result_name" \
+        --output "$results_dir/$result_name.xml" \
+        --debug-output "$debug_dir/$result_name" \
         --flatten-debug-output \
         -e APP_ID="$APP_ID" \
         -e ONLINE_ENDPOINT="$ONLINE_ENDPOINT" \
         "$@"
 }
 
-prepare_basic_fixture_app() {
+prepare_fixture_app() {
     local app_data_dir app_owner current_user preferences_dir preferences_file
+
+    adb shell pm clear "$APP_ID" >/dev/null
+    if [[ ${AUTH_APP_PREPARATION:-root-prefs} == "ui" ]]; then
+        preparation_count=$((preparation_count + 1))
+        run_maestro "prepare-endpoint-$preparation_count" \
+            maestro/auth/online/subflows/configure-online-test-endpoint-ui.yaml
+        return
+    fi
 
     adb root >/dev/null
     adb wait-for-device
@@ -56,7 +96,6 @@ prepare_basic_fixture_app() {
     app_data_dir="/data/user/$current_user/$APP_ID"
     preferences_dir="$app_data_dir/shared_prefs"
     preferences_file="$preferences_dir/FlutterSharedPreferences.xml"
-    adb shell pm clear "$APP_ID" >/dev/null
     app_owner=$(adb shell stat -c '%u:%g' "$app_data_dir" | tr -d '\r')
     if [[ ! "$app_owner" =~ ^[0-9]+:[0-9]+$ ]]; then
         echo "Unable to determine the Auth app-data owner: $app_owner" >&2
@@ -65,21 +104,33 @@ prepare_basic_fixture_app() {
 
     adb shell "mkdir -p '$preferences_dir'"
     adb shell \
-        "printf '%s\\n' '<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"yes\" ?>' '<map>' '    <boolean name=\"flutter.has_shown_coach_mark_v2\" value=\"true\" />' '</map>' > '$preferences_file'"
+        "printf '%s\\n' '<?xml version=\"1.0\" encoding=\"utf-8\" standalone=\"yes\" ?>' '<map>' '    <string name=\"flutter.endpoint\">$ONLINE_ENDPOINT</string>' '    <boolean name=\"flutter.has_shown_coach_mark_v2\" value=\"true\" />' '    <boolean name=\"flutter.ls_hide_app_content\" value=\"false\" />' '</map>' > '$preferences_file'"
     adb shell chown -R "$app_owner" "$preferences_dir"
     adb shell chmod 771 "$preferences_dir"
     adb shell chmod 660 "$preferences_file"
     adb shell restorecon "$preferences_dir"
     adb shell restorecon "$preferences_file"
     if ! adb shell \
-        "grep -q 'name=\"flutter.has_shown_coach_mark_v2\" value=\"true\"' '$preferences_file'"; then
-        echo "Unable to preseed the Auth code guidance preference" >&2
+        "grep -q 'name=\"flutter.endpoint\">$ONLINE_ENDPOINT</string>' '$preferences_file' && grep -q 'name=\"flutter.has_shown_coach_mark_v2\" value=\"true\"' '$preferences_file' && grep -q 'name=\"flutter.ls_hide_app_content\" value=\"false\"' '$preferences_file'"; then
+        echo "Unable to preseed the Auth test preferences" >&2
         return 1
     fi
 }
 
 query_fixture_db() {
     local query=$1
+    if [[ ${AUTH_FIXTURE_DB_MODE:-compose} == native ]]; then
+        "$AUTH_POSTGRES_BIN/psql" \
+            --host=127.0.0.1 \
+            --port="$AUTH_POSTGRES_PORT" \
+            --tuples-only \
+            --no-align \
+            --field-separator='|' \
+            --username=ente_auth \
+            --dbname=ente_auth_test \
+            --command="$query"
+        return
+    fi
     docker compose \
         --project-name "$AUTH_FIXTURE_COMPOSE_PROJECT" \
         --file museum/compose.yaml \
@@ -169,6 +220,7 @@ wait_for_deleted_entity_count() {
 run_account_auth() {
     local fixture_totp_code previous_max_user_id
 
+    prepare_fixture_app
     run_maestro prepared-totp-start \
         -e FIXTURE_TOTP_EMAIL="$fixture_totp_email" \
         -e FIXTURE_TOTP_PASSWORD="$fixture_totp_password" \
@@ -181,10 +233,12 @@ run_account_auth() {
     run_maestro prepared-totp-complete \
         -e FIXTURE_TOTP_CODE="$fixture_totp_code" \
         maestro/auth/online/prepared-totp-login-complete.yaml
+    prepare_fixture_app
     run_maestro unknown-login \
         -e MISSING_EMAIL="$MISSING_EMAIL" \
         maestro/auth/online/unknown-login.yaml
     previous_max_user_id=$(query_fixture_db "SELECT MAX(user_id) FROM users;")
+    prepare_fixture_app
     run_maestro signup-first-key \
         -e ONLINE_OTT="$ONLINE_OTT" \
         -e ONLINE_EMAIL="$ONLINE_EMAIL" \
@@ -192,6 +246,7 @@ run_account_auth() {
         -e ONLINE_CODE_ACCOUNT="$ONLINE_CODE_ACCOUNT" \
         maestro/auth/online/signup-recovery-login.yaml
     wait_for_first_auth_entity "$previous_max_user_id"
+    prepare_fixture_app
     run_maestro signup-cold-login \
         -e ONLINE_EMAIL="$ONLINE_EMAIL" \
         -e ONLINE_PASSWORD="$ONLINE_PASSWORD" \
@@ -199,20 +254,33 @@ run_account_auth() {
         maestro/auth/online/password-login.yaml
 }
 
-run_recovery_password() {
-    run_maestro prepared-recovery \
+run_recovery_reset() {
+    prepare_fixture_app
+    run_maestro prepared-recovery-reset \
         -e ONLINE_OTT="$ONLINE_OTT" \
         -e FIXTURE_RECOVERY_EMAIL="$fixture_recovery_email" \
-        -e FIXTURE_RECOVERY_PASSWORD="$fixture_recovery_password" \
         -e FIXTURE_RECOVERY_KEY="$fixture_recovery_key" \
         -e FIXTURE_RECOVERED_PASSWORD="$fixture_recovered_password" \
         maestro/auth/online/prepared-recovery-password-reset.yaml
 }
 
-run_data_sync() {
-    local lifecycle_marker mutation_marker restore_marker
+run_recovery_verification() {
+    prepare_fixture_app
+    run_maestro prepared-recovery-old-password \
+        -e FIXTURE_RECOVERY_EMAIL="$fixture_recovery_email" \
+        -e FIXTURE_RECOVERY_PASSWORD="$fixture_recovery_password" \
+        maestro/auth/online/prepared-recovery-old-password.yaml
+    prepare_fixture_app
+    run_maestro prepared-recovery-login \
+        -e FIXTURE_RECOVERY_EMAIL="$fixture_recovery_email" \
+        -e FIXTURE_RECOVERED_PASSWORD="$fixture_recovered_password" \
+        maestro/auth/online/prepared-recovery-login.yaml
+}
 
-    prepare_basic_fixture_app
+run_data_sync() {
+    local mutation_marker
+
+    prepare_fixture_app
     run_maestro prepared-password \
         -e FIXTURE_BASIC_EMAIL="$fixture_basic_email" \
         -e FIXTURE_BASIC_PASSWORD="$fixture_basic_password" \
@@ -225,21 +293,55 @@ run_data_sync() {
         maestro/auth/online/prepared-bulk-mutation-start.yaml
     wait_for_bulk_mutation "$fixture_basic_user_id" "$mutation_marker"
 
-    lifecycle_marker=$(query_fixture_db \
-        "SELECT MAX(updated_at) FROM authenticator_entity WHERE user_id = $fixture_basic_user_id;")
-    run_maestro prepared-entity-lifecycle-start \
-        -e FIXTURE_LIFECYCLE_ACCOUNT="$FIXTURE_LIFECYCLE_ACCOUNT" \
-        -e FIXTURE_LIFECYCLE_EDITED_ACCOUNT="$FIXTURE_LIFECYCLE_EDITED_ACCOUNT" \
-        -e FIXTURE_LIFECYCLE_TAG="$FIXTURE_LIFECYCLE_TAG" \
-        maestro/auth/online/prepared-entity-lifecycle-start.yaml
-    wait_for_entity_count_and_quiet "$fixture_basic_user_id" "$lifecycle_marker" 4
-
-    prepare_basic_fixture_app
+    prepare_fixture_app
     run_maestro prepared-bulk-mutation-complete \
         -e FIXTURE_BASIC_EMAIL="$fixture_basic_email" \
         -e FIXTURE_BASIC_PASSWORD="$fixture_basic_password" \
         -e FIXTURE_MUTATION_TAG="$FIXTURE_MUTATION_TAG" \
         maestro/auth/online/prepared-bulk-mutation-complete.yaml
+}
+
+run_entity_lifecycle_create() {
+    local lifecycle_marker
+
+    prepare_fixture_app
+    lifecycle_marker=$(query_fixture_db \
+        "SELECT MAX(updated_at) FROM authenticator_entity WHERE user_id = $fixture_basic_user_id;")
+    adb shell mkdir -p /sdcard/Download
+    adb push \
+        maestro/auth/online/fixtures/lifecycle-import.txt \
+        /sdcard/Download/auth_lifecycle_import.txt
+    run_maestro prepared-entity-lifecycle-create \
+        -e FIXTURE_BASIC_EMAIL="$fixture_basic_email" \
+        -e FIXTURE_BASIC_PASSWORD="$fixture_basic_password" \
+        maestro/auth/online/prepared-entity-lifecycle-create.yaml
+    wait_for_entity_count_and_quiet "$fixture_basic_user_id" "$lifecycle_marker" 4
+}
+
+run_entity_lifecycle_mutate() {
+    local lifecycle_marker
+
+    prepare_fixture_app
+    lifecycle_marker=$(query_fixture_db \
+        "SELECT MAX(updated_at) FROM authenticator_entity WHERE user_id = $fixture_basic_user_id;")
+    run_maestro prepared-entity-lifecycle-mutate \
+        -e FIXTURE_BASIC_EMAIL="$fixture_basic_email" \
+        -e FIXTURE_BASIC_PASSWORD="$fixture_basic_password" \
+        -e FIXTURE_LIFECYCLE_ACCOUNT="$FIXTURE_LIFECYCLE_ACCOUNT" \
+        -e FIXTURE_LIFECYCLE_EDITED_ACCOUNT="$FIXTURE_LIFECYCLE_EDITED_ACCOUNT" \
+        -e FIXTURE_LIFECYCLE_TAG="$FIXTURE_LIFECYCLE_TAG" \
+        maestro/auth/online/prepared-entity-lifecycle-mutate.yaml
+    wait_for_entity_count_and_quiet "$fixture_basic_user_id" "$lifecycle_marker" 4
+}
+
+run_entity_lifecycle_finish() {
+    local restore_marker
+
+    prepare_fixture_app
+    run_maestro prepared-entity-lifecycle-login \
+        -e FIXTURE_BASIC_EMAIL="$fixture_basic_email" \
+        -e FIXTURE_BASIC_PASSWORD="$fixture_basic_password" \
+        maestro/auth/online/prepared-basic-login.yaml
 
     restore_marker=$(query_fixture_db \
         "SELECT MAX(updated_at) FROM authenticator_entity WHERE user_id = $fixture_basic_user_id;")
@@ -255,17 +357,21 @@ run_data_sync() {
     wait_for_deleted_entity_count "$fixture_basic_user_id" 1
 }
 
-case "$lane" in
+case "$phase" in
     account-auth) run_account_auth ;;
-    recovery-password) run_recovery_password ;;
+    recovery-reset) run_recovery_reset ;;
+    recovery-verification) run_recovery_verification ;;
     data-sync) run_data_sync ;;
-    all)
-        run_account_auth
-        run_recovery_password
-        run_data_sync
+    entity-lifecycle)
+        run_entity_lifecycle_create
+        run_entity_lifecycle_mutate
+        run_entity_lifecycle_finish
         ;;
+    entity-lifecycle-create) run_entity_lifecycle_create ;;
+    entity-lifecycle-mutate) run_entity_lifecycle_mutate ;;
+    entity-lifecycle-finish) run_entity_lifecycle_finish ;;
     *)
-        echo "Unknown Auth online test lane: $lane" >&2
+        echo "Unknown Auth online test phase: $phase" >&2
         exit 2
         ;;
 esac

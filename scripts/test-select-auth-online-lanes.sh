@@ -16,23 +16,27 @@ assert_lanes() {
     fi
 }
 
-assert_lanes "account-auth,recovery-password,data-sync" --all
+assert_lanes "account-auth,recovery-password,data-sync,entity-lifecycle" --all
 assert_lanes "account-auth" --changed-file maestro/auth/online/prepared-totp-login-start.yaml
 assert_lanes "recovery-password" --changed-file maestro/auth/online/prepared-recovery-password-reset.yaml
-assert_lanes "account-auth" --changed-file maestro/auth/online/subflows/add-online-code.yaml
+assert_lanes "recovery-password" --changed-file maestro/auth/online/prepared-recovery-old-password.yaml
+assert_lanes "recovery-password" --changed-file maestro/auth/online/prepared-recovery-login.yaml
+assert_lanes "account-auth,entity-lifecycle" --changed-file maestro/auth/online/subflows/add-online-code.yaml
 assert_lanes "account-auth" --changed-file scripts/current-totp.mjs
 assert_lanes "data-sync" --changed-file maestro/auth/online/prepared-password-login.yaml
-assert_lanes "data-sync" --changed-file maestro/auth/online/prepared-basic-login.yaml
+assert_lanes "data-sync,entity-lifecycle" --changed-file maestro/auth/online/prepared-basic-login.yaml
 assert_lanes "data-sync" --changed-file maestro/auth/online/prepared-bulk-mutation-start.yaml
-assert_lanes "data-sync" --changed-file maestro/auth/online/prepared-entity-lifecycle-start.yaml
+assert_lanes "entity-lifecycle" --changed-file maestro/auth/online/prepared-entity-lifecycle-create.yaml
+assert_lanes "entity-lifecycle" --changed-file maestro/auth/online/fixtures/lifecycle-import.txt
+assert_lanes "entity-lifecycle" --changed-file maestro/auth/online/prepared-entity-lifecycle-mutate.yaml
 assert_lanes "account-auth,data-sync" --changed-file maestro/auth/online/unknown-login.yaml --changed-file maestro/auth/online/prepared-password-login.yaml
-assert_lanes "account-auth,recovery-password,data-sync" --changed-file maestro/auth/online/subflows/login-online-account.yaml
-assert_lanes "account-auth,recovery-password,data-sync" --changed-file maestro/auth/online/subflows/new-online-helper.yaml
-assert_lanes "account-auth,recovery-password,data-sync" --changed-file museum/fixtures/manifest.json
-assert_lanes "account-auth,recovery-password,data-sync" --changed-file maestro/auth/online/new-online-flow.yaml
-assert_lanes "account-auth,recovery-password,data-sync" --changed-file scripts/resolve-nightly-apk.sh
-assert_lanes "account-auth,recovery-password,data-sync" --changed-file scripts/test-hosted-flow-registration.sh
-assert_lanes "account-auth,recovery-password,data-sync" --changed-file scripts/test-resolve-nightly-apk.sh
+assert_lanes "account-auth,recovery-password,data-sync,entity-lifecycle" --changed-file maestro/auth/online/subflows/login-online-account.yaml
+assert_lanes "account-auth,recovery-password,data-sync,entity-lifecycle" --changed-file maestro/auth/online/subflows/new-online-helper.yaml
+assert_lanes "account-auth,recovery-password,data-sync,entity-lifecycle" --changed-file museum/fixtures/manifest.json
+assert_lanes "account-auth,recovery-password,data-sync,entity-lifecycle" --changed-file maestro/auth/online/new-online-flow.yaml
+assert_lanes "account-auth,recovery-password,data-sync,entity-lifecycle" --changed-file scripts/resolve-nightly-apk.sh
+assert_lanes "account-auth,recovery-password,data-sync,entity-lifecycle" --changed-file scripts/test-hosted-flow-registration.sh
+assert_lanes "account-auth,recovery-password,data-sync,entity-lifecycle" --changed-file scripts/test-resolve-nightly-apk.sh
 assert_lanes "" --changed-file README.md
 
 echo "Auth online lane selection tests passed"

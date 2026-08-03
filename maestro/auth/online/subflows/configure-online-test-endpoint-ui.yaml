@@ -1,14 +1,17 @@
 appId: ${APP_ID}
+name: Configure the local Museum endpoint on a physical device
 ---
+- launchApp
+- assertVisible: "Log in"
 - repeat:
     times: 7
     commands:
-        - tapOn:
-            point: "50%,35%"
+      - tapOn:
+          point: "50%,47%"
 - assertVisible: "Developer settings"
 - tapOn: "Yes"
 - assertVisible: "Save"
-- eraseText: 24
+- eraseText: 64
 - inputText: ${ONLINE_ENDPOINT}
 - hideKeyboard
 - tapOn: "Save"

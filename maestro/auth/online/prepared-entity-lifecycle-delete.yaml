@@ -5,7 +5,10 @@ tags: [auth, android, online, fixture, sync, lifecycle]
 - tapOn: "All"
 - assertVisible: "(?s)^Slack.*${FIXTURE_LIFECYCLE_EDITED_ACCOUNT}.*"
 - longPressOn: "(?s)^Slack.*${FIXTURE_LIFECYCLE_EDITED_ACCOUNT}.*"
-- tapOn: "(?s)^Trash.*"
+- tapOn:
+    text: "(?s)^Trash.*"
+    childOf:
+      id: auth_selection_action_bar
 - tapOn: "^Trash$"
 - tapOn: "^Trash$"
 - assertVisible: "(?s)^Slack.*${FIXTURE_LIFECYCLE_EDITED_ACCOUNT}.*"

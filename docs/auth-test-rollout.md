@@ -1,7 +1,8 @@
 # Auth Maestro test guide
 
-This repository verifies published Ente Auth Android beta and release-candidate
-APKs. It is not an Ente checkout and does not build the app.
+This repository verifies compatible published Ente Auth Android APKs. It does
+not build the Auth app. Online CI sparsely checks out only the Museum server at
+the fixture-pinned revision.
 
 The [README coverage table](../README.md#latest-verified-coverage) is the
 live record of the latest clean `main` run. Keep historical run links, one-off
@@ -13,19 +14,22 @@ stale quickly and belong in GitHub Actions or the relevant product issue.
 | Layer | Purpose | Runs in hosted CI |
 | --- | --- | --- |
 | Offline core | Public offline setup, organization, settings, tags, and trash behavior. | Yes, in five selected Android shards. |
-| Online fixture | Auth login, TOTP challenge, signup, recovery reset, synchronized codes, and persisted mutations against local Museum. | Yes, in account-auth, recovery-password, and data-sync lanes. |
-| Platform local | Android file pickers, encrypted local backups, and other device-specific behavior. | No; validate on local ARM64 emulators or a device. |
+| Online fixture | Auth login, TOTP challenge, signup, recovery reset, synchronized codes, and persisted mutations against local Museum. | Yes, in account-auth, recovery-password, data-sync, and entity-lifecycle lanes. |
+| Platform local | Google Authenticator migration imports, encrypted local backups, and other device-specific behavior. | No; validate on local ARM64 emulators or a device. |
 | Product demos | Curated, paced presentations assembled from proven behavior flows. | No; keep separate from regression tests. |
 
-## Nightly and fixture contract
+## Published build and fixture contract
 
 Every hosted workflow resolves the newest compatible published Auth APK at
-workflow start with `scripts/resolve-nightly-apk.sh`. Beta and release-candidate
-tags are eligible. Because tags can be reused, the resolver orders APKs by asset
-creation time and passes the exact asset ID, APK name, creation time, and digest
-to every matrix shard. Each shard downloads that asset ID, verifies its digest,
-and records the provenance in its job summary. This deliberately means “latest
-at run start”, not a possibly different latest release for each shard.
+workflow start with `scripts/resolve-nightly-apk.sh`. It prefers beta and
+release-candidate assets from `ente/nightly`, then falls back to the stable
+`ente/ente` release when promotion has removed the corresponding nightly tag.
+Because prerelease tags can be reused, the resolver orders eligible APKs by
+asset creation time and passes the exact source repository, asset ID, APK name,
+creation time, and digest to every matrix shard. Each shard downloads that
+asset ID, verifies its digest, and records the provenance in its job summary.
+This deliberately means “latest at run start”, not a possibly different build
+for each shard.
 
 The suite does not follow temporary Ente branches. A product change becomes the
 test target after it reaches Ente `main` and is present in a compatible published
@@ -72,8 +76,8 @@ hide product state or silently broaden the selected CI matrix.
 
 Run the selector tests and the smallest relevant local suite before pushing.
 Use `scripts/download-auth-nightly.sh` immediately before a local run; it
-resolves and verifies the newest compatible asset rather than trusting a reused
-release tag.
+resolves and verifies the newest compatible published asset rather than
+trusting a reused release tag.
 
 ```sh
 apk_path=$(scripts/download-auth-nightly.sh)
@@ -84,9 +88,12 @@ scripts/run-auth-android-local.sh --apk "$apk_path" --suite tags
 
 Pull requests run only the affected offline shards or online lanes. Changes to
 shared helpers, fixtures, selectors, or workflows run the full relevant
-matrix. Every merge to `main` runs all five offline shards and all three online
-lanes. The online lanes are isolated because recovery performs several Argon2
-derivations; each online emulator receives 4 GiB of guest memory.
+matrix. Every merge to `main` runs all five offline shards and all four online
+lanes. Account-auth and data-sync each use one emulator session. Synchronized
+entity lifecycle uses separate create, mutate, and restore/delete sessions;
+recovery uses separate reset and verification sessions. Each online emulator
+receives 4 GiB of guest memory. The online matrix runs on hosted macOS because
+Linux QEMU has crashed during Argon2-heavy recovery and lifecycle operations.
 
 The online fixture uses local PostgreSQL and Museum only. Do not add object
 storage, a full Ente checkout, or external services unless the covered behavior
@@ -94,8 +101,9 @@ needs them.
 
 ## Intentional exclusions
 
-- Native file imports and encrypted local backups remain local-only until the
-  published x86 Android picker/runtime supports them reliably.
+- Google Authenticator migration imports and encrypted local backups remain
+  local-only until the published x86 Android picker/runtime supports them
+  reliably.
 - Logout, passkeys, app lock/biometrics, QR scanning, gallery selection, and
   external intents are not hosted coverage yet.
 - Do not add a separate Auth settings status for whether account 2FA is

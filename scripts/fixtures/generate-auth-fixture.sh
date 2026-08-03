@@ -12,6 +12,7 @@ project="ente-auth-fixture-generator"
 verification_project="ente-auth-fixture-generation-verify"
 ente_revision="d4873f6ca147aaf02ff82549f6c575e29790cff0"
 museum_image="ghcr.io/ente/server@sha256:e9e06eb01834c38f41a3a09f9a64885b631346ce0005ccff2153faea403bd6e2"
+museum_server_revision="0137a0c754ac0fe4f2c4c7421727c349327eb990"
 postgres_image="postgres:15-alpine@sha256:3d0f7584ed7d04e27fa050d6683a74746608faf21f202be78460d679cc56461f"
 
 compose=(docker compose --project-name "$project" --file "$compose_file")
@@ -33,7 +34,11 @@ for _ in {1..60}; do
     fi
     sleep 1
 done
-curl --fail --silent http://127.0.0.1:8080/ping >/dev/null
+observed_museum_revision=$(curl --fail --silent http://127.0.0.1:8080/ping | jq --raw-output '.id')
+if [[ "$observed_museum_revision" != "$museum_server_revision" ]]; then
+    echo "Museum image does not match the pinned server revision" >&2
+    exit 1
+fi
 
 (
     cd "$repo_root/tools/auth-fixture-generator"
@@ -59,6 +64,7 @@ jq --null-input \
     --arg generatedAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
     --arg dumpSha256 "$dump_sha256" \
     --arg museumImage "$museum_image" \
+    --arg museumServerRevision "$museum_server_revision" \
     --arg postgresImage "$postgres_image" \
     --arg enteRevision "$ente_revision" \
     --slurpfile credentials "$credentials" \
@@ -69,6 +75,7 @@ jq --null-input \
         databaseDump: "auth-fixture-v2.dump",
         dumpSha256: $dumpSha256,
         museumImage: $museumImage,
+        museumServerRevision: $museumServerRevision,
         postgresImage: $postgresImage,
         enteSourceRevision: $enteRevision,
         generator: "tools/auth-fixture-generator",
