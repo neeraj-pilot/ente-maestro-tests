@@ -55,8 +55,10 @@ env:
     MAESTRO_CLI_NO_ANALYTICS: 1
     MAESTRO_VERSION: 2.6.1
     MAESTRO_SHA256: 3440825f514f537c6a96bcf5de995780c2a4a7f83a43208fdc95d4f1fecfad3b
+    AUTH_ANDROID_API: 30
+    AUTH_ANDROID_TARGET: aosp_atd
     AUTH_EMULATOR_BUILD: 15917651
-    AUTH_EMULATOR_OPTIONS: -no-window -gpu swiftshader -no-snapshot -noaudio -no-boot-anim -memory 6144
+    AUTH_EMULATOR_OPTIONS: -no-window -no-snapshot -noaudio -no-boot-anim -memory 4096
     ONLINE_ENDPOINT: http://10.0.2.2:8080
     ONLINE_OTT: 123456
 
@@ -237,9 +239,9 @@ jobs:
               if: matrix.lane == 'account-auth' || matrix.lane == 'data-sync'
               uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
               with:
-                  api-level: 34
+                  api-level: ${{ env.AUTH_ANDROID_API }}
                   emulator-build: ${{ env.AUTH_EMULATOR_BUILD }}
-                  target: default
+                  target: ${{ env.AUTH_ANDROID_TARGET }}
                   arch: x86_64
                   profile: pixel_5
                   cores: 4
@@ -251,9 +253,9 @@ jobs:
               if: matrix.lane == 'recovery-password'
               uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
               with:
-                  api-level: 34
+                  api-level: ${{ env.AUTH_ANDROID_API }}
                   emulator-build: ${{ env.AUTH_EMULATOR_BUILD }}
-                  target: default
+                  target: ${{ env.AUTH_ANDROID_TARGET }}
                   arch: x86_64
                   profile: pixel_5
                   cores: 4
@@ -265,9 +267,9 @@ jobs:
               if: matrix.lane == 'recovery-password'
               uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
               with:
-                  api-level: 34
+                  api-level: ${{ env.AUTH_ANDROID_API }}
                   emulator-build: ${{ env.AUTH_EMULATOR_BUILD }}
-                  target: default
+                  target: ${{ env.AUTH_ANDROID_TARGET }}
                   arch: x86_64
                   profile: pixel_5
                   cores: 4
@@ -279,9 +281,9 @@ jobs:
               if: matrix.lane == 'entity-lifecycle'
               uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
               with:
-                  api-level: 34
+                  api-level: ${{ env.AUTH_ANDROID_API }}
                   emulator-build: ${{ env.AUTH_EMULATOR_BUILD }}
-                  target: default
+                  target: ${{ env.AUTH_ANDROID_TARGET }}
                   arch: x86_64
                   profile: pixel_5
                   cores: 4
@@ -293,9 +295,9 @@ jobs:
               if: matrix.lane == 'entity-lifecycle'
               uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
               with:
-                  api-level: 34
+                  api-level: ${{ env.AUTH_ANDROID_API }}
                   emulator-build: ${{ env.AUTH_EMULATOR_BUILD }}
-                  target: default
+                  target: ${{ env.AUTH_ANDROID_TARGET }}
                   arch: x86_64
                   profile: pixel_5
                   cores: 4
@@ -307,9 +309,9 @@ jobs:
               if: matrix.lane == 'entity-lifecycle'
               uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
               with:
-                  api-level: 34
+                  api-level: ${{ env.AUTH_ANDROID_API }}
                   emulator-build: ${{ env.AUTH_EMULATOR_BUILD }}
-                  target: default
+                  target: ${{ env.AUTH_ANDROID_TARGET }}
                   arch: x86_64
                   profile: pixel_5
                   cores: 4
@@ -338,7 +340,7 @@ jobs:
                       echo "- Asset created: \`$AUTH_APK_CREATED_AT\`"
                       echo "- Asset ID: \`$AUTH_APK_ASSET_ID\`"
                       echo "- Auth APK SHA-256: \`$AUTH_APK_SHA256\`"
-                      echo "- Android API: \`34\`"
+                      echo "- Android runtime: API \`$AUTH_ANDROID_API\`, target \`$AUTH_ANDROID_TARGET\`"
                       echo "- Maestro: \`$MAESTRO_VERSION\`"
                       echo "- Backend: checked-in public Museum fixture v2"
                       case "${{ matrix.lane }}" in
