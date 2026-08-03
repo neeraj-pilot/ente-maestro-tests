@@ -55,9 +55,10 @@ env:
     MAESTRO_CLI_NO_ANALYTICS: 1
     MAESTRO_VERSION: 2.6.1
     MAESTRO_SHA256: 3440825f514f537c6a96bcf5de995780c2a4a7f83a43208fdc95d4f1fecfad3b
-    AUTH_ANDROID_API: 30
+    AUTH_ANDROID_API: 34
     AUTH_ANDROID_TARGET: default
-    AUTH_EMULATOR_OPTIONS: -no-window -gpu swiftshader -no-snapshot -noaudio -no-boot-anim -memory 4096
+    AUTH_EMULATOR_BUILD: 12414864
+    AUTH_EMULATOR_OPTIONS: -no-window -gpu swiftshader_indirect -feature -Vulkan -no-snapshot -noaudio -no-boot-anim -memory 6144
     ONLINE_ENDPOINT: http://10.0.2.2:8080
     ONLINE_OTT: 123456
 
@@ -121,7 +122,7 @@ jobs:
     auth-online:
         name: ${{ matrix.lane }}
         needs: resolve
-        runs-on: ubuntu-24.04-arm
+        runs-on: ubuntu-latest
         timeout-minutes: 45
         strategy:
             fail-fast: false
@@ -206,6 +207,12 @@ jobs:
             - name: Start local Auth backend
               run: ALLOW_AUTH_FIXTURE_RESTORE=1 scripts/fixtures/restore-auth-fixture.sh
 
+            - name: Enable KVM
+              run: |
+                  echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+                  sudo udevadm control --reload-rules
+                  sudo udevadm trigger --name-match=kvm
+
             - name: Prepare private test password
               run: |
                   password="AuthCi-$(openssl rand -hex 10)!"
@@ -229,16 +236,16 @@ jobs:
                   } > artifacts/maestro/runtime-health/memory-before.txt
 
             - name: Run ${{ matrix.lane }} session
-              if: matrix.lane != 'recovery-password'
+              if: matrix.lane == 'account-auth' || matrix.lane == 'data-sync'
               uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
               with:
                   api-level: ${{ env.AUTH_ANDROID_API }}
+                  emulator-build: ${{ env.AUTH_EMULATOR_BUILD }}
                   target: ${{ env.AUTH_ANDROID_TARGET }}
-                  arch: arm64-v8a
+                  arch: x86_64
                   profile: pixel_5
-                  cores: 2
+                  cores: 4
                   emulator-options: ${{ env.AUTH_EMULATOR_OPTIONS }}
-                  disable-linux-hw-accel: true
                   disable-animations: true
                   script: .github/scripts/run-auth-online-tests.sh "${{ matrix.lane }}"
 
@@ -247,12 +254,12 @@ jobs:
               uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
               with:
                   api-level: ${{ env.AUTH_ANDROID_API }}
+                  emulator-build: ${{ env.AUTH_EMULATOR_BUILD }}
                   target: ${{ env.AUTH_ANDROID_TARGET }}
-                  arch: arm64-v8a
+                  arch: x86_64
                   profile: pixel_5
-                  cores: 2
+                  cores: 4
                   emulator-options: ${{ env.AUTH_EMULATOR_OPTIONS }}
-                  disable-linux-hw-accel: true
                   disable-animations: true
                   script: .github/scripts/run-auth-online-tests.sh recovery-reset
 
@@ -261,14 +268,56 @@ jobs:
               uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
               with:
                   api-level: ${{ env.AUTH_ANDROID_API }}
+                  emulator-build: ${{ env.AUTH_EMULATOR_BUILD }}
                   target: ${{ env.AUTH_ANDROID_TARGET }}
-                  arch: arm64-v8a
+                  arch: x86_64
                   profile: pixel_5
-                  cores: 2
+                  cores: 4
                   emulator-options: ${{ env.AUTH_EMULATOR_OPTIONS }}
-                  disable-linux-hw-accel: true
                   disable-animations: true
                   script: .github/scripts/run-auth-online-tests.sh recovery-verification
+
+            - name: Run lifecycle create session
+              if: matrix.lane == 'entity-lifecycle'
+              uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+              with:
+                  api-level: ${{ env.AUTH_ANDROID_API }}
+                  emulator-build: ${{ env.AUTH_EMULATOR_BUILD }}
+                  target: ${{ env.AUTH_ANDROID_TARGET }}
+                  arch: x86_64
+                  profile: pixel_5
+                  cores: 4
+                  emulator-options: ${{ env.AUTH_EMULATOR_OPTIONS }}
+                  disable-animations: true
+                  script: .github/scripts/run-auth-online-tests.sh entity-lifecycle-create
+
+            - name: Run lifecycle mutation session
+              if: matrix.lane == 'entity-lifecycle'
+              uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+              with:
+                  api-level: ${{ env.AUTH_ANDROID_API }}
+                  emulator-build: ${{ env.AUTH_EMULATOR_BUILD }}
+                  target: ${{ env.AUTH_ANDROID_TARGET }}
+                  arch: x86_64
+                  profile: pixel_5
+                  cores: 4
+                  emulator-options: ${{ env.AUTH_EMULATOR_OPTIONS }}
+                  disable-animations: true
+                  script: .github/scripts/run-auth-online-tests.sh entity-lifecycle-mutate
+
+            - name: Run lifecycle restore and delete session
+              if: matrix.lane == 'entity-lifecycle'
+              uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+              with:
+                  api-level: ${{ env.AUTH_ANDROID_API }}
+                  emulator-build: ${{ env.AUTH_EMULATOR_BUILD }}
+                  target: ${{ env.AUTH_ANDROID_TARGET }}
+                  arch: x86_64
+                  profile: pixel_5
+                  cores: 4
+                  emulator-options: ${{ env.AUTH_EMULATOR_OPTIONS }}
+                  disable-animations: true
+                  script: .github/scripts/run-auth-online-tests.sh entity-lifecycle-finish
 
             - name: Summarize ${{ matrix.lane }} tests
               if: always()
@@ -297,7 +346,7 @@ jobs:
                       case "${{ matrix.lane }}" in
                           account-auth|data-sync) sessions=1 ;;
                           recovery-password) sessions=2 ;;
-                          entity-lifecycle) sessions=1 ;;
+                          entity-lifecycle) sessions=3 ;;
                       esac
                       echo "- Fresh emulator sessions: \`$sessions\`"
                       echo
@@ -368,6 +417,8 @@ jobs:
                   sudo dmesg --ctime > artifacts/maestro/runtime-health/kernel.log 2>&1 || true
                   sudo coredumpctl --no-pager list > artifacts/maestro/runtime-health/coredumps.txt 2>&1 || true
                   sudo coredumpctl --no-pager info > artifacts/maestro/runtime-health/coredump-info.txt 2>&1 || true
+                  find /tmp/android-runner -maxdepth 1 -type d -name 'emu-crash-*.db' \
+                      -exec cp -a '{}' artifacts/maestro/runtime-health/ \; 2>/dev/null || true
 
             - name: Upload account runtime health
               if: failure()

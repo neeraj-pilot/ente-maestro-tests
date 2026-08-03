@@ -281,8 +281,8 @@ run_data_sync() {
         maestro/auth/online/prepared-bulk-mutation-complete.yaml
 }
 
-run_entity_lifecycle() {
-    local lifecycle_marker restore_marker
+run_entity_lifecycle_create() {
+    local lifecycle_marker
 
     prepare_fixture_app
     run_maestro prepared-entity-lifecycle-login \
@@ -299,6 +299,16 @@ run_entity_lifecycle() {
     run_maestro prepared-entity-lifecycle-create \
         maestro/auth/online/prepared-entity-lifecycle-create.yaml
     wait_for_entity_count_and_quiet "$fixture_basic_user_id" "$lifecycle_marker" 4
+}
+
+run_entity_lifecycle_mutate() {
+    local lifecycle_marker
+
+    prepare_fixture_app
+    run_maestro prepared-entity-lifecycle-login \
+        -e FIXTURE_BASIC_EMAIL="$fixture_basic_email" \
+        -e FIXTURE_BASIC_PASSWORD="$fixture_basic_password" \
+        maestro/auth/online/prepared-basic-login.yaml
 
     lifecycle_marker=$(query_fixture_db \
         "SELECT MAX(updated_at) FROM authenticator_entity WHERE user_id = $fixture_basic_user_id;")
@@ -308,6 +318,16 @@ run_entity_lifecycle() {
         -e FIXTURE_LIFECYCLE_TAG="$FIXTURE_LIFECYCLE_TAG" \
         maestro/auth/online/prepared-entity-lifecycle-mutate.yaml
     wait_for_entity_count_and_quiet "$fixture_basic_user_id" "$lifecycle_marker" 4
+}
+
+run_entity_lifecycle_finish() {
+    local restore_marker
+
+    prepare_fixture_app
+    run_maestro prepared-entity-lifecycle-login \
+        -e FIXTURE_BASIC_EMAIL="$fixture_basic_email" \
+        -e FIXTURE_BASIC_PASSWORD="$fixture_basic_password" \
+        maestro/auth/online/prepared-basic-login.yaml
 
     restore_marker=$(query_fixture_db \
         "SELECT MAX(updated_at) FROM authenticator_entity WHERE user_id = $fixture_basic_user_id;")
@@ -328,7 +348,9 @@ case "$phase" in
     recovery-reset) run_recovery_reset ;;
     recovery-verification) run_recovery_verification ;;
     data-sync) run_data_sync ;;
-    entity-lifecycle) run_entity_lifecycle ;;
+    entity-lifecycle-create) run_entity_lifecycle_create ;;
+    entity-lifecycle-mutate) run_entity_lifecycle_mutate ;;
+    entity-lifecycle-finish) run_entity_lifecycle_finish ;;
     *)
         echo "Unknown Auth online test phase: $phase" >&2
         exit 2
