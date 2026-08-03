@@ -28,6 +28,7 @@ debug_dir="$artifacts_dir/online-debug/$phase"
 results_dir="$artifacts_dir/online-results/$phase"
 runtime_dir="$artifacts_dir/runtime-health"
 transport_failure_marker="$runtime_dir/$phase-transport-failure"
+preparation_count=0
 
 mkdir -p "$debug_dir" "$results_dir" "$runtime_dir"
 
@@ -76,6 +77,14 @@ run_maestro() {
 prepare_fixture_app() {
     local app_data_dir app_owner current_user preferences_dir preferences_file
 
+    adb shell pm clear "$APP_ID" >/dev/null
+    if [[ ${AUTH_APP_PREPARATION:-root-prefs} == "ui" ]]; then
+        preparation_count=$((preparation_count + 1))
+        run_maestro "prepare-endpoint-$preparation_count" \
+            maestro/auth/online/subflows/configure-online-test-endpoint-ui.yaml
+        return
+    fi
+
     adb root >/dev/null
     adb wait-for-device
     if [[ $(adb shell id -u | tr -d '\r') != 0 ]]; then
@@ -87,7 +96,6 @@ prepare_fixture_app() {
     app_data_dir="/data/user/$current_user/$APP_ID"
     preferences_dir="$app_data_dir/shared_prefs"
     preferences_file="$preferences_dir/FlutterSharedPreferences.xml"
-    adb shell pm clear "$APP_ID" >/dev/null
     app_owner=$(adb shell stat -c '%u:%g' "$app_data_dir" | tr -d '\r')
     if [[ ! "$app_owner" =~ ^[0-9]+:[0-9]+$ ]]; then
         echo "Unable to determine the Auth app-data owner: $app_owner" >&2
@@ -285,11 +293,6 @@ run_entity_lifecycle_create() {
     local lifecycle_marker
 
     prepare_fixture_app
-    run_maestro prepared-entity-lifecycle-login \
-        -e FIXTURE_BASIC_EMAIL="$fixture_basic_email" \
-        -e FIXTURE_BASIC_PASSWORD="$fixture_basic_password" \
-        maestro/auth/online/prepared-basic-login.yaml
-
     lifecycle_marker=$(query_fixture_db \
         "SELECT MAX(updated_at) FROM authenticator_entity WHERE user_id = $fixture_basic_user_id;")
     adb shell mkdir -p /sdcard/Download
@@ -297,6 +300,8 @@ run_entity_lifecycle_create() {
         maestro/auth/online/fixtures/lifecycle-import.txt \
         /sdcard/Download/auth_lifecycle_import.txt
     run_maestro prepared-entity-lifecycle-create \
+        -e FIXTURE_BASIC_EMAIL="$fixture_basic_email" \
+        -e FIXTURE_BASIC_PASSWORD="$fixture_basic_password" \
         maestro/auth/online/prepared-entity-lifecycle-create.yaml
     wait_for_entity_count_and_quiet "$fixture_basic_user_id" "$lifecycle_marker" 4
 }
@@ -305,14 +310,11 @@ run_entity_lifecycle_mutate() {
     local lifecycle_marker
 
     prepare_fixture_app
-    run_maestro prepared-entity-lifecycle-login \
-        -e FIXTURE_BASIC_EMAIL="$fixture_basic_email" \
-        -e FIXTURE_BASIC_PASSWORD="$fixture_basic_password" \
-        maestro/auth/online/prepared-basic-login.yaml
-
     lifecycle_marker=$(query_fixture_db \
         "SELECT MAX(updated_at) FROM authenticator_entity WHERE user_id = $fixture_basic_user_id;")
     run_maestro prepared-entity-lifecycle-mutate \
+        -e FIXTURE_BASIC_EMAIL="$fixture_basic_email" \
+        -e FIXTURE_BASIC_PASSWORD="$fixture_basic_password" \
         -e FIXTURE_LIFECYCLE_ACCOUNT="$FIXTURE_LIFECYCLE_ACCOUNT" \
         -e FIXTURE_LIFECYCLE_EDITED_ACCOUNT="$FIXTURE_LIFECYCLE_EDITED_ACCOUNT" \
         -e FIXTURE_LIFECYCLE_TAG="$FIXTURE_LIFECYCLE_TAG" \
@@ -348,6 +350,11 @@ case "$phase" in
     recovery-reset) run_recovery_reset ;;
     recovery-verification) run_recovery_verification ;;
     data-sync) run_data_sync ;;
+    entity-lifecycle)
+        run_entity_lifecycle_create
+        run_entity_lifecycle_mutate
+        run_entity_lifecycle_finish
+        ;;
     entity-lifecycle-create) run_entity_lifecycle_create ;;
     entity-lifecycle-mutate) run_entity_lifecycle_mutate ;;
     entity-lifecycle-finish) run_entity_lifecycle_finish ;;

@@ -1,0 +1,14 @@
+appId: ${APP_ID}
+---
+- runFlow:
+    file: login-online-account.yaml
+    env:
+      LOGIN_EMAIL: ${FIXTURE_BASIC_EMAIL}
+      LOGIN_PASSWORD: ${FIXTURE_BASIC_PASSWORD}
+- extendedWaitUntil:
+    visible: ".*developer.fixture@example.org.*"
+    timeout: 30000
+- runFlow:
+    file: dismiss-code-guidance.yaml
+    env:
+      READY_ACCOUNT: developer.fixture@example.org
