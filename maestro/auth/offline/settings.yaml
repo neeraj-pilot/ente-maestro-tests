@@ -14,25 +14,38 @@ tags: [auth, android, offline, settings]
 - assertVisible: "Support"
 - assertVisible: "About"
 - assertVisible: "Theme"
+- assertVisible:
+    id: "auth_settings_data"
+- assertVisible:
+    id: "auth_settings_security"
+- assertVisible:
+    id: "auth_settings_general"
+- assertVisible:
+    id: "auth_settings_support"
+- assertVisible:
+    id: "auth_settings_about"
+- assertVisible:
+    id: "auth_settings_theme"
 - scrollUntilVisible:
-    element:
-      id: "auth_settings_app_version"
+    element: "^Version .+$"
     direction: DOWN
     visibilityPercentage: 60
-- assertVisible:
-    id: "auth_settings_app_version"
-- tapOn: "General"
+- assertVisible: "^Version .+$"
+- tapOn:
+    id: "auth_settings_general"
 - assertVisible: "General"
 - assertVisible: "Language"
 - assertVisible: "App icon"
 - assertVisible: "Show large icons"
 - pressKey: BACK
 - tapOn: "Settings"
-- tapOn: "About"
+- tapOn:
+    id: "auth_settings_about"
 - assertVisible: "About"
 - pressKey: BACK
 - tapOn: "Settings"
-- tapOn: "Theme"
+- tapOn:
+    id: "auth_settings_theme"
 - assertVisible: "Theme"
 - assertVisible: "System"
 - assertVisible: "Light"
