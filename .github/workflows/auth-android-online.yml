@@ -1,6 +1,8 @@
 name: "Auth Android online"
 
 on:
+    schedule:
+        - cron: "17 1 * * *"
     workflow_dispatch:
         inputs:
             lane:
@@ -75,6 +77,7 @@ jobs:
             lanes: ${{ steps.lanes.outputs.lanes }}
             release_tag: ${{ steps.nightly.outputs.release_tag }}
             source_repository: ${{ steps.nightly.outputs.source_repository }}
+            should_run: ${{ steps.freshness.outputs.should_run }}
         steps:
             - name: Checkout tests
               uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -119,9 +122,37 @@ jobs:
                   GH_TOKEN: ${{ github.token }}
               run: scripts/resolve-nightly-apk.sh --app auth --github-output "$GITHUB_OUTPUT"
 
+            - name: Check scheduled build freshness
+              id: freshness
+              env:
+                  APK_CREATED_AT: ${{ steps.nightly.outputs.apk_created_at }}
+                  EVENT_NAME: ${{ github.event_name }}
+              run: |
+                  should_run=true
+                  if [[ "$EVENT_NAME" == "schedule" ]]; then
+                      created_epoch=$(date -u -d "$APK_CREATED_AT" +%s)
+                      now_epoch=$(date -u +%s)
+                      age_seconds=$((now_epoch - created_epoch))
+                      if (( age_seconds < 0 || age_seconds > 86400 )); then
+                          should_run=false
+                          echo "The latest Auth APK is $age_seconds seconds old; skipping this scheduled run."
+                      fi
+                  fi
+                  echo "should_run=$should_run" >> "$GITHUB_OUTPUT"
+
+            - name: Summarize scheduled skip
+              if: steps.freshness.outputs.should_run == 'false'
+              run: |
+                  {
+                      echo "### Auth Android online skipped"
+                      echo
+                      echo "No compatible Auth APK was published in the previous 24 hours."
+                  } >> "$GITHUB_STEP_SUMMARY"
+
     auth-online:
         name: ${{ matrix.lane }}
         needs: resolve
+        if: needs.resolve.outputs.should_run == 'true'
         runs-on: macos-15-intel
         timeout-minutes: 60
         strategy:
@@ -445,6 +476,11 @@ jobs:
               env:
                   LANE_RESULT: ${{ needs.auth-online.result }}
                   RESOLVE_RESULT: ${{ needs.resolve.result }}
+                  SHOULD_RUN: ${{ needs.resolve.outputs.should_run }}
               run: |
                   test "$RESOLVE_RESULT" = success
+                  if [[ "$SHOULD_RUN" != "true" ]]; then
+                      echo "Scheduled run skipped because no compatible Auth APK was published in the previous 24 hours."
+                      exit 0
+                  fi
                   test "$LANE_RESULT" = success
