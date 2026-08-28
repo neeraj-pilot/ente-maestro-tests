@@ -35,6 +35,11 @@ The suite does not follow temporary Ente branches. A product change becomes the
 test target after it reaches Ente `main` and is present in a compatible published
 APK.
 
+Both hosted workflows also run once daily at 01:17 UTC. Scheduled runs resolve
+the current Auth asset and continue only when it was created within the previous
+24 hours, so a quiet day does not start emulator jobs. Push, pull-request, and
+manual runs are unaffected by this freshness check.
+
 Online tests restore the checked-in public Museum fixture before each lane.
 Fixture identities are intentionally obvious and their credentials live only
 in `museum/fixtures/public-test-credentials.json`. Do not place passwords,
@@ -94,6 +99,10 @@ entity lifecycle uses separate create, mutate, and restore/delete sessions;
 recovery uses separate reset and verification sessions. Each online emulator
 receives 4 GiB of guest memory. The online matrix runs on hosted macOS because
 Linux QEMU has crashed during Argon2-heavy recovery and lifecycle operations.
+
+The daily scheduled run uses the same matrices after the 24-hour Auth asset
+freshness check; when the check is stale, the resolve job records a skip summary
+and no emulator is started.
 
 The online fixture uses local PostgreSQL and Museum only. Do not add object
 storage, a full Ente checkout, or external services unless the covered behavior

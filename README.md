@@ -18,6 +18,11 @@ The tests target published builds, not a temporary Ente branch. UI changes are
 therefore exercised automatically after they reach Ente `main` and appear in a
 compatible nightly APK.
 
+Both hosted workflows also check once daily at 01:17 UTC. A scheduled run
+starts the suites only when the resolved Auth APK asset was created within the
+previous 24 hours; push, pull-request, and manual runs keep their existing
+behavior.
+
 On a pull request, both workflows run only the affected hosted suites; shared
 helpers and workflow changes run their full matrices. Manual runs can target one
 suite, while every merge to `main` runs the complete hosted baseline. Offline

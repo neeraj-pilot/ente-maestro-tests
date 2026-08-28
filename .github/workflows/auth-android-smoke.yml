@@ -1,6 +1,8 @@
 name: "Auth Android smoke"
 
 on:
+    schedule:
+        - cron: "17 1 * * *"
     push:
         branches: [main]
         paths:
@@ -57,6 +59,7 @@ jobs:
         outputs:
             matrix: ${{ steps.select.outputs.matrix }}
             has_suites: ${{ steps.select.outputs.has_suites }}
+            should_run: ${{ steps.freshness.outputs.should_run }}
             channel: ${{ steps.release.outputs.channel }}
             release_tag: ${{ steps.release.outputs.release_tag }}
             apk_asset_id: ${{ steps.release.outputs.apk_asset_id }}
@@ -109,9 +112,37 @@ jobs:
               run: |
                   scripts/resolve-nightly-apk.sh --app auth --github-output "$GITHUB_OUTPUT"
 
+            - name: Check scheduled build freshness
+              id: freshness
+              if: steps.select.outputs.has_suites == 'true'
+              env:
+                  APK_CREATED_AT: ${{ steps.release.outputs.apk_created_at }}
+                  EVENT_NAME: ${{ github.event_name }}
+              run: |
+                  should_run=true
+                  if [[ "$EVENT_NAME" == "schedule" ]]; then
+                      created_epoch=$(date -u -d "$APK_CREATED_AT" +%s)
+                      now_epoch=$(date -u +%s)
+                      age_seconds=$((now_epoch - created_epoch))
+                      if (( age_seconds < 0 || age_seconds > 86400 )); then
+                          should_run=false
+                          echo "The latest Auth APK is $age_seconds seconds old; skipping this scheduled run."
+                      fi
+                  fi
+                  echo "should_run=$should_run" >> "$GITHUB_OUTPUT"
+
+            - name: Summarize scheduled skip
+              if: steps.freshness.outputs.should_run == 'false'
+              run: |
+                  {
+                      echo "### Auth Android smoke skipped"
+                      echo
+                      echo "No compatible Auth APK was published in the previous 24 hours."
+                  } >> "$GITHUB_STEP_SUMMARY"
+
     smoke:
         needs: select
-        if: needs.select.outputs.has_suites == 'true'
+        if: needs.select.outputs.has_suites == 'true' && needs.select.outputs.should_run == 'true'
         name: ${{ matrix.name }}
         runs-on: ubuntu-latest
         timeout-minutes: 30
