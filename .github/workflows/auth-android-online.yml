@@ -24,7 +24,11 @@ on:
             - "museum/**"
             - "scripts/current-totp.mjs"
             - "scripts/fixtures/**"
+            - "tools/auth-fixture-generator/**"
             - "scripts/resolve-nightly-apk.sh"
+            - "scripts/download-auth-apk.sh"
+            - "scripts/install-maestro.sh"
+            - "scripts/test-ci-helpers.sh"
             - "scripts/select-auth-online-lanes.sh"
             - "scripts/test-hosted-flow-registration.sh"
             - "scripts/test-resolve-nightly-apk.sh"
@@ -38,7 +42,11 @@ on:
             - "museum/**"
             - "scripts/current-totp.mjs"
             - "scripts/fixtures/**"
+            - "tools/auth-fixture-generator/**"
             - "scripts/resolve-nightly-apk.sh"
+            - "scripts/download-auth-apk.sh"
+            - "scripts/install-maestro.sh"
+            - "scripts/test-ci-helpers.sh"
             - "scripts/select-auth-online-lanes.sh"
             - "scripts/test-hosted-flow-registration.sh"
             - "scripts/test-resolve-nightly-apk.sh"
@@ -53,10 +61,9 @@ concurrency:
 
 env:
     APP_ID: io.ente.auth.independent
-    AUTH_APK_DIR: ${{ github.workspace }}/artifacts/auth
     MAESTRO_CLI_NO_ANALYTICS: 1
-    MAESTRO_VERSION: 2.6.1
-    MAESTRO_SHA256: 3440825f514f537c6a96bcf5de995780c2a4a7f83a43208fdc95d4f1fecfad3b
+    # Analytics opt-out does not cover error reports (Maestro issue #3488).
+    MAESTRO_API_URL: http://127.0.0.1:9
     AUTH_ANDROID_API: 34
     AUTH_ANDROID_TARGET: default
     AUTH_EMULATOR_BUILD: 12414864
@@ -115,12 +122,13 @@ jobs:
                   scripts/test-select-auth-online-lanes.sh
                   scripts/test-hosted-flow-registration.sh
                   scripts/test-resolve-nightly-apk.sh
+                  scripts/test-ci-helpers.sh
 
             - name: Resolve latest published Auth build
               id: nightly
               env:
                   GH_TOKEN: ${{ github.token }}
-              run: scripts/resolve-nightly-apk.sh --app auth --github-output "$GITHUB_OUTPUT"
+              run: scripts/resolve-nightly-apk.sh --github-output "$GITHUB_OUTPUT"
 
             - name: Check scheduled build freshness
               id: freshness
@@ -160,6 +168,14 @@ jobs:
             matrix:
                 lane: ${{ fromJSON(needs.resolve.outputs.lanes) }}
         env:
+            AUTH_APK_ASSET_ID: ${{ needs.resolve.outputs.apk_asset_id }}
+            AUTH_APK_CREATED_AT: ${{ needs.resolve.outputs.apk_created_at }}
+            AUTH_RELEASE_TAG: ${{ needs.resolve.outputs.release_tag }}
+            AUTH_APK_NAME: ${{ needs.resolve.outputs.apk_name }}
+            AUTH_APK_SHA256: ${{ needs.resolve.outputs.apk_sha256 }}
+            AUTH_CHANNEL: ${{ needs.resolve.outputs.channel }}
+            AUTH_SOURCE_REPOSITORY: ${{ needs.resolve.outputs.source_repository }}
+            AUTH_APK_PATH: ${{ github.workspace }}/artifacts/auth/${{ needs.resolve.outputs.apk_name }}
             AUTH_FIXTURE_RUNTIME_DIR: ${{ github.workspace }}/artifacts/auth-fixture-${{ matrix.lane }}
             AUTH_MUSEUM_BINARY: ${{ github.workspace }}/artifacts/museum
             AUTH_MUSEUM_SOURCE_DIR: ${{ github.workspace }}/artifacts/ente-server
@@ -216,62 +232,11 @@ jobs:
 
             - name: Download resolved Auth build
               env:
-                  APK_ASSET_ID: ${{ needs.resolve.outputs.apk_asset_id }}
-                  APK_CREATED_AT: ${{ needs.resolve.outputs.apk_created_at }}
-                  APK_NAME: ${{ needs.resolve.outputs.apk_name }}
-                  APK_SHA256: ${{ needs.resolve.outputs.apk_sha256 }}
-                  AUTH_CHANNEL: ${{ needs.resolve.outputs.channel }}
-                  AUTH_RELEASE_TAG: ${{ needs.resolve.outputs.release_tag }}
                   GH_TOKEN: ${{ github.token }}
-                  SOURCE_REPOSITORY: ${{ needs.resolve.outputs.source_repository }}
-              run: |
-                  mkdir -p "$AUTH_APK_DIR"
-                  apk_path="$AUTH_APK_DIR/$APK_NAME"
-                  for attempt in 1 2 3; do
-                      if gh api \
-                          -H 'Accept: application/octet-stream' \
-                          "repos/$SOURCE_REPOSITORY/releases/assets/$APK_ASSET_ID" > "$apk_path"; then
-                          break
-                      fi
-                      if [[ "$attempt" -eq 3 ]]; then
-                          echo "Failed to download the resolved Auth APK" >&2
-                          exit 1
-                      fi
-                      sleep $((attempt * 2))
-                  done
-
-                  expected_sha256="${APK_SHA256#sha256:}"
-                  actual_sha256=$(shasum -a 256 "$apk_path" | awk '{print $1}')
-                  if [[ "$actual_sha256" != "$expected_sha256" ]]; then
-                      echo "Downloaded Auth APK does not match the resolved release asset" >&2
-                      exit 1
-                  fi
-
-                  echo "AUTH_APK_PATH=$apk_path" >> "$GITHUB_ENV"
-                  echo "AUTH_APK_ASSET_ID=$APK_ASSET_ID" >> "$GITHUB_ENV"
-                  echo "AUTH_APK_CREATED_AT=$APK_CREATED_AT" >> "$GITHUB_ENV"
-                  echo "AUTH_APK_NAME=$APK_NAME" >> "$GITHUB_ENV"
-                  echo "AUTH_CHANNEL=$AUTH_CHANNEL" >> "$GITHUB_ENV"
-                  echo "AUTH_RELEASE_TAG=$AUTH_RELEASE_TAG" >> "$GITHUB_ENV"
-                  echo "AUTH_APK_SHA256=$expected_sha256" >> "$GITHUB_ENV"
+              run: scripts/download-auth-apk.sh "$AUTH_SOURCE_REPOSITORY" "$AUTH_APK_ASSET_ID" "$AUTH_APK_SHA256" "$AUTH_APK_PATH"
 
             - name: Install pinned Maestro
-              run: |
-                  curl --fail --location --silent --show-error \
-                      --retry 3 --retry-all-errors --retry-delay 2 \
-                      "https://github.com/mobile-dev-inc/maestro/releases/download/cli-$MAESTRO_VERSION/maestro.zip" \
-                      --output "$RUNNER_TEMP/maestro.zip"
-                  actual_sha256=$(shasum -a 256 "$RUNNER_TEMP/maestro.zip" | awk '{print $1}')
-                  test "$actual_sha256" = "$MAESTRO_SHA256"
-                  mkdir -p "$HOME/.maestro"
-                  unzip -q "$RUNNER_TEMP/maestro.zip" -d "$HOME/.maestro"
-                  maestro_bin="$HOME/.maestro/maestro/bin/maestro"
-                  installed_version=$("$maestro_bin" --version)
-                  if [[ "$installed_version" != "$MAESTRO_VERSION" ]]; then
-                      echo "Expected Maestro $MAESTRO_VERSION, installed $installed_version" >&2
-                      exit 1
-                  fi
-                  echo "$HOME/.maestro/maestro/bin" >> "$GITHUB_PATH"
+              run: scripts/install-maestro.sh
 
             - name: Start native Auth backend
               run: scripts/fixtures/start-auth-fixture-macos.sh
@@ -426,7 +391,7 @@ jobs:
                   if-no-files-found: warn
                   retention-days: 7
 
-            - name: Capture account runtime health
+            - name: Capture host runtime health
               if: failure()
               run: |
                   mkdir -p artifacts/maestro/runtime-health
@@ -435,16 +400,9 @@ jobs:
                       echo "lane=${{ matrix.lane }}"
                       uname -a
                       sw_vers
-                      adb devices -l || true
-                      printf 'adb_state='
-                      adb get-state || true
-                      printf 'app_pid='
-                      adb shell pidof "$APP_ID" || true
-                      printf 'emulator_processes='
-                      pgrep -af 'emulator.*-avd' || true
                       vm_stat || true
                       df -h || true
-                  } > "artifacts/maestro/runtime-health/${{ matrix.lane }}.txt"
+                  } > "artifacts/maestro/runtime-health/${{ matrix.lane }}-host.txt"
                   cp "$AUTH_FIXTURE_RUNTIME_DIR/museum.log" artifacts/maestro/runtime-health/ 2>/dev/null || true
 
             - name: Upload account runtime health

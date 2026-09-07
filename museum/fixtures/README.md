@@ -17,9 +17,10 @@ The five Auth entities use familiar issuers (`GitHub`, `Google`, `Microsoft`,
 and `Dropbox`) so icon matching is exercised alongside stable
 `@example.org` account labels, tags, notes, pin state, and trash state.
 
-Normal CI restores the checked-in PostgreSQL dump and does not compile Ente.
-The generator is reserved for deliberate fixture refreshes and pins both the
-Ente source revision and container image digests recorded in
+Normal CI restores the checked-in PostgreSQL dump and builds only the pinned
+Museum server, not the Auth app or fixture generator. The generator is reserved
+for deliberate fixture refreshes and pins both the Ente source revision and
+container image digests recorded in
 [`manifest.json`](manifest.json).
 
 ## Restore locally

@@ -1,128 +1,109 @@
-# Auth Maestro test guide
+# Auth test guide
 
-This repository verifies compatible published Ente Auth Android APKs. It does
-not build the Auth app. Online CI sparsely checks out only the Museum server at
-the fixture-pinned revision.
+## Build and CI contract
 
-The [README coverage table](../README.md#latest-verified-coverage) is the
-live record of the latest clean `main` run. Keep historical run links, one-off
-debugging notes, and app-bug investigations out of this guide; they become
-stale quickly and belong in GitHub Actions or the relevant product issue.
+Each hosted workflow resolves the newest Auth beta/RC APK in `ente/nightly`,
+falling back to a stable `ente/ente` asset only when no prerelease is available.
+Selection uses asset creation time, not tag publication time. Every shard within
+that workflow receives the same asset ID and verifies its SHA-256.
 
-## Test layers
+These are published-build tests. They do not build or validate unshipped Auth
+changes from a product PR. Offline and online workflows resolve independently.
 
-| Layer | Purpose | Runs in hosted CI |
-| --- | --- | --- |
-| Offline core | Public offline setup, organization, settings, tags, and trash behavior. | Yes, in five selected Android shards. |
-| Online fixture | Auth login, TOTP challenge, signup, recovery reset, synchronized codes, and persisted mutations against local Museum. | Yes, in account-auth, recovery-password, data-sync, and entity-lifecycle lanes. |
-| Platform local | Google Authenticator migration imports, encrypted local backups, and other device-specific behavior. | No; validate on local ARM64 emulators or a device. |
-| Product demos | Curated, paced presentations assembled from proven behavior flows. | No; keep separate from regression tests. |
-
-## Published build and fixture contract
-
-Every hosted workflow resolves the newest compatible published Auth APK at
-workflow start with `scripts/resolve-nightly-apk.sh`. It prefers beta and
-release-candidate assets from `ente/nightly`, then falls back to the stable
-`ente/ente` release when promotion has removed the corresponding nightly tag.
-Because prerelease tags can be reused, the resolver orders eligible APKs by
-asset creation time and passes the exact source repository, asset ID, APK name,
-creation time, and digest to every matrix shard. Each shard downloads that
-asset ID, verifies its digest, and records the provenance in its job summary.
-This deliberately means “latest at run start”, not a possibly different build
-for each shard.
-
-The suite does not follow temporary Ente branches. A product change becomes the
-test target after it reaches Ente `main` and is present in a compatible published
-APK.
-
-Both hosted workflows also run once daily at 01:17 UTC. Scheduled runs resolve
-the current Auth asset and continue only when it was created within the previous
-24 hours, so a quiet day does not start emulator jobs. Push, pull-request, and
-manual runs are unaffected by this freshness check.
-
-Online tests restore the checked-in public Museum fixture before each lane.
-Fixture identities are intentionally obvious and their credentials live only
-in `museum/fixtures/public-test-credentials.json`. Do not place passwords,
-recovery keys, OTTs, or TOTP secrets in step summaries, screenshots, or public
-diagnostics.
-
-## Repository layout
-
-| Path | Owns |
+| Trigger | Execution |
 | --- | --- |
-| `maestro/auth/offline/` | Public offline behavior flows. |
-| `maestro/auth/online/` | Museum-backed login, recovery, sync, and mutation flows. |
-| `maestro/auth/subflows/` | Small cross-flow public UI setup helpers. |
-| `maestro/auth/online/subflows/` | Online-only login, endpoint, and synchronized-code helpers. |
-| `maestro/fixtures/` | Public files used by local platform flows. |
-| `museum/fixtures/` | Versioned public Museum fixture and its manifest. |
-| `scripts/select-auth-*.sh` | Maps a changed path to the smallest safe hosted matrix. |
-| `.github/workflows/` | Published-nightly Android workflows. |
+| Daily, 01:17 UTC | Full hosted matrix only if the resolved APK was created in the preceding 24 hours; otherwise an explicit skip summary. |
+| Pull request matching workflow paths | Affected suites; shared helpers and fixture changes select the relevant full matrix. |
+| Push to main matching workflow paths | Full matrix for each triggered workflow. Documentation-only merges do not run tests. |
+| Manual | Full matrix or one selected suite/lane, regardless of APK age. |
 
-Keep a reusable subflow limited to one stable public interaction. Put a flow
-next to the behavior it verifies; do not create generic “utility” flows that
-hide product state or silently broaden the selected CI matrix.
+The daily freshness check is not build deduplication and is subject to schedule
+delays. Do not interpret a skipped run as fresh coverage.
 
-## Adding or changing a test
+Offline uses five Ubuntu shards. Online uses four macOS lanes with 4 GiB Android
+guest memory. Keep this known-working configuration until alternatives are
+validated; do not change runner platforms while refactoring flows. Account auth
+and data sync each use one emulator session, recovery uses two, and entity
+lifecycle uses three.
 
-1. Exercise real user-visible behavior. Local debug helpers can speed up
-   exploration but must not replace the hosted regression path.
-2. Create only the state needed by the flow. Use a named subflow when more
-   than one test needs the same public setup.
-3. Prefer a shipped, action-oriented semantics identifier; then a visible
-   label; use coordinates only for Android system UI that exposes neither.
-4. Wait for a meaningful ready state such as a code item, sheet title, or
-   selected tag. Do not add blanket retries or arbitrary delays.
-5. Add the flow to a hosted shard or online runner. Registration validation
-   fails if a new flow is not reachable from CI; selector changes still trigger
-   the full relevant matrix until the flow has a narrower mapping.
-6. Keep encrypted data and secrets out of Maestro debug artifacts. Online
-   account/recovery failures retain only a secret-free runtime snapshot.
+## Adding or changing a flow
 
-Run the selector tests and the smallest relevant local suite before pushing.
-Use `scripts/download-auth-nightly.sh` immediately before a local run; it
-resolves and verifies the newest compatible published asset rather than
-trusting a reused release tag.
+1. Test user-visible behavior and create only the state it needs.
+2. Prefer action-oriented semantics identifiers, then visible labels. Use
+   coordinates only when the control cannot be targeted reliably otherwise.
+3. Wait for a meaningful ready state. Required checks must not be wrapped in
+   `when: visible`; reserve conditional flows for optional guidance or known
+   starting states.
+4. Reuse a small subflow for a stable interaction, not a generic sequence that
+   hides product state. Keep product demos separate from regression flows.
+5. Register hosted offline flows in `scripts/select-auth-ci-suites.sh`, or online
+   phases in `.github/scripts/run-auth-online-tests.sh` and their lane selector.
+   Registration checks catch unreachable flows. Imports and local backups are
+   explicit local-only exceptions.
+6. Run local configuration checks and the smallest affected device suite before
+   pushing. There is no need to dispatch CI for documentation-only cleanup.
 
 ```sh
-apk_path=$(scripts/download-auth-nightly.sh)
-scripts/run-auth-android-local.sh --apk "$apk_path" --suite tags
+scripts/test-select-auth-ci-suites.sh
+scripts/test-select-auth-online-lanes.sh
+scripts/test-hosted-flow-registration.sh
+scripts/test-resolve-nightly-apk.sh
+scripts/test-ci-helpers.sh
+scripts/fixtures/verify-auth-fixture.sh
 ```
 
-## Hosted CI behavior
+The helper tests mock downloads and devices; they do not contact GitHub, launch
+emulators or need Museum. The [README](../README.md#run-locally) has the device
+runner command.
 
-Pull requests run only the affected offline shards or online lanes. Changes to
-shared helpers, fixtures, selectors, or workflows run the full relevant
-matrix. Every merge to `main` runs all five offline shards and all four online
-lanes. Account-auth and data-sync each use one emulator session. Synchronized
-entity lifecycle uses separate create, mutate, and restore/delete sessions;
-recovery uses separate reset and verification sessions. Each online emulator
-receives 4 GiB of guest memory. The online matrix runs on hosted macOS because
-Linux QEMU has crashed during Argon2-heavy recovery and lifecycle operations.
+## Online fixture setup
 
-The daily scheduled run uses the same matrices after the 24-hour Auth asset
-freshness check; when the check is stale, the resolve job records a skip summary
-and no emulator is started.
+Restore the [public Museum fixture](../museum/fixtures/README.md) before each
+independent lane. Preserve backend state between phases within a lane. The
+fixture generator is for deliberate refreshes, not normal test runs.
 
-The online fixture uses local PostgreSQL and Museum only. Do not add object
-storage, a full Ente checkout, or external services unless the covered behavior
-needs them.
+Hosted macOS builds the manifest-pinned Museum revision and starts PostgreSQL
+natively. Local Docker setup uses pinned images. Neither path needs production
+services or object storage.
 
-## Intentional exclusions
+The online runner defaults to a rootable emulator and seeds only the endpoint
+and guidance/screen-cover preferences in Flutter's preferences file. Login and
+subsequent account operations still happen through the UI. For a non-rooted
+device, use `AUTH_APP_PREPARATION=ui` and an endpoint reachable from that device;
+the UI endpoint-setup subflow replaces preference seeding.
+For a USB-connected Android device, `adb -s <serial> reverse tcp:8080 tcp:8080`
+lets the app use `http://127.0.0.1:8080` without using the host's LAN address.
 
-- Google Authenticator migration imports and encrypted local backups remain
-  local-only until the published x86 Android picker/runtime supports them
-  reliably.
-- Logout, passkeys, app lock/biometrics, QR scanning, gallery selection, and
-  external intents are not hosted coverage yet.
-- Do not add a separate Auth settings status for whether account 2FA is
-  enabled solely for testing. The login TOTP challenge is the product behavior
-  covered by the online suite.
+Keep the real offline warning in onboarding tests. Do not require Auth to show a
+2FA-settings status solely for a test: the live login challenge tests that behavior.
 
-## Promoting coverage
+## Results and diagnostics
 
-Add a behavior to required hosted CI only when it has deterministic selectors
-in the published nightly, needs no untracked service, keeps diagnostics
-secret-free, and has passed clean hosted runs. After a clean full run on
-`main`, refresh the README coverage table with that run; do not use targeted
-pull-request or manual runs as the dashboard source.
+- CI pins Maestro 2.10.0 and its archive checksum in `scripts/install-maestro.sh`.
+  Use the same version locally when validating an upgrade.
+- Local runners and CI disable analytics and route Maestro's API to loopback.
+  The analytics opt-out alone does not disable exception-report uploads
+  ([upstream issue](https://github.com/mobile-dev-inc/Maestro/issues/3488)).
+  This repository does not use Maestro Cloud.
+- Each job summary records immutable APK provenance, suite and outcome.
+- JUnit results are retained for seven days.
+- Local runners create a separate artifact directory for each invocation;
+  reruns do not mix reports or debug files from different attempts.
+- Offline failures retain Maestro diagnostics for seven days.
+- Online failures retain runtime health for three days. Device state and app
+  memory are captured inside the runner before emulator teardown. Workflow-level
+  diagnostics provide host memory/disk information and the local Museum log.
+- Online Maestro debug output is not uploaded: login/signup/recovery screens can
+  contain credentials. Maestro 2.7+ captures a screenshot before every step;
+  do not upload raw screens or input traces from these phases.
+
+Coverage descriptions live in the README; executed outcomes live in Actions,
+not hand-edited green badges. Keep app bugs and performance investigations in
+product issues rather than growing a chronological troubleshooting log here.
+
+## Promoting platform coverage
+
+Imports and local backups stay local-only until they work reliably on the hosted
+Android runtime. Backup restore remains a coverage gap; encrypted JSON fields
+alone do not prove a usable backup. Promote a flow after its selectors and device
+behavior are validated, then require a clean hosted run before claiming coverage.

@@ -39,4 +39,8 @@ assert_lanes "account-auth,recovery-password,data-sync,entity-lifecycle" --chang
 assert_lanes "account-auth,recovery-password,data-sync,entity-lifecycle" --changed-file scripts/test-resolve-nightly-apk.sh
 assert_lanes "" --changed-file README.md
 
+for path in scripts/download-auth-apk.sh scripts/install-maestro.sh scripts/test-ci-helpers.sh tools/auth-fixture-generator/src/main.rs tools/auth-fixture-generator/Cargo.lock; do
+    assert_lanes "account-auth,recovery-password,data-sync,entity-lifecycle" --changed-file "$path"
+done
+
 echo "Auth online lane selection tests passed"

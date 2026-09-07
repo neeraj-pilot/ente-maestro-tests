@@ -10,6 +10,9 @@ on:
             - "maestro/auth/**"
             - "maestro/fixtures/**"
             - "scripts/resolve-nightly-apk.sh"
+            - "scripts/download-auth-apk.sh"
+            - "scripts/install-maestro.sh"
+            - "scripts/test-ci-helpers.sh"
             - "scripts/select-auth-ci-suites.sh"
             - "scripts/test-hosted-flow-registration.sh"
             - "scripts/test-resolve-nightly-apk.sh"
@@ -20,6 +23,9 @@ on:
             - "maestro/auth/**"
             - "maestro/fixtures/**"
             - "scripts/resolve-nightly-apk.sh"
+            - "scripts/download-auth-apk.sh"
+            - "scripts/install-maestro.sh"
+            - "scripts/test-ci-helpers.sh"
             - "scripts/select-auth-ci-suites.sh"
             - "scripts/test-hosted-flow-registration.sh"
             - "scripts/test-resolve-nightly-apk.sh"
@@ -47,10 +53,9 @@ concurrency:
     cancel-in-progress: true
 
 env:
-    AUTH_APK_DIR: ${{ github.workspace }}/artifacts/auth
     MAESTRO_CLI_NO_ANALYTICS: 1
-    MAESTRO_VERSION: 2.6.1
-    MAESTRO_SHA256: 3440825f514f537c6a96bcf5de995780c2a4a7f83a43208fdc95d4f1fecfad3b
+    # Analytics opt-out does not cover error reports (Maestro issue #3488).
+    MAESTRO_API_URL: http://127.0.0.1:9
 
 jobs:
     select:
@@ -80,7 +85,9 @@ jobs:
                   scripts/test-hosted-flow-registration.sh
 
             - name: Validate nightly resolution
-              run: scripts/test-resolve-nightly-apk.sh
+              run: |
+                  scripts/test-resolve-nightly-apk.sh
+                  scripts/test-ci-helpers.sh
 
             - name: Select suites for this event
               id: select
@@ -110,7 +117,7 @@ jobs:
               env:
                   GH_TOKEN: ${{ github.token }}
               run: |
-                  scripts/resolve-nightly-apk.sh --app auth --github-output "$GITHUB_OUTPUT"
+                  scripts/resolve-nightly-apk.sh --github-output "$GITHUB_OUTPUT"
 
             - name: Check scheduled build freshness
               id: freshness
@@ -149,6 +156,15 @@ jobs:
         strategy:
             fail-fast: false
             matrix: ${{ fromJSON(needs.select.outputs.matrix) }}
+        env:
+            AUTH_APK_ASSET_ID: ${{ needs.select.outputs.apk_asset_id }}
+            AUTH_APK_CREATED_AT: ${{ needs.select.outputs.apk_created_at }}
+            AUTH_RELEASE_TAG: ${{ needs.select.outputs.release_tag }}
+            AUTH_APK_NAME: ${{ needs.select.outputs.apk_name }}
+            AUTH_APK_SHA256: ${{ needs.select.outputs.apk_sha256 }}
+            AUTH_CHANNEL: ${{ needs.select.outputs.channel }}
+            AUTH_SOURCE_REPOSITORY: ${{ needs.select.outputs.source_repository }}
+            AUTH_APK_PATH: ${{ github.workspace }}/artifacts/auth/${{ needs.select.outputs.apk_name }}
         steps:
             - name: Checkout tests
               uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -164,72 +180,10 @@ jobs:
             - name: Download resolved Auth build
               env:
                   GH_TOKEN: ${{ github.token }}
-                  AUTH_APK_ASSET_ID: ${{ needs.select.outputs.apk_asset_id }}
-                  AUTH_APK_CREATED_AT: ${{ needs.select.outputs.apk_created_at }}
-                  AUTH_RELEASE_TAG: ${{ needs.select.outputs.release_tag }}
-                  AUTH_APK_NAME: ${{ needs.select.outputs.apk_name }}
-                  AUTH_APK_SHA256: ${{ needs.select.outputs.apk_sha256 }}
-                  AUTH_CHANNEL: ${{ needs.select.outputs.channel }}
-                  AUTH_SOURCE_REPOSITORY: ${{ needs.select.outputs.source_repository }}
-              run: |
-                  mkdir -p "$AUTH_APK_DIR"
-                  release_tag="$AUTH_RELEASE_TAG"
-                  if [[ -z "$release_tag" || -z "$AUTH_APK_ASSET_ID" || -z "$AUTH_APK_NAME" || -z "$AUTH_APK_CREATED_AT" || -z "$AUTH_APK_SHA256" ]]; then
-                      echo "Auth release was not resolved" >&2
-                      exit 1
-                  fi
-                  echo "Testing $release_tag asset $AUTH_APK_ASSET_ID ($AUTH_APK_NAME, created $AUTH_APK_CREATED_AT, $AUTH_APK_SHA256)"
-
-                  apk_path="$AUTH_APK_DIR/$AUTH_APK_NAME"
-                  for attempt in 1 2 3; do
-                      if gh api \
-                          -H 'Accept: application/octet-stream' \
-                          "repos/$AUTH_SOURCE_REPOSITORY/releases/assets/$AUTH_APK_ASSET_ID" > "$apk_path"; then
-                          break
-                      fi
-                      if [[ "$attempt" -eq 3 ]]; then
-                          echo "Failed to download the resolved Auth APK" >&2
-                          exit 1
-                      fi
-                      sleep $((attempt * 2))
-                  done
-
-                  if [[ ! -f "$apk_path" ]]; then
-                      echo "Auth APK was not downloaded" >&2
-                      exit 1
-                  fi
-
-                  expected_sha256="${AUTH_APK_SHA256#sha256:}"
-                  actual_sha256=$(sha256sum "$apk_path" | awk '{print $1}')
-                  if [[ "$actual_sha256" != "$expected_sha256" ]]; then
-                      echo "Downloaded Auth APK does not match the resolved release asset" >&2
-                      exit 1
-                  fi
-
-                  echo "AUTH_APK_PATH=$apk_path" >> "$GITHUB_ENV"
-                  echo "AUTH_APK_ASSET_ID=$AUTH_APK_ASSET_ID" >> "$GITHUB_ENV"
-                  echo "AUTH_APK_CREATED_AT=$AUTH_APK_CREATED_AT" >> "$GITHUB_ENV"
-                  echo "AUTH_APK_NAME=$AUTH_APK_NAME" >> "$GITHUB_ENV"
-                  echo "AUTH_CHANNEL=$AUTH_CHANNEL" >> "$GITHUB_ENV"
-                  echo "AUTH_RELEASE_TAG=$release_tag" >> "$GITHUB_ENV"
-                  echo "AUTH_APK_SHA256=$expected_sha256" >> "$GITHUB_ENV"
+              run: scripts/download-auth-apk.sh "$AUTH_SOURCE_REPOSITORY" "$AUTH_APK_ASSET_ID" "$AUTH_APK_SHA256" "$AUTH_APK_PATH"
 
             - name: Install pinned Maestro
-              run: |
-                  curl --fail --location --silent --show-error \
-                      --retry 3 --retry-all-errors --retry-delay 2 \
-                      "https://github.com/mobile-dev-inc/maestro/releases/download/cli-$MAESTRO_VERSION/maestro.zip" \
-                      --output "$RUNNER_TEMP/maestro.zip"
-                  echo "$MAESTRO_SHA256  $RUNNER_TEMP/maestro.zip" | sha256sum --check -
-                  mkdir -p "$HOME/.maestro"
-                  unzip -q "$RUNNER_TEMP/maestro.zip" -d "$HOME/.maestro"
-                  maestro_bin="$HOME/.maestro/maestro/bin/maestro"
-                  installed_version="$("$maestro_bin" --version)"
-                  if [[ "$installed_version" != "$MAESTRO_VERSION" ]]; then
-                      echo "Expected Maestro $MAESTRO_VERSION, installed $installed_version" >&2
-                      exit 1
-                  fi
-                  echo "$HOME/.maestro/maestro/bin" >> "$GITHUB_PATH"
+              run: scripts/install-maestro.sh
 
             - name: Enable KVM
               run: |
@@ -252,9 +206,7 @@ jobs:
                       mkdir -p artifacts/maestro/debug
                       adb shell settings put system screen_off_timeout 2147483647
                       adb install -r "$AUTH_APK_PATH"
-                      [ "${{ matrix.suite }}" != "imports" ] || adb push maestro/fixtures/plain_text_import.txt /sdcard/Download/plain_text_import.txt
-                      [ "${{ matrix.suite }}" != "imports" ] || adb push maestro/fixtures/google_auth_migration.png /sdcard/Download/google_auth_migration.png
-                      maestro test --no-ansi --format JUNIT --output artifacts/maestro/results.xml --debug-output artifacts/maestro/debug --flatten-debug-output ${{ matrix.flows }}
+                      maestro test --no-ansi -e APP_ID=io.ente.auth.independent --format JUNIT --output artifacts/maestro/results.xml --debug-output artifacts/maestro/debug --flatten-debug-output ${{ matrix.flows }}
 
             - name: Summarize smoke tests
               if: always() && steps.smoke-tests.outcome != 'skipped'
@@ -298,9 +250,7 @@ jobs:
               uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
               with:
                   name: auth-${{ matrix.suite }}-diagnostics
-                  path: |
-                      artifacts/maestro/**
-                      ~/.maestro/tests/**
+                  path: artifacts/maestro
                   if-no-files-found: warn
                   retention-days: 7
 

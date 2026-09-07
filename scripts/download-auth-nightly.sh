@@ -32,21 +32,13 @@ while [[ $# -gt 0 ]]; do
 done
 
 IFS=$'\t' read -r app channel release_tag apk_asset_id apk_name apk_created_at apk_sha256 source_repository < <(
-    "$(dirname "${BASH_SOURCE[0]}")/resolve-nightly-apk.sh" --app auth
+    "$(dirname "${BASH_SOURCE[0]}")/resolve-nightly-apk.sh"
 )
 
-mkdir -p "$output_dir"
 apk_path="$output_dir/$apk_name"
-gh api \
-    -H 'Accept: application/octet-stream' \
-    "repos/$source_repository/releases/assets/$apk_asset_id" > "$apk_path"
+"$(dirname "${BASH_SOURCE[0]}")/download-auth-apk.sh" \
+    "$source_repository" "$apk_asset_id" "$apk_sha256" "$apk_path"
 
 expected_sha256="${apk_sha256#sha256:}"
-actual_sha256=$(shasum -a 256 "$apk_path" | awk '{print $1}')
-if [[ "$actual_sha256" != "$expected_sha256" ]]; then
-    echo "Downloaded Auth APK does not match the resolved release asset" >&2
-    exit 1
-fi
-
 echo "Verified $release_tag asset $apk_asset_id created $apk_created_at ($expected_sha256)" >&2
 printf '%s\n' "$apk_path"

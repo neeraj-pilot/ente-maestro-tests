@@ -1,4 +1,4 @@
-appId: io.ente.auth.independent
+appId: ${APP_ID}
 name: Enter Auth offline mode
 tags:
   - auth

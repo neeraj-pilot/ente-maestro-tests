@@ -1,4 +1,4 @@
-appId: io.ente.auth.independent
+appId: ${APP_ID}
 name: Apply a tag to multiple offline accounts
 tags: [auth, android, offline, organization]
 ---

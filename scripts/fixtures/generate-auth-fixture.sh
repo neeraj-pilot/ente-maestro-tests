@@ -10,10 +10,10 @@ dump="$fixtures_dir/auth-fixture-v2.dump"
 manifest="$fixtures_dir/manifest.json"
 project="ente-auth-fixture-generator"
 verification_project="ente-auth-fixture-generation-verify"
-ente_revision="d4873f6ca147aaf02ff82549f6c575e29790cff0"
-museum_image="ghcr.io/ente/server@sha256:e9e06eb01834c38f41a3a09f9a64885b631346ce0005ccff2153faea403bd6e2"
-museum_server_revision="0137a0c754ac0fe4f2c4c7421727c349327eb990"
-postgres_image="postgres:15-alpine@sha256:3d0f7584ed7d04e27fa050d6683a74746608faf21f202be78460d679cc56461f"
+ente_revision=$(jq -r '.enteSourceRevision' "$manifest")
+museum_image=$(jq -r '.museumImage' "$manifest")
+museum_server_revision=$(jq -r '.museumServerRevision' "$manifest")
+postgres_image=$(jq -r '.postgresImage' "$manifest")
 
 compose=(docker compose --project-name "$project" --file "$compose_file")
 verification_compose=(docker compose --project-name "$verification_project" --file "$compose_file")

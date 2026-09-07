@@ -2,12 +2,20 @@
 
 set -euo pipefail
 
+export MAESTRO_CLI_NO_ANALYTICS=1
+export MAESTRO_API_URL=http://127.0.0.1:9
+
 if [[ $# -ne 1 ]]; then
     echo "Usage: $0 <phase>" >&2
     exit 2
 fi
 phase=$1
 artifacts_dir=${MAESTRO_ARTIFACTS_DIR:-artifacts/maestro}
+if [[ ${GITHUB_ACTIONS:-} != true ]]; then
+    mkdir -p "$artifacts_dir"
+    artifacts_dir=$(mktemp -d "$artifacts_dir/$phase-XXXXXX")
+    echo "Results: $artifacts_dir"
+fi
 : "${FIXTURE_MUTATION_TAG:=FixturePersisted}"
 : "${FIXTURE_LIFECYCLE_ACCOUNT:=lifecycle.fixture@example.org}"
 : "${FIXTURE_LIFECYCLE_EDITED_ACCOUNT:=automation.fixture@example.org}"
@@ -27,31 +35,31 @@ fixture_recovered_password=$(jq --raw-output '.accounts.recovery.recoveredPasswo
 debug_dir="$artifacts_dir/online-debug/$phase"
 results_dir="$artifacts_dir/online-results/$phase"
 runtime_dir="$artifacts_dir/runtime-health"
-transport_failure_marker="$runtime_dir/$phase-transport-failure"
 preparation_count=0
 
 mkdir -p "$debug_dir" "$results_dir" "$runtime_dir"
 
-record_transport_failure() {
+record_runtime_health() {
     local status=$?
-    local adb_state=""
     trap - EXIT
-
     if [[ $status -ne 0 ]]; then
-        adb_state=$(adb get-state 2>/dev/null || true)
-        adb_state=${adb_state//$'\r'/}
-        if [[ "$adb_state" != "device" ]]; then
-            {
-                echo "phase=$phase"
-                echo "adb_state=${adb_state:-unavailable}"
-                printf 'emulator_processes='
-                pgrep -af 'qemu-system|emulator.*-avd' || true
-            } > "$transport_failure_marker"
-        fi
+        # Capture while the emulator still exists, before the action tears it down.
+        {
+            echo "phase=$phase"
+            date -u '+%Y-%m-%dT%H:%M:%SZ'
+            adb devices -l || true
+            printf 'adb_state='
+            adb get-state || true
+            printf 'boot_completed='
+            adb shell getprop sys.boot_completed || true
+            printf 'app_pid='
+            adb shell pidof "$APP_ID" || true
+            adb shell dumpsys meminfo "$APP_ID" || true
+        } > "$runtime_dir/$phase-device.txt" 2>&1
     fi
     exit "$status"
 }
-trap record_transport_failure EXIT
+trap record_runtime_health EXIT
 
 adb shell settings put system screen_off_timeout 2147483647
 adb install -r "$AUTH_APK_PATH"

@@ -1,4 +1,4 @@
-appId: io.ente.auth.independent
+appId: ${APP_ID}
 name: Inspect offline duplicate codes
 tags: [auth, android, offline, data]
 ---

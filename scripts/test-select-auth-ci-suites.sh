@@ -59,4 +59,8 @@ assert_flows organization "maestro/auth/offline/code-lifecycle.yaml maestro/auth
 assert_flows settings "maestro/auth/offline/settings.yaml maestro/auth/offline/duplicate-codes.yaml" --changed-file maestro/auth/offline/duplicate-codes.yaml
 assert_flows trash "maestro/auth/offline/trash-restore.yaml maestro/auth/offline/bulk-trash-restore.yaml maestro/auth/offline/bulk-permanent-delete.yaml" --changed-file maestro/auth/offline/bulk-trash-restore.yaml
 
+for path in scripts/download-auth-apk.sh scripts/install-maestro.sh scripts/test-ci-helpers.sh; do
+    assert_suites "setup,organization,settings,tags,trash" --changed-file "$path"
+done
+
 echo "Auth CI suite selection tests passed"

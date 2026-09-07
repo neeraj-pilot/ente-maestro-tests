@@ -102,13 +102,13 @@ cat > "$temp_dir/stable-releases.json" <<'JSON'
 JSON
 
 expected_auth=$'auth\trc\tauth-v4.4.25-rc\t102\tente-auth-v4.4.25.apk\t2026-07-31T08:00:00Z\tsha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\tente/nightly'
-actual_auth="$($resolver --app auth --releases-file "$temp_dir/releases.json")"
+actual_auth="$($resolver --releases-file "$temp_dir/releases.json")"
 if [[ "$actual_auth" != "$expected_auth" ]]; then
     echo "Unexpected Auth resolution: $actual_auth" >&2
     exit 1
 fi
 
-actual_auth="$($resolver --app auth --releases-file "$temp_dir/releases.json" --stable-releases-file "$temp_dir/stable-releases.json")"
+actual_auth="$($resolver --releases-file "$temp_dir/releases.json" --stable-releases-file "$temp_dir/stable-releases.json")"
 if [[ "$actual_auth" != "$expected_auth" ]]; then
     echo "Expected an available Auth prerelease to take precedence: $actual_auth" >&2
     exit 1
@@ -116,7 +116,7 @@ fi
 
 expected_stable_auth=$'auth\tstable\tauth-v4.4.26\t104\tente-auth-v4.4.26.apk\t2026-08-02T08:00:00Z\tsha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd\tente/ente'
 echo '[]' > "$temp_dir/no-nightly.json"
-actual_stable_auth="$($resolver --app auth --releases-file "$temp_dir/no-nightly.json" --stable-releases-file "$temp_dir/stable-releases.json")"
+actual_stable_auth="$($resolver --releases-file "$temp_dir/no-nightly.json" --stable-releases-file "$temp_dir/stable-releases.json")"
 if [[ "$actual_stable_auth" != "$expected_stable_auth" ]]; then
     echo "Unexpected stable Auth fallback: $actual_stable_auth" >&2
     exit 1
@@ -142,7 +142,7 @@ actual_auth="$(
         GH_CALLS="$temp_dir/gh-calls" \
         NIGHTLY_RELEASES="$temp_dir/releases.json" \
         STABLE_RELEASES="$temp_dir/stable-releases.json" \
-        "$resolver" --app auth
+        "$resolver"
 )"
 if [[ "$actual_auth" != "$expected_auth" ]]; then
     echo "Unexpected API-backed Auth resolution: $actual_auth" >&2
@@ -153,29 +153,22 @@ if grep -Fq 'repos/ente/ente/releases' "$temp_dir/gh-calls"; then
     exit 1
 fi
 
-expected_locker=$'locker\tbeta\tlocker-v1.0.8-beta\t201\tente-locker-v1.0.8-beta.apk\t2026-07-31T09:00:00Z\tsha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\tente/nightly'
-actual_locker="$($resolver --app locker --releases-file "$temp_dir/releases.json")"
-if [[ "$actual_locker" != "$expected_locker" ]]; then
-    echo "Unexpected Locker resolution: $actual_locker" >&2
-    exit 1
-fi
-
 github_output="$temp_dir/github-output"
-$resolver --app auth --releases-file "$temp_dir/releases.json" --github-output "$github_output"
+$resolver --releases-file "$temp_dir/releases.json" --github-output "$github_output"
 grep -Fx 'channel=rc' "$github_output" > /dev/null
 grep -Fx 'apk_asset_id=102' "$github_output" > /dev/null
 grep -Fx 'apk_created_at=2026-07-31T08:00:00Z' "$github_output" > /dev/null
 
 jq 'map(select(.tag_name == "auth-v4.4.25-rc") | .assets[0].digest = null)' \
     "$temp_dir/releases.json" > "$temp_dir/missing-digest.json"
-if $resolver --app auth --releases-file "$temp_dir/missing-digest.json" > /dev/null 2> "$temp_dir/error"; then
+if $resolver --releases-file "$temp_dir/missing-digest.json" > /dev/null 2> "$temp_dir/error"; then
     echo "Expected a missing asset digest to fail" >&2
     exit 1
 fi
 grep -F 'missing a valid SHA-256 asset digest' "$temp_dir/error" > /dev/null
 
 echo '[]' > "$temp_dir/no-releases.json"
-if $resolver --app auth --releases-file "$temp_dir/no-releases.json" > /dev/null 2> "$temp_dir/error"; then
+if $resolver --releases-file "$temp_dir/no-releases.json" > /dev/null 2> "$temp_dir/error"; then
     echo "Expected an empty release list to fail" >&2
     exit 1
 fi

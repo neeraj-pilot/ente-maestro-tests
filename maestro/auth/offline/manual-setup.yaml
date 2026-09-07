@@ -1,4 +1,4 @@
-appId: io.ente.auth.independent
+appId: ${APP_ID}
 name: Add an offline account manually
 tags:
   - auth

@@ -1,4 +1,4 @@
-appId: io.ente.auth.independent
+appId: ${APP_ID}
 name: Trash and restore multiple offline Auth codes
 tags: [auth, android, offline, trash]
 ---

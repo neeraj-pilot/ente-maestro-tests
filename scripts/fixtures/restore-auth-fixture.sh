@@ -47,16 +47,8 @@ fi
     pg_restore --exit-on-error --no-owner --no-privileges \
     --username=ente_auth --dbname=ente_auth_test < "$dump"
 
-account_state=$(
-    "${compose[@]}" exec -T postgres \
-        psql --tuples-only --no-align --field-separator='|' \
-        --username=ente_auth --dbname=ente_auth_test \
-        --command="SELECT (SELECT COUNT(*) FROM users), (SELECT COUNT(*) FROM users WHERE source = 'authMaestroFixture'), (SELECT COUNT(*) FROM users WHERE is_two_factor_enabled), (SELECT COUNT(*) FROM authenticator_key), (SELECT COUNT(*) FROM authenticator_entity), (SELECT COUNT(*) FROM authenticator_entity WHERE is_deleted);"
-)
-if [[ "$account_state" != "3|3|1|3|5|0" ]]; then
-    echo "Restored database does not contain the exact fixture-v2 account, key, and entity state" >&2
-    exit 1
-fi
+"$repo_root/scripts/fixtures/verify-restored-auth-fixture.sh" \
+    "${compose[@]}" exec -T postgres psql
 
 "${compose[@]}" up --detach museum
 for _ in {1..60}; do

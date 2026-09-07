@@ -20,6 +20,7 @@ if command -v sha256sum >/dev/null; then
 else
     actual_sha256=$(shasum -a 256 "$dump" | awk '{print $1}')
 fi
+(cd "$fixtures_dir" && shasum -a 256 --check auth-fixture-v2.sha256)
 expected_sha256=$(jq --raw-output '.dumpSha256' "$manifest")
 if [[ "$actual_sha256" != "$expected_sha256" ]]; then
     echo "Auth fixture dump checksum does not match manifest" >&2

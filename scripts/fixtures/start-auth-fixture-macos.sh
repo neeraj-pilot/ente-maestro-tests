@@ -78,21 +78,8 @@ trap cleanup_on_error EXIT
     --no-owner \
     --no-privileges < "$dump"
 
-account_state=$(
-    "$postgres_bin/psql" \
-        --host=127.0.0.1 \
-        --port="$postgres_port" \
-        --tuples-only \
-        --no-align \
-        --field-separator='|' \
-        --username=ente_auth \
-        --dbname=ente_auth_test \
-        --command="SELECT (SELECT COUNT(*) FROM users), (SELECT COUNT(*) FROM users WHERE source = 'authMaestroFixture'), (SELECT COUNT(*) FROM users WHERE is_two_factor_enabled), (SELECT COUNT(*) FROM authenticator_key), (SELECT COUNT(*) FROM authenticator_entity), (SELECT COUNT(*) FROM authenticator_entity WHERE is_deleted);"
-)
-if [[ "$account_state" != "3|3|1|3|5|0" ]]; then
-    echo "Restored database does not contain the exact fixture-v2 state" >&2
-    exit 1
-fi
+"$repo_root/scripts/fixtures/verify-restored-auth-fixture.sh" \
+    "$postgres_bin/psql" --host=127.0.0.1 --port="$postgres_port"
 
 (
     cd "$AUTH_MUSEUM_SOURCE_DIR/server"

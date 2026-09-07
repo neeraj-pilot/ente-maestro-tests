@@ -4,14 +4,13 @@ set -euo pipefail
 
 usage() {
     cat <<'EOF'
-Usage: scripts/resolve-nightly-apk.sh --app <auth|locker> [options]
+Usage: scripts/resolve-nightly-apk.sh [options]
 
 Resolves the newest compatible APK asset published in ente/nightly, falling
 back to the stable ente/ente release when no prerelease exists. Release tags
 can be reused, so assets are ordered by their creation time.
 
 Options:
-  --app <auth|locker>       App to resolve.
   --github-output <path>    Write named values to a GitHub Actions output file.
   --releases-file <path>    Read nightly releases JSON from a file instead of the API.
   --stable-releases-file <path>
@@ -20,17 +19,13 @@ Options:
 EOF
 }
 
-app=""
+readonly app=auth
 github_output=""
 releases_file=""
 stable_releases_file=""
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --app)
-            app="${2:?--app requires auth or locker}"
-            shift 2
-            ;;
         --github-output)
             github_output="${2:?--github-output requires a path}"
             shift 2
@@ -55,18 +50,9 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-case "$app" in
-    auth|locker)
-        nightly_tag_pattern="^${app}-v[0-9]+\\.[0-9]+\\.[0-9]+-(beta|rc)$"
-        stable_tag_pattern="^${app}-v[0-9]+\\.[0-9]+\\.[0-9]+$"
-        asset_pattern="^ente-${app}-.*\\.apk$"
-        ;;
-    *)
-        echo "--app must be auth or locker" >&2
-        usage >&2
-        exit 2
-        ;;
-esac
+nightly_tag_pattern='^auth-v[0-9]+\.[0-9]+\.[0-9]+-(beta|rc)$'
+stable_tag_pattern='^auth-v[0-9]+\.[0-9]+\.[0-9]+$'
+asset_pattern='^ente-auth-.*\.apk$'
 
 if [[ -n "$releases_file" ]]; then
     nightly_releases=$(jq -c 'if type == "array" then . else error("expected a releases array") end' "$releases_file")

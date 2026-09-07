@@ -2,6 +2,9 @@
 
 set -euo pipefail
 
+export MAESTRO_CLI_NO_ANALYTICS=1
+export MAESTRO_API_URL=http://127.0.0.1:9
+
 app_id="io.ente.auth.independent"
 readonly workspace_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
@@ -108,65 +111,22 @@ case "$suite" in
             maestro/auth/smoke/offline-mode.yaml
         )
         ;;
-    setup)
-        flows=(
-            maestro/auth/smoke/onboarding.yaml
-            maestro/auth/smoke/offline-mode.yaml
-            maestro/auth/offline/manual-setup.yaml
-            maestro/auth/offline/manual-validation.yaml
-        )
-        ;;
-    organization)
-        flows=(
-            maestro/auth/offline/code-lifecycle.yaml
-            maestro/auth/offline/home-organization.yaml
-            maestro/auth/offline/bulk-pin-edit.yaml
-        )
-        ;;
-    settings)
-        flows=(
-            maestro/auth/offline/settings.yaml
-            maestro/auth/offline/duplicate-codes.yaml
-        )
-        ;;
-    tags)
-        flows=(
-            maestro/auth/offline/tags.yaml
-            maestro/auth/offline/bulk-tag-edit.yaml
-            maestro/auth/offline/bulk-tag-remove.yaml
-        )
-        ;;
-    trash)
-        flows=(
-            maestro/auth/offline/trash-restore.yaml
-            maestro/auth/offline/bulk-trash-restore.yaml
-            maestro/auth/offline/bulk-permanent-delete.yaml
-        )
+    setup|organization|settings|tags|trash|required)
+        if [[ "$suite" == required ]]; then
+            matrix=$("$workspace_root/scripts/select-auth-ci-suites.sh" --all)
+        else
+            matrix=$("$workspace_root/scripts/select-auth-ci-suites.sh" --suite "$suite")
+        fi
+        flows=()
+        while IFS= read -r flow; do
+            flows+=("$flow")
+        done < <(jq -r '.include[].flows | split(" ")[]' <<< "$matrix")
         ;;
     imports)
         flows=(maestro/auth/offline/imports.yaml)
         ;;
     backup)
         flows=(maestro/auth/offline/local-backup.yaml)
-        ;;
-    required)
-        flows=(
-            maestro/auth/smoke/onboarding.yaml
-            maestro/auth/smoke/offline-mode.yaml
-            maestro/auth/offline/manual-setup.yaml
-            maestro/auth/offline/manual-validation.yaml
-            maestro/auth/offline/code-lifecycle.yaml
-            maestro/auth/offline/home-organization.yaml
-            maestro/auth/offline/bulk-pin-edit.yaml
-            maestro/auth/offline/settings.yaml
-            maestro/auth/offline/duplicate-codes.yaml
-            maestro/auth/offline/tags.yaml
-            maestro/auth/offline/bulk-tag-edit.yaml
-            maestro/auth/offline/bulk-tag-remove.yaml
-            maestro/auth/offline/trash-restore.yaml
-            maestro/auth/offline/bulk-trash-restore.yaml
-            maestro/auth/offline/bulk-permanent-delete.yaml
-        )
         ;;
     *)
         echo "Unknown suite: $suite" >&2
@@ -176,7 +136,10 @@ case "$suite" in
 esac
 
 cd "$workspace_root"
-mkdir -p artifacts/maestro/local
+artifacts_dir=${MAESTRO_ARTIFACTS_DIR:-artifacts/maestro/local}
+mkdir -p "$artifacts_dir"
+run_dir=$(mktemp -d "$artifacts_dir/${suite}-$(date -u +%Y%m%dT%H%M%SZ)-XXXXXX")
+echo "Results: $run_dir"
 
 wait_for_downloads() {
     local attempt
@@ -213,8 +176,8 @@ adb -s "$serial" shell settings put system screen_off_timeout 2147483647
     --udid "$serial" \
     -e "APP_ID=$app_id" \
     --format JUNIT \
-    --output "artifacts/maestro/local/${suite}-results.xml" \
-    --debug-output "artifacts/maestro/local/${suite}-debug" \
+    --output "$run_dir/results.xml" \
+    --debug-output "$run_dir/debug" \
     --flatten-debug-output \
     "${flows[@]}"
 

@@ -1,4 +1,4 @@
-appId: io.ente.auth.independent
+appId: ${APP_ID}
 name: Inspect offline tag actions
 tags: [auth, android, offline, tags]
 ---
