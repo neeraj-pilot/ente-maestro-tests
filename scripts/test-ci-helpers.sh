@@ -104,6 +104,71 @@ status=0
 [[ $status -eq 37 ]]
 grep -Fx 'fixture-memory-info' "$temp_dir"/diagnostics/data-sync-*/runtime-health/data-sync-device.txt
 
+# Exercise the actual online runner under the host's system Bash (3.2 on macOS).
+cat > "$temp_dir/bin/adb" <<'SH'
+#!/usr/bin/env bash
+case "$*" in
+    'shell id -u'|'shell am get-current-user') echo 0 ;;
+    'shell stat '*) echo 1000:1000 ;;
+    'shell pidof '*) echo 123 ;;
+    'shell dumpsys meminfo '*) echo fixture-memory-info ;;
+esac
+SH
+cat > "$temp_dir/bin/maestro" <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$@" >> "$MOCK_CALLS"
+if [[ ${MOCK_MAESTRO_MODE:-} == fail ]]; then exit 42; fi
+while [[ $# -gt 0 ]]; do
+    if [[ "$1" == --output ]]; then report=$2; break; fi
+    shift
+done
+case ${MOCK_MAESTRO_MODE:-} in
+    missing) ;;
+    empty) : > "$report" ;;
+    *) printf '<testsuite tests="1" failures="0"><testcase name="fixture"/></testsuite>\n' > "$report" ;;
+esac
+SH
+
+run_online() (
+    name=$1
+    shift
+    cd "$root"
+    : > "$MOCK_CALLS"
+    env -u MAESTRO_DEVICE -u ONLINE_ENDPOINT \
+        GITHUB_ACTIONS=true APP_ID=io.ente.auth.independent ONLINE_OTT=123456 \
+        AUTH_APK_PATH="$temp_dir/auth.apk" \
+        MAESTRO_ARTIFACTS_DIR="$temp_dir/online-$name" \
+        "$@" /bin/bash .github/scripts/run-auth-online-tests.sh recovery-reset
+)
+
+run_online automatic ONLINE_ENDPOINT=http://10.0.2.2:8080
+grep -Fxq 'maestro/auth/online/prepared-recovery-password-reset.yaml' "$MOCK_CALLS"
+if grep -Fxq -- '--device' "$MOCK_CALLS"; then
+    echo "Automatic device selection must not pass --device" >&2
+    exit 1
+fi
+run_online selected ONLINE_ENDPOINT=http://10.0.2.2:8080 MAESTRO_DEVICE=fixture-device
+[[ $(sed -n '/^--device$/{n;p;}' "$MOCK_CALLS") == fixture-device ]]
+
+for mode in fail missing empty; do
+    status=0
+    run_online "$mode" ONLINE_ENDPOINT=http://10.0.2.2:8080 MOCK_MAESTRO_MODE="$mode" \
+        2> "$temp_dir/error" || status=$?
+    expected=1
+    if [[ "$mode" == fail ]]; then expected=42; fi
+    [[ $status -eq $expected ]]
+    if [[ "$mode" != fail ]]; then grep -Fq 'nonempty JUnit report' "$temp_dir/error"; fi
+    grep -Fxq 'fixture-memory-info' "$temp_dir/online-$mode/runtime-health/recovery-reset-device.txt"
+done
+
+# A shell expansion error must fail even when Bash 3.2 supplies status 0 to EXIT.
+status=0
+run_online unbound 2> "$temp_dir/error" || status=$?
+[[ $status -ne 0 ]]
+grep -Fq 'ONLINE_ENDPOINT: unbound variable' "$temp_dir/error"
+[[ ! -s "$MOCK_CALLS" ]]
+grep -Fxq 'fixture-memory-info' "$temp_dir/online-unbound/runtime-health/recovery-reset-device.txt"
+
 cat > "$temp_dir/bin/psql" <<'SH'
 #!/usr/bin/env bash
 echo "$MOCK_DATABASE_STATE"

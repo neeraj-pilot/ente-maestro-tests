@@ -190,6 +190,10 @@ jobs:
               with:
                   persist-credentials: false
 
+            - name: Validate macOS shell compatibility
+              if: matrix.lane == 'account-auth'
+              run: /bin/bash scripts/test-ci-helpers.sh
+
             - name: Resolve fixture Museum revision
               id: museum
               run: echo "revision=$(jq --raw-output '.museumServerRevision' museum/fixtures/manifest.json)" >> "$GITHUB_OUTPUT"
@@ -331,6 +335,15 @@ jobs:
                   disable-animations: true
                   script: .github/scripts/run-auth-online-tests.sh entity-lifecycle-finish
 
+            - name: Upload ${{ matrix.lane }} results
+              if: always()
+              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+              with:
+                  name: auth-online-${{ matrix.lane }}-results
+                  path: artifacts/maestro/online-results/**/*.xml
+                  if-no-files-found: error
+                  retention-days: 7
+
             - name: Summarize ${{ matrix.lane }} tests
               if: always()
               env:
@@ -379,17 +392,8 @@ jobs:
                               ;;
                       esac
                       echo
-                      echo "JUnit results are attached as \`auth-online-${{ matrix.lane }}-results\`."
+                      echo "JUnit artifact: \`auth-online-${{ matrix.lane }}-results\`. See the upload step for availability."
                   } >> "$GITHUB_STEP_SUMMARY"
-
-            - name: Upload ${{ matrix.lane }} results
-              if: always()
-              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-              with:
-                  name: auth-online-${{ matrix.lane }}-results
-                  path: artifacts/maestro/online-results
-                  if-no-files-found: warn
-                  retention-days: 7
 
             - name: Capture host runtime health
               if: failure()

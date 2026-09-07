@@ -36,12 +36,17 @@ debug_dir="$artifacts_dir/online-debug/$phase"
 results_dir="$artifacts_dir/online-results/$phase"
 runtime_dir="$artifacts_dir/runtime-health"
 preparation_count=0
+tests_completed=false
 
 mkdir -p "$debug_dir" "$results_dir" "$runtime_dir"
 
 record_runtime_health() {
-    local status=$?
+    local status=$1
     trap - EXIT
+    # Bash 3.2 can report status 0 after an unbound-variable error in a function.
+    if [[ "$tests_completed" == false && $status -eq 0 ]]; then
+        status=1
+    fi
     if [[ $status -ne 0 ]]; then
         # Capture while the emulator still exists, before the action tears it down.
         {
@@ -59,20 +64,18 @@ record_runtime_health() {
     fi
     exit "$status"
 }
-trap record_runtime_health EXIT
+trap 'record_runtime_health "$?"' EXIT
 
 adb shell settings put system screen_off_timeout 2147483647
 adb install -r "$AUTH_APK_PATH"
 
 run_maestro() {
     local result_name=$1
-    local maestro_device_args=()
     shift
     if [[ -n ${MAESTRO_DEVICE:-} ]]; then
-        maestro_device_args=(--device "$MAESTRO_DEVICE")
+        set -- --device "$MAESTRO_DEVICE" "$@"
     fi
     maestro test --no-ansi \
-        "${maestro_device_args[@]}" \
         --format JUNIT \
         --output "$results_dir/$result_name.xml" \
         --debug-output "$debug_dir/$result_name" \
@@ -80,6 +83,10 @@ run_maestro() {
         -e APP_ID="$APP_ID" \
         -e ONLINE_ENDPOINT="$ONLINE_ENDPOINT" \
         "$@"
+    if [[ ! -s "$results_dir/$result_name.xml" ]]; then
+        echo "Maestro did not produce a nonempty JUnit report: $results_dir/$result_name.xml" >&2
+        return 1
+    fi
 }
 
 prepare_fixture_app() {
@@ -383,3 +390,4 @@ case "$phase" in
         exit 2
         ;;
 esac
+tests_completed=true
