@@ -37,6 +37,7 @@ results_dir="$artifacts_dir/online-results/$phase"
 runtime_dir="$artifacts_dir/runtime-health"
 preparation_count=0
 tests_completed=false
+startup_started=false
 
 mkdir -p "$debug_dir" "$results_dir" "$runtime_dir"
 
@@ -46,6 +47,10 @@ record_runtime_health() {
     # Bash 3.2 can report status 0 after an unbound-variable error in a function.
     if [[ "$tests_completed" == false && $status -eq 0 ]]; then
         status=1
+    fi
+    if [[ "$startup_started" == true ]]; then
+        adb exec-out uiautomator dump /dev/tty > "$debug_dir/ui-hierarchy.txt" 2>&1 || true
+        adb logcat -d > "$debug_dir/startup-logcat.txt" 2>&1 || true
     fi
     if [[ $status -ne 0 ]]; then
         # Capture while the emulator still exists, before the action tears it down.
@@ -373,6 +378,12 @@ run_entity_lifecycle_finish() {
 }
 
 case "$phase" in
+    startup)
+        prepare_fixture_app
+        adb logcat -c
+        startup_started=true
+        run_maestro startup maestro/auth/online/startup.yaml
+        ;;
     account-auth) run_account_auth ;;
     recovery-reset) run_recovery_reset ;;
     recovery-verification) run_recovery_verification ;;

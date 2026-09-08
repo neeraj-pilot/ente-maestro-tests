@@ -79,6 +79,12 @@ Keep the real offline warning in onboarding tests. Do not require Auth to show a
 
 ## Results and diagnostics
 
+- Manually select the online `startup` lane to inspect cold startup without
+  entering credentials. It uses the same emulator, backend, and preference
+  preparation as the online suites, waits up to 60 seconds for `Log in`, and
+  stops at the empty email screen. Its three-day diagnostic artifact includes
+  Maestro command timings, screenshots, UI hierarchy, and device logs. It is
+  excluded from scheduled/full-suite runs; a pass is not authentication coverage.
 - CI pins Maestro 2.10.0 and its archive checksum in `scripts/install-maestro.sh`.
   Use the same version locally when validating an upgrade.
 - Local runners and CI disable analytics and route Maestro's API to loopback.

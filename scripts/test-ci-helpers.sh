@@ -112,6 +112,8 @@ case "$*" in
     'shell stat '*) echo 1000:1000 ;;
     'shell pidof '*) echo 123 ;;
     'shell dumpsys meminfo '*) echo fixture-memory-info ;;
+    'exec-out uiautomator dump /dev/tty') echo '<hierarchy/>' ;;
+    'logcat -d') echo fixture-startup-logcat ;;
 esac
 SH
 cat > "$temp_dir/bin/maestro" <<'SH'
@@ -138,7 +140,7 @@ run_online() (
         GITHUB_ACTIONS=true APP_ID=io.ente.auth.independent ONLINE_OTT=123456 \
         AUTH_APK_PATH="$temp_dir/auth.apk" \
         MAESTRO_ARTIFACTS_DIR="$temp_dir/online-$name" \
-        "$@" /bin/bash .github/scripts/run-auth-online-tests.sh recovery-reset
+        "$@" /bin/bash .github/scripts/run-auth-online-tests.sh "${MOCK_ONLINE_PHASE:-recovery-reset}"
 )
 
 run_online automatic ONLINE_ENDPOINT=http://10.0.2.2:8080
@@ -149,6 +151,19 @@ if grep -Fxq -- '--device' "$MOCK_CALLS"; then
 fi
 run_online selected ONLINE_ENDPOINT=http://10.0.2.2:8080 MAESTRO_DEVICE=fixture-device
 [[ $(sed -n '/^--device$/{n;p;}' "$MOCK_CALLS") == fixture-device ]]
+
+MOCK_ONLINE_PHASE=startup run_online startup ONLINE_ENDPOINT=http://10.0.2.2:8080
+[[ $(grep -E '^maestro/.*\.yaml$' "$MOCK_CALLS") == maestro/auth/online/startup.yaml ]]
+if grep -Eq 'FIXTURE_.*(PASSWORD|EMAIL|CODE|KEY)=' "$MOCK_CALLS"; then
+    echo "Startup diagnostics must not receive account credentials" >&2
+    exit 1
+fi
+grep -Fxq '<hierarchy/>' "$temp_dir/online-startup/online-debug/startup/ui-hierarchy.txt"
+grep -Fxq 'fixture-startup-logcat' "$temp_dir/online-startup/online-debug/startup/startup-logcat.txt"
+status=0
+MOCK_ONLINE_PHASE=startup run_online startup-failed ONLINE_ENDPOINT=http://10.0.2.2:8080 MOCK_MAESTRO_MODE=fail || status=$?
+[[ $status -eq 42 ]]
+grep -Fxq '<hierarchy/>' "$temp_dir/online-startup-failed/online-debug/startup/ui-hierarchy.txt"
 
 for mode in fail missing empty; do
     status=0

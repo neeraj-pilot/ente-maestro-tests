@@ -16,6 +16,7 @@ on:
                     - recovery-password
                     - data-sync
                     - entity-lifecycle
+                    - startup
     pull_request:
         paths:
             - ".github/scripts/run-auth-online-tests.sh"
@@ -103,7 +104,7 @@ jobs:
                   if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
                       case "$REQUESTED_LANE" in
                           all) lanes=$(scripts/select-auth-online-lanes.sh --all) ;;
-                          account-auth|recovery-password|data-sync|entity-lifecycle) lanes="[\"$REQUESTED_LANE\"]" ;;
+                          account-auth|recovery-password|data-sync|entity-lifecycle|startup) lanes="[\"$REQUESTED_LANE\"]" ;;
                           *) echo "Unknown lane: $REQUESTED_LANE" >&2; exit 2 ;;
                       esac
                   elif [[ "$EVENT_NAME" == "pull_request" ]]; then
@@ -252,7 +253,7 @@ jobs:
                   echo "ONLINE_PASSWORD=$password" >> "$GITHUB_ENV"
 
             - name: Run ${{ matrix.lane }} session
-              if: matrix.lane == 'account-auth' || matrix.lane == 'data-sync'
+              if: matrix.lane == 'account-auth' || matrix.lane == 'data-sync' || matrix.lane == 'startup'
               uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
               with:
                   api-level: ${{ env.AUTH_ANDROID_API }}
@@ -335,6 +336,15 @@ jobs:
                   disable-animations: true
                   script: .github/scripts/run-auth-online-tests.sh entity-lifecycle-finish
 
+            # This phase stops at the empty email screen; no credentials are entered.
+            - name: Upload startup diagnostics
+              if: always() && matrix.lane == 'startup'
+              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+              with:
+                  name: auth-online-startup-diagnostics
+                  path: artifacts/maestro/online-debug/startup
+                  retention-days: 3
+
             - name: Upload ${{ matrix.lane }} results
               if: always()
               uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -369,7 +379,7 @@ jobs:
                       echo "- Maestro: \`$MAESTRO_VERSION\`"
                       echo "- Backend: checked-in public Museum fixture v2"
                       case "${{ matrix.lane }}" in
-                          account-auth|data-sync) sessions=1 ;;
+                          account-auth|data-sync|startup) sessions=1 ;;
                           recovery-password) sessions=2 ;;
                           entity-lifecycle) sessions=3 ;;
                       esac
@@ -378,6 +388,9 @@ jobs:
                       echo "#### $coverage_label"
                       echo
                       case "${{ matrix.lane }}" in
+                          startup)
+                              echo "- Clean startup with fixture preferences, bounded welcome-screen readiness, and navigation to the empty login email screen (no authentication)"
+                              ;;
                           account-auth)
                               echo "- Live TOTP challenge, synchronized-code visibility, unknown-account error, signup, first Auth-key creation, and cold password login"
                               ;;
