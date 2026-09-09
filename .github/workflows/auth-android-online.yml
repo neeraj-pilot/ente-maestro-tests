@@ -220,13 +220,9 @@ jobs:
                   ALLOW_AUTH_FIXTURE_RESTORE: 1
               run: scripts/fixtures/restore-auth-fixture.sh
 
-            - name: Observe emulator exits in the kernel
+            - name: Install native crash debugger
               if: matrix.lane == 'recovery-password' || matrix.lane == 'entity-lifecycle'
-              run: |
-                  mkdir -p artifacts/maestro/runtime-health
-                  echo 'p:auth_emulator_exit do_exit code=$arg1' | sudo tee -a /sys/kernel/tracing/kprobe_events
-                  echo 1 | sudo tee /sys/kernel/tracing/events/kprobes/auth_emulator_exit/enable
-                  sudo cat /sys/kernel/tracing/trace_pipe > artifacts/maestro/runtime-health/emulator-exit.txt &
+              run: sudo apt-get update && sudo apt-get install --no-install-recommends -y gdb
 
             - name: Prepare private test password
               run: |
@@ -260,7 +256,7 @@ jobs:
                   cores: 2
                   emulator-options: ${{ env.AUTH_EMULATOR_OPTIONS }}
                   disable-animations: true
-                  script: .github/scripts/run-auth-online-tests.sh recovery-reset
+                  script: bash .github/scripts/debug-auth-emulator.sh recovery-reset
 
             - name: Run recovery verification session
               if: matrix.lane == 'recovery-password'
@@ -302,7 +298,7 @@ jobs:
                   cores: 2
                   emulator-options: ${{ env.AUTH_EMULATOR_OPTIONS }}
                   disable-animations: true
-                  script: .github/scripts/run-auth-online-tests.sh entity-lifecycle-mutate
+                  script: bash .github/scripts/debug-auth-emulator.sh entity-lifecycle-mutate
 
             - name: Run lifecycle restore and delete session
               if: matrix.lane == 'entity-lifecycle'
@@ -316,7 +312,7 @@ jobs:
                   cores: 2
                   emulator-options: ${{ env.AUTH_EMULATOR_OPTIONS }}
                   disable-animations: true
-                  script: .github/scripts/run-auth-online-tests.sh entity-lifecycle-finish
+                  script: bash .github/scripts/debug-auth-emulator.sh entity-lifecycle-finish
 
             # This phase stops at the empty email screen; no credentials are entered.
             - name: Upload startup diagnostics
