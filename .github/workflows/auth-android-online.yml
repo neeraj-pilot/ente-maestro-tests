@@ -226,10 +226,6 @@ jobs:
                   echo "::add-mask::$password"
                   echo "ONLINE_PASSWORD=$password" >> "$GITHUB_ENV"
 
-            - name: Install native crash debugger
-              if: matrix.lane == 'entity-lifecycle'
-              run: sudo apt-get update && sudo apt-get install --no-install-recommends -y gdb
-
             - name: Run ${{ matrix.lane }} session
               if: matrix.lane == 'account-auth' || matrix.lane == 'data-sync' || matrix.lane == 'startup'
               uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
@@ -284,7 +280,7 @@ jobs:
                   cores: 2
                   emulator-options: ${{ env.AUTH_EMULATOR_OPTIONS }}
                   disable-animations: true
-                  script: bash .github/scripts/debug-auth-emulator.sh entity-lifecycle-create
+                  script: .github/scripts/run-auth-online-tests.sh entity-lifecycle-create
 
             - name: Run lifecycle mutation session
               if: matrix.lane == 'entity-lifecycle'
@@ -363,7 +359,7 @@ jobs:
                       echo "- Asset ID: \`$AUTH_APK_ASSET_ID\`"
                       echo "- Auth APK SHA-256: \`$AUTH_APK_SHA256\`"
                       echo "- Android runtime: API \`$AUTH_ANDROID_API\`, target \`$AUTH_ANDROID_TARGET\`"
-                      echo "- Emulator build: \`$AUTH_EMULATOR_BUILD\` (KVM, Mesa/Lavapipe graphics)"
+                      echo "- Emulator build: \`$AUTH_EMULATOR_BUILD\` (KVM, SwiftShader graphics)"
                       echo "- Maestro: \`$MAESTRO_VERSION\`"
                       echo "- Backend: checked-in public Museum fixture v2"
                       case "${{ matrix.lane }}" in

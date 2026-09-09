@@ -21,13 +21,12 @@ The daily freshness check is not build deduplication and is subject to schedule
 delays. Do not interpret a skipped run as fresh coverage.
 
 Offline uses five Ubuntu shards. Online uses four Ubuntu lanes with required
-KVM acceleration, two virtual CPUs, and 4 GiB Android guest memory. Account auth
+KVM acceleration, two virtual CPUs, and 3 GiB Android guest memory. Account auth
 and data sync each use one emulator session, recovery uses two, and entity
 lifecycle uses three.
-Online pins emulator 37.1.11 (build `15917651`) with Mesa/Lavapipe graphics.
-The legacy `swiftshader_indirect` renderer repeatedly crashed the host emulator
-with SIGSEGV ([native trace](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/34361743007)).
-Do not replace the renderer pin without running all four online lanes.
+Online pins emulator 37.1.11 (build `15917651`) with the same `swiftshader`
+graphics mode used by the offline suites. Do not change this configuration
+without running all four online lanes.
 
 ## Adding or changing a flow
 
