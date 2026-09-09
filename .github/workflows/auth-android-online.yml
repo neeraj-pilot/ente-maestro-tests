@@ -405,6 +405,7 @@ jobs:
                       df -h || true
                   } > "artifacts/maestro/runtime-health/${{ matrix.lane }}-host.txt"
                   sudo dmesg --ctime > "artifacts/maestro/runtime-health/${{ matrix.lane }}-kernel.txt"
+                  sudo journalctl -b --no-pager -u systemd-oomd > artifacts/maestro/runtime-health/oomd.txt
                   if [[ '${{ matrix.lane }}' != account-auth ]]; then
                       find /tmp/android-runner -maxdepth 1 -name 'emu-crash-*.db' -exec cp -R {} artifacts/maestro/runtime-health/ \; || true
                   fi
