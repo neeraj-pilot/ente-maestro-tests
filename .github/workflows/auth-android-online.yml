@@ -16,6 +16,7 @@ on:
                     - recovery-password
                     - data-sync
                     - entity-lifecycle
+                    - startup
     pull_request:
         paths:
             - ".github/scripts/run-auth-online-tests.sh"
@@ -66,8 +67,10 @@ env:
     MAESTRO_API_URL: http://127.0.0.1:9
     AUTH_ANDROID_API: 34
     AUTH_ANDROID_TARGET: default
-    AUTH_EMULATOR_BUILD: 12414864
-    AUTH_EMULATOR_OPTIONS: -no-window -gpu swiftshader_indirect -feature -Vulkan -no-metrics -no-snapshot -noaudio -no-boot-anim -memory 4096
+    AUTH_EMULATOR_BUILD: 15917651
+    # Use Mesa's host OpenGL implementation, not the crashing bundled renderers.
+    AUTH_EMULATOR_OPTIONS: -no-window -gpu host -feature -Vulkan -accel on -no-metrics -no-snapshot -noaudio -no-boot-anim -memory 4096
+    LIBGL_ALWAYS_SOFTWARE: 1
     ONLINE_ENDPOINT: http://10.0.2.2:8080
     ONLINE_OTT: 123456
 
@@ -103,7 +106,7 @@ jobs:
                   if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
                       case "$REQUESTED_LANE" in
                           all) lanes=$(scripts/select-auth-online-lanes.sh --all) ;;
-                          account-auth|recovery-password|data-sync|entity-lifecycle) lanes="[\"$REQUESTED_LANE\"]" ;;
+                          account-auth|recovery-password|data-sync|entity-lifecycle|startup) lanes="[\"$REQUESTED_LANE\"]" ;;
                           *) echo "Unknown lane: $REQUESTED_LANE" >&2; exit 2 ;;
                       esac
                   elif [[ "$EVENT_NAME" == "pull_request" ]]; then
@@ -161,7 +164,7 @@ jobs:
         name: ${{ matrix.lane }}
         needs: resolve
         if: needs.resolve.outputs.should_run == 'true'
-        runs-on: macos-15-intel
+        runs-on: ubuntu-24.04
         timeout-minutes: 60
         strategy:
             fail-fast: false
@@ -176,11 +179,7 @@ jobs:
             AUTH_CHANNEL: ${{ needs.resolve.outputs.channel }}
             AUTH_SOURCE_REPOSITORY: ${{ needs.resolve.outputs.source_repository }}
             AUTH_APK_PATH: ${{ github.workspace }}/artifacts/auth/${{ needs.resolve.outputs.apk_name }}
-            AUTH_FIXTURE_RUNTIME_DIR: ${{ github.workspace }}/artifacts/auth-fixture-${{ matrix.lane }}
-            AUTH_MUSEUM_BINARY: ${{ github.workspace }}/artifacts/museum
-            AUTH_MUSEUM_SOURCE_DIR: ${{ github.workspace }}/artifacts/ente-server
-            AUTH_POSTGRES_PORT: 55432
-            FIXTURE_MUTATION_TAG: FixturePersisted
+            AUTH_FIXTURE_COMPOSE_PROJECT: auth-online-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.lane }}
             MISSING_EMAIL: missing-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.lane }}@example.org
             ONLINE_CODE_ACCOUNT: first-key-${{ github.run_id }}-${{ github.run_attempt }}@example.org
             ONLINE_EMAIL: auth-ci-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.lane }}@example.org
@@ -189,29 +188,6 @@ jobs:
               uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
               with:
                   persist-credentials: false
-
-            - name: Validate macOS shell compatibility
-              if: matrix.lane == 'account-auth'
-              run: /bin/bash scripts/test-ci-helpers.sh
-
-            - name: Resolve fixture Museum revision
-              id: museum
-              run: echo "revision=$(jq --raw-output '.museumServerRevision' museum/fixtures/manifest.json)" >> "$GITHUB_OUTPUT"
-
-            - name: Checkout pinned Museum source
-              uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-              with:
-                  repository: ente-io/ente
-                  ref: ${{ steps.museum.outputs.revision }}
-                  path: artifacts/ente-server
-                  persist-credentials: false
-                  sparse-checkout: server
-
-            - name: Set up Go
-              uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
-              with:
-                  go-version: 1.26.5
-                  cache-dependency-path: artifacts/ente-server/server/go.sum
 
             - name: Set up Java
               uses: actions/setup-java@ad2b38190b15e4d6bdf0c97fb4fca8412226d287 # v5.3.0
@@ -225,15 +201,6 @@ jobs:
               with:
                   node-version: 24
 
-            - name: Build pinned Museum
-              working-directory: artifacts/ente-server/server
-              run: CGO_ENABLED=0 go build -o "$AUTH_MUSEUM_BINARY" ./cmd/museum
-
-            - name: Install PostgreSQL 15
-              env:
-                  HOMEBREW_NO_AUTO_UPDATE: 1
-              run: brew list --versions postgresql@15 >/dev/null || brew install postgresql@15
-
             - name: Download resolved Auth build
               env:
                   GH_TOKEN: ${{ github.token }}
@@ -242,8 +209,24 @@ jobs:
             - name: Install pinned Maestro
               run: scripts/install-maestro.sh
 
-            - name: Start native Auth backend
-              run: scripts/fixtures/start-auth-fixture-macos.sh
+            - name: Enable KVM
+              run: |
+                  echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+                  sudo udevadm control --reload-rules
+                  sudo udevadm trigger --name-match=kvm --settle
+                  ls -l /dev/kvm
+                  test -r /dev/kvm && test -w /dev/kvm
+
+            - name: Restore Auth backend fixture
+              env:
+                  ALLOW_AUTH_FIXTURE_RESTORE: 1
+              run: scripts/fixtures/restore-auth-fixture.sh
+
+            - name: Start virtual display for Mesa
+              timeout-minutes: 1
+              run: |
+                  read -r display < <(Xvfb -displayfd 1 -screen 0 1280x1024x24 -nolisten tcp 2> /tmp/auth-xvfb.log)
+                  echo "DISPLAY=:$display" >> "$GITHUB_ENV"
 
             - name: Prepare private test password
               run: |
@@ -252,7 +235,7 @@ jobs:
                   echo "ONLINE_PASSWORD=$password" >> "$GITHUB_ENV"
 
             - name: Run ${{ matrix.lane }} session
-              if: matrix.lane == 'account-auth' || matrix.lane == 'data-sync'
+              if: matrix.lane == 'account-auth' || matrix.lane == 'data-sync' || matrix.lane == 'startup'
               uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
               with:
                   api-level: ${{ env.AUTH_ANDROID_API }}
@@ -335,6 +318,34 @@ jobs:
                   disable-animations: true
                   script: .github/scripts/run-auth-online-tests.sh entity-lifecycle-finish
 
+            # This phase stops at the empty email screen; no credentials are entered.
+            - name: Upload startup diagnostics
+              if: always() && matrix.lane == 'startup'
+              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+              with:
+                  name: auth-online-startup-diagnostics
+                  path: artifacts/maestro/online-debug/startup
+                  retention-days: 3
+
+            # These lanes use only checked-in public credentials, unlike signup.
+            - name: Upload public TOTP fixture failure diagnostics
+              if: failure() && matrix.lane == 'account-auth'
+              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+              with:
+                  name: auth-online-totp-diagnostics
+                  path: |
+                      artifacts/maestro/online-debug/account-auth/prepared-totp-start
+                      artifacts/maestro/online-debug/account-auth/prepared-totp-complete
+                  retention-days: 3
+
+            - name: Upload public-fixture failure diagnostics
+              if: failure() && matrix.lane != 'account-auth' && matrix.lane != 'startup'
+              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+              with:
+                  name: auth-online-${{ matrix.lane }}-diagnostics
+                  path: artifacts/maestro/online-debug
+                  retention-days: 3
+
             - name: Upload ${{ matrix.lane }} results
               if: always()
               uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -366,10 +377,11 @@ jobs:
                       echo "- Asset ID: \`$AUTH_APK_ASSET_ID\`"
                       echo "- Auth APK SHA-256: \`$AUTH_APK_SHA256\`"
                       echo "- Android runtime: API \`$AUTH_ANDROID_API\`, target \`$AUTH_ANDROID_TARGET\`"
+                      echo "- Emulator build: \`$AUTH_EMULATOR_BUILD\` (KVM, host software OpenGL, guest Vulkan disabled)"
                       echo "- Maestro: \`$MAESTRO_VERSION\`"
                       echo "- Backend: checked-in public Museum fixture v2"
                       case "${{ matrix.lane }}" in
-                          account-auth|data-sync) sessions=1 ;;
+                          account-auth|data-sync|startup) sessions=1 ;;
                           recovery-password) sessions=2 ;;
                           entity-lifecycle) sessions=3 ;;
                       esac
@@ -378,6 +390,9 @@ jobs:
                       echo "#### $coverage_label"
                       echo
                       case "${{ matrix.lane }}" in
+                          startup)
+                              echo "- Clean startup with fixture preferences, bounded welcome-screen readiness, and navigation to the empty login email screen (no authentication)"
+                              ;;
                           account-auth)
                               echo "- Live TOTP challenge, synchronized-code visibility, unknown-account error, signup, first Auth-key creation, and cold password login"
                               ;;
@@ -403,11 +418,13 @@ jobs:
                       date -u '+%Y-%m-%dT%H:%M:%SZ'
                       echo "lane=${{ matrix.lane }}"
                       uname -a
-                      sw_vers
-                      vm_stat || true
+                      lscpu
+                      free -h
                       df -h || true
                   } > "artifacts/maestro/runtime-health/${{ matrix.lane }}-host.txt"
-                  cp "$AUTH_FIXTURE_RUNTIME_DIR/museum.log" artifacts/maestro/runtime-health/ 2>/dev/null || true
+                  sudo dmesg --ctime > "artifacts/maestro/runtime-health/${{ matrix.lane }}-kernel.txt"
+                  sudo journalctl -b --no-pager -u systemd-oomd > artifacts/maestro/runtime-health/oomd.txt
+                  docker compose --project-name "$AUTH_FIXTURE_COMPOSE_PROJECT" --file museum/compose.yaml logs --no-color > artifacts/maestro/runtime-health/backend.log 2>&1 || true
 
             - name: Upload account runtime health
               if: failure()
@@ -421,12 +438,12 @@ jobs:
             - name: Show backend status on failure
               if: failure()
               run: |
-                  tail -n 100 "$AUTH_FIXTURE_RUNTIME_DIR/museum.log" || true
-                  "$AUTH_POSTGRES_BIN/pg_isready" --host=127.0.0.1 --port="$AUTH_POSTGRES_PORT" || true
+                  docker compose --project-name "$AUTH_FIXTURE_COMPOSE_PROJECT" --file museum/compose.yaml ps
+                  docker compose --project-name "$AUTH_FIXTURE_COMPOSE_PROJECT" --file museum/compose.yaml logs --no-color --tail=100
 
-            - name: Stop native Auth backend
+            - name: Stop Auth backend
               if: always()
-              run: scripts/fixtures/stop-auth-fixture-macos.sh
+              run: docker compose --project-name "$AUTH_FIXTURE_COMPOSE_PROJECT" --file museum/compose.yaml down --volumes --remove-orphans
 
     auth-online-gate:
         name: Auth online gate

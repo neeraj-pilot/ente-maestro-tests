@@ -21,10 +21,17 @@ tags: [auth, android, online, fixture, sync, lifecycle]
 - tapOn:
     text: "Downloads"
     id: "android:id/title"
+- tapOn: "Search"
+- inputText: "auth_lifecycle_import.txt"
+- pressKey: enter
 - extendedWaitUntil:
-    visible: "^auth_lifecycle_import\\.txt$"
+    visible:
+      text: "^auth_lifecycle_import\\.txt$"
+      id: "android:id/title"
     timeout: 15000
-- tapOn: "^auth_lifecycle_import\\.txt$"
+- tapOn:
+    text: "^auth_lifecycle_import\\.txt$"
+    id: "android:id/title"
 - extendedWaitUntil:
     visible:
       id: auth_import_success

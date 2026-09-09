@@ -16,10 +16,11 @@ if [[ ${GITHUB_ACTIONS:-} != true ]]; then
     artifacts_dir=$(mktemp -d "$artifacts_dir/$phase-XXXXXX")
     echo "Results: $artifacts_dir"
 fi
-: "${FIXTURE_MUTATION_TAG:=FixturePersisted}"
+# Keep tag chips on one row; see the tag-sheet limitation in docs/auth-test-rollout.md.
+: "${FIXTURE_MUTATION_TAG:=CI}"
 : "${FIXTURE_LIFECYCLE_ACCOUNT:=lifecycle.fixture@example.org}"
 : "${FIXTURE_LIFECYCLE_EDITED_ACCOUNT:=automation.fixture@example.org}"
-: "${FIXTURE_LIFECYCLE_TAG:=Lifecycle}"
+: "${FIXTURE_LIFECYCLE_TAG:=Flow}"
 : "${ONLINE_CODE_ACCOUNT:=first-key-${GITHUB_RUN_ID:-local}-${GITHUB_RUN_ATTEMPT:-1}@example.org}"
 credentials=museum/fixtures/public-test-credentials.json
 fixture_basic_email=$(jq --raw-output '.accounts.basic.email' "$credentials")
@@ -37,6 +38,7 @@ results_dir="$artifacts_dir/online-results/$phase"
 runtime_dir="$artifacts_dir/runtime-health"
 preparation_count=0
 tests_completed=false
+startup_started=false
 
 mkdir -p "$debug_dir" "$results_dir" "$runtime_dir"
 
@@ -46,6 +48,10 @@ record_runtime_health() {
     # Bash 3.2 can report status 0 after an unbound-variable error in a function.
     if [[ "$tests_completed" == false && $status -eq 0 ]]; then
         status=1
+    fi
+    if [[ "$startup_started" == true ]]; then
+        adb exec-out uiautomator dump /dev/tty > "$debug_dir/ui-hierarchy.txt" 2>&1 || true
+        adb logcat -d > "$debug_dir/startup-logcat.txt" 2>&1 || true
     fi
     if [[ $status -ne 0 ]]; then
         # Capture while the emulator still exists, before the action tears it down.
@@ -87,6 +93,8 @@ run_maestro() {
         echo "Maestro did not produce a nonempty JUnit report: $results_dir/$result_name.xml" >&2
         return 1
     fi
+    # Maestro can exit successfully even if the emulator crashes during driver cleanup.
+    adb shell true
 }
 
 prepare_fixture_app() {
@@ -373,6 +381,12 @@ run_entity_lifecycle_finish() {
 }
 
 case "$phase" in
+    startup)
+        prepare_fixture_app
+        adb logcat -c
+        startup_started=true
+        run_maestro startup maestro/auth/online/startup.yaml
+        ;;
     account-auth) run_account_auth ;;
     recovery-reset) run_recovery_reset ;;
     recovery-verification) run_recovery_verification ;;

@@ -1,0 +1,15 @@
+appId: ${APP_ID}
+name: Auth startup diagnostics (no credentials)
+tags: [auth, android, online, diagnostic]
+---
+- launchApp
+- takeScreenshot: after-launch
+- extendedWaitUntil:
+    visible: "Log in"
+    timeout: 60000
+- takeScreenshot: login-ready
+- tapOn: "Log in"
+- extendedWaitUntil:
+    visible: "terms of service"
+    timeout: 15000
+- takeScreenshot: login-email

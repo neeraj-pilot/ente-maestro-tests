@@ -1,9 +1,9 @@
 # Ente Auth Maestro tests
 
-Android regression tests against published Ente Auth APKs. Offline tests run on
-Ubuntu; online tests run on macOS with disposable PostgreSQL and a pinned Museum
-server. Museum is a test dependency, not the product under test. No Maestro Cloud
-or production account is required.
+Android regression tests against published Ente Auth APKs. Tests run on Ubuntu
+with KVM-accelerated Android emulators. Online tests use disposable PostgreSQL
+and a pinned Museum container. Museum is a test dependency, not the product under
+test. No Maestro Cloud or production account is required.
 
 ## Results
 

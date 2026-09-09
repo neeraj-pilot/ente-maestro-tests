@@ -20,11 +20,13 @@ changes from a product PR. Offline and online workflows resolve independently.
 The daily freshness check is not build deduplication and is subject to schedule
 delays. Do not interpret a skipped run as fresh coverage.
 
-Offline uses five Ubuntu shards. Online uses four macOS lanes with 4 GiB Android
-guest memory. Keep this known-working configuration until alternatives are
-validated; do not change runner platforms while refactoring flows. Account auth
+Offline uses five Ubuntu shards. Online uses four Ubuntu 24.04 lanes with required
+KVM acceleration, two virtual CPUs, and 4 GiB Android guest memory. Account auth
 and data sync each use one emulator session, recovery uses two, and entity
 lifecycle uses three.
+Online pins emulator 37.1.11 (build `15917651`) with host OpenGL software
+rendering (`LIBGL_ALWAYS_SOFTWARE=1`), a virtual X display, and guest Vulkan
+disabled. Do not change this configuration without running all four online lanes.
 
 ## Adding or changing a flow
 
@@ -62,9 +64,9 @@ Restore the [public Museum fixture](../museum/fixtures/README.md) before each
 independent lane. Preserve backend state between phases within a lane. The
 fixture generator is for deliberate refreshes, not normal test runs.
 
-Hosted macOS builds the manifest-pinned Museum revision and starts PostgreSQL
-natively. Local Docker setup uses pinned images. Neither path needs production
-services or object storage.
+Hosted and local Docker setup use the same pinned Museum and PostgreSQL images.
+The native macOS fixture scripts remain available for local use. Neither path
+needs production services or object storage.
 
 The online runner defaults to a rootable emulator and seeds only the endpoint
 and guidance/screen-cover preferences in Flutter's preferences file. Login and
@@ -79,6 +81,12 @@ Keep the real offline warning in onboarding tests. Do not require Auth to show a
 
 ## Results and diagnostics
 
+- Manually select the online `startup` lane to inspect cold startup without
+  entering credentials. It uses the same emulator, backend, and preference
+  preparation as the online suites, waits up to 60 seconds for `Log in`, and
+  stops at the empty email screen. Its three-day diagnostic artifact includes
+  Maestro command timings, screenshots, UI hierarchy, and device logs. It is
+  excluded from scheduled/full-suite runs; a pass is not authentication coverage.
 - CI pins Maestro 2.10.0 and its archive checksum in `scripts/install-maestro.sh`.
   Use the same version locally when validating an upgrade.
 - Local runners and CI disable analytics and route Maestro's API to loopback.
@@ -93,9 +101,11 @@ Keep the real offline warning in onboarding tests. Do not require Auth to show a
 - Online failures retain runtime health for three days. Device state and app
   memory are captured inside the runner before emulator teardown. Workflow-level
   diagnostics provide host memory/disk information and the local Museum log.
-- Online Maestro debug output is not uploaded: login/signup/recovery screens can
-  contain credentials. Maestro 2.7+ captures a screenshot before every step;
-  do not upload raw screens or input traces from these phases.
+- A flow must produce a nonempty JUnit report and leave the device responsive;
+  Maestro can otherwise report success after a crash during driver cleanup.
+- Online public-fixture lanes retain failure screenshots and traces for three
+  days. Their credentials are already checked in. The account-auth lane uploads
+  only its public TOTP fixture phases, never the private signup/login phases.
 
 Coverage descriptions live in the README; executed outcomes live in Actions,
 not hand-edited green badges. Keep app bugs and performance investigations in
@@ -107,3 +117,29 @@ Imports and local backups stay local-only until they work reliably on the hosted
 Android runtime. Backup restore remains a coverage gap; encrypted JSON fields
 alone do not prove a usable backup. Promote a flow after its selectors and device
 behavior are validated, then require a clean hosted run before claiming coverage.
+
+## App follow-ups
+
+### Tag-sheet accessibility
+
+On APK asset `551456158` (created September 8, 2026), creating a long tag
+(`FixturePersisted`) beside `Work` makes the tag chips wrap. After the sheet grows,
+the reported accessibility bounds remain below the rendered controls: Maestro
+taps below `Done`, leaving the sheet open. Waiting ten seconds does not fix the
+mismatch. See the [captured failure](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/34350696836).
+
+Online fixtures use short tags (`CI`, `Flow`) to keep this sheet on one row.
+Bulk edits and fresh-login persistence remain asserted; wrapped-sheet
+accessibility is **not covered**. Investigate the sheet's semantics after dynamic
+resizing in Auth/Flutter, and restore a long-tag regression once fixed.
+
+### Progress-dialog lifecycle
+
+[Recovery diagnostics](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/34352639810)
+captured `ProgressDialog.hide()` throwing a null-check error and leaving
+`Please wait...` over the recovery page after email verification succeeded.
+The shared dialog uses global context/state and a fixed 200 ms delay for readiness.
+Replace that with per-dialog lifecycle ownership and test dismissal before the
+first frame. A local widget test reproduced a retained dialog by awaiting
+`show()` and `hide()` before pumping its first frame. The Maestro flow does not
+dismiss stuck progress dialogs.
