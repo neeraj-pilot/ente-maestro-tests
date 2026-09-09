@@ -313,6 +313,15 @@ jobs:
                   path: artifacts/maestro/online-debug/startup
                   retention-days: 3
 
+            # These lanes use only checked-in public credentials, unlike signup.
+            - name: Upload public-fixture failure diagnostics
+              if: failure() && matrix.lane != 'account-auth' && matrix.lane != 'startup'
+              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+              with:
+                  name: auth-online-${{ matrix.lane }}-diagnostics
+                  path: artifacts/maestro/online-debug
+                  retention-days: 3
+
             - name: Upload ${{ matrix.lane }} results
               if: always()
               uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
