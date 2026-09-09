@@ -405,6 +405,9 @@ jobs:
                       df -h || true
                   } > "artifacts/maestro/runtime-health/${{ matrix.lane }}-host.txt"
                   sudo dmesg --ctime > "artifacts/maestro/runtime-health/${{ matrix.lane }}-kernel.txt"
+                  if [[ '${{ matrix.lane }}' != account-auth ]]; then
+                      find /tmp/android-runner -maxdepth 1 -name 'emu-crash-*.db' -exec cp -R {} artifacts/maestro/runtime-health/ \; || true
+                  fi
                   docker compose --project-name "$AUTH_FIXTURE_COMPOSE_PROJECT" --file museum/compose.yaml logs --no-color > artifacts/maestro/runtime-health/backend.log 2>&1 || true
 
             - name: Upload account runtime health
