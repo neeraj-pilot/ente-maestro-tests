@@ -20,7 +20,7 @@ changes from a product PR. Offline and online workflows resolve independently.
 The daily freshness check is not build deduplication and is subject to schedule
 delays. Do not interpret a skipped run as fresh coverage.
 
-Offline uses five Ubuntu shards. Online uses four Ubuntu lanes with required
+Offline uses five Ubuntu shards. Online uses four Ubuntu 24.04 lanes with required
 KVM acceleration, two virtual CPUs, and 4 GiB Android guest memory. Account auth
 and data sync each use one emulator session, recovery uses two, and entity
 lifecycle uses three.
