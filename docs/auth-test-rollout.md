@@ -114,7 +114,9 @@ Android runtime. Backup restore remains a coverage gap; encrypted JSON fields
 alone do not prove a usable backup. Promote a flow after its selectors and device
 behavior are validated, then require a clean hosted run before claiming coverage.
 
-## Tag-sheet accessibility limitation
+## App follow-ups
+
+### Tag-sheet accessibility
 
 On APK asset `551456158` (created September 8, 2026), creating a long tag
 (`FixturePersisted`) beside `Work` makes the tag chips wrap. After the sheet grows,
@@ -126,3 +128,12 @@ Online fixtures use short tags (`CI`, `Flow`) to keep this sheet on one row.
 Bulk edits and fresh-login persistence remain asserted; wrapped-sheet
 accessibility is **not covered**. Investigate the sheet's semantics after dynamic
 resizing in Auth/Flutter, and restore a long-tag regression once fixed.
+
+### Progress-dialog lifecycle
+
+[Recovery diagnostics](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/34352639810)
+captured `ProgressDialog.hide()` throwing a null-check error and leaving
+`Please wait...` over the recovery page after email verification succeeded.
+The shared dialog uses global context/state and a fixed 200 ms delay for readiness.
+Replace that with per-dialog lifecycle ownership and test dismissal before the
+first frame. The Maestro flow does not dismiss stuck progress dialogs.
