@@ -21,12 +21,12 @@ The daily freshness check is not build deduplication and is subject to schedule
 delays. Do not interpret a skipped run as fresh coverage.
 
 Offline uses five Ubuntu shards. Online uses four Ubuntu lanes with required
-KVM acceleration, two virtual CPUs, and 3 GiB Android guest memory. Account auth
+KVM acceleration, two virtual CPUs, and 4 GiB Android guest memory. Account auth
 and data sync each use one emulator session, recovery uses two, and entity
 lifecycle uses three.
-Online pins emulator 37.1.11 (build `15917651`) with the same `swiftshader`
-graphics mode used by the offline suites. Do not change this configuration
-without running all four online lanes.
+Online pins emulator 37.1.11 (build `15917651`) with host OpenGL software
+rendering (`LIBGL_ALWAYS_SOFTWARE=1`), a virtual X display, and guest Vulkan
+disabled. Do not change this configuration without running all four online lanes.
 
 ## Adding or changing a flow
 
@@ -104,8 +104,8 @@ Keep the real offline warning in onboarding tests. Do not require Auth to show a
 - A flow must produce a nonempty JUnit report and leave the device responsive;
   Maestro can otherwise report success after a crash during driver cleanup.
 - Online public-fixture lanes retain failure screenshots and traces for three
-  days. Their credentials are already checked in. The account-auth lane does not
-  upload Maestro debug output because signup generates a private test password.
+  days. Their credentials are already checked in. The account-auth lane uploads
+  only its public TOTP fixture phases, never the private signup/login phases.
 
 Coverage descriptions live in the README; executed outcomes live in Actions,
 not hand-edited green badges. Keep app bugs and performance investigations in
@@ -140,4 +140,6 @@ captured `ProgressDialog.hide()` throwing a null-check error and leaving
 `Please wait...` over the recovery page after email verification succeeded.
 The shared dialog uses global context/state and a fixed 200 ms delay for readiness.
 Replace that with per-dialog lifecycle ownership and test dismissal before the
-first frame. The Maestro flow does not dismiss stuck progress dialogs.
+first frame. A local widget test reproduced a retained dialog by awaiting
+`show()` and `hide()` before pumping its first frame. The Maestro flow does not
+dismiss stuck progress dialogs.

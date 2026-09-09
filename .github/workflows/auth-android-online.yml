@@ -376,7 +376,7 @@ jobs:
                       echo "- Asset ID: \`$AUTH_APK_ASSET_ID\`"
                       echo "- Auth APK SHA-256: \`$AUTH_APK_SHA256\`"
                       echo "- Android runtime: API \`$AUTH_ANDROID_API\`, target \`$AUTH_ANDROID_TARGET\`"
-                      echo "- Emulator build: \`$AUTH_EMULATOR_BUILD\` (KVM, SwiftShader graphics)"
+                      echo "- Emulator build: \`$AUTH_EMULATOR_BUILD\` (KVM, host software OpenGL, guest Vulkan disabled)"
                       echo "- Maestro: \`$MAESTRO_VERSION\`"
                       echo "- Backend: checked-in public Museum fixture v2"
                       case "${{ matrix.lane }}" in
