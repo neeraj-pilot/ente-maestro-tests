@@ -25,6 +25,9 @@ KVM acceleration, two virtual CPUs, and 4 GiB Android guest memory. Account auth
 and data sync each use one emulator session, recovery uses two, and entity
 lifecycle uses three.
 Online pins emulator 37.1.11 (build `15917651`) with Mesa/Lavapipe graphics.
+The legacy `swiftshader_indirect` renderer repeatedly crashed the host emulator
+with SIGSEGV ([native trace](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/34361743007)).
+Do not replace the renderer pin without running all four online lanes.
 
 ## Adding or changing a flow
 
@@ -99,6 +102,8 @@ Keep the real offline warning in onboarding tests. Do not require Auth to show a
 - Online failures retain runtime health for three days. Device state and app
   memory are captured inside the runner before emulator teardown. Workflow-level
   diagnostics provide host memory/disk information and the local Museum log.
+- A flow must produce a nonempty JUnit report and leave the device responsive;
+  Maestro can otherwise report success after a crash during driver cleanup.
 - Online public-fixture lanes retain failure screenshots and traces for three
   days. Their credentials are already checked in. The account-auth lane does not
   upload Maestro debug output because signup generates a private test password.
