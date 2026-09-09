@@ -20,9 +20,8 @@ changes from a product PR. Offline and online workflows resolve independently.
 The daily freshness check is not build deduplication and is subject to schedule
 delays. Do not interpret a skipped run as fresh coverage.
 
-Offline uses five Ubuntu shards. Online uses four macOS lanes with 4 GiB Android
-guest memory. Keep this known-working configuration until alternatives are
-validated; do not change runner platforms while refactoring flows. Account auth
+Offline uses five Ubuntu shards. Online uses four Ubuntu lanes with required
+KVM acceleration, two virtual CPUs, and 4 GiB Android guest memory. Account auth
 and data sync each use one emulator session, recovery uses two, and entity
 lifecycle uses three.
 
@@ -62,9 +61,9 @@ Restore the [public Museum fixture](../museum/fixtures/README.md) before each
 independent lane. Preserve backend state between phases within a lane. The
 fixture generator is for deliberate refreshes, not normal test runs.
 
-Hosted macOS builds the manifest-pinned Museum revision and starts PostgreSQL
-natively. Local Docker setup uses pinned images. Neither path needs production
-services or object storage.
+Hosted and local Docker setup use the same pinned Museum and PostgreSQL images.
+The native macOS fixture scripts remain available for local use. Neither path
+needs production services or object storage.
 
 The online runner defaults to a rootable emulator and seeds only the endpoint
 and guidance/screen-cover preferences in Flutter's preferences file. Login and
