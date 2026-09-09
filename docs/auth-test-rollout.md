@@ -24,7 +24,7 @@ Offline uses five Ubuntu shards. Online uses four Ubuntu lanes with required
 KVM acceleration, two virtual CPUs, and 4 GiB Android guest memory. Account auth
 and data sync each use one emulator session, recovery uses two, and entity
 lifecycle uses three.
-Online pins emulator 35.2.10 (build `12414864`) with Vulkan disabled.
+Online pins emulator 37.1.11 (build `15917651`) with Mesa/Lavapipe graphics.
 
 ## Adding or changing a flow
 

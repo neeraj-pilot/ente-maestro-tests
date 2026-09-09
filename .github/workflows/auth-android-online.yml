@@ -67,8 +67,8 @@ env:
     MAESTRO_API_URL: http://127.0.0.1:9
     AUTH_ANDROID_API: 34
     AUTH_ANDROID_TARGET: default
-    AUTH_EMULATOR_BUILD: 12414864
-    AUTH_EMULATOR_OPTIONS: -no-window -gpu swiftshader_indirect -feature -Vulkan -accel on -no-metrics -no-snapshot -noaudio -no-boot-anim -memory 4096
+    AUTH_EMULATOR_BUILD: 15917651
+    AUTH_EMULATOR_OPTIONS: -no-window -gpu lavapipe -accel on -no-metrics -no-snapshot -noaudio -no-boot-anim -memory 4096
     ONLINE_ENDPOINT: http://10.0.2.2:8080
     ONLINE_OTT: 123456
 
@@ -220,10 +220,6 @@ jobs:
                   ALLOW_AUTH_FIXTURE_RESTORE: 1
               run: scripts/fixtures/restore-auth-fixture.sh
 
-            - name: Install native crash debugger
-              if: matrix.lane == 'recovery-password' || matrix.lane == 'entity-lifecycle'
-              run: sudo apt-get update && sudo apt-get install --no-install-recommends -y gdb
-
             - name: Prepare private test password
               run: |
                   password="AuthCi-$(openssl rand -hex 10)!"
@@ -256,7 +252,7 @@ jobs:
                   cores: 2
                   emulator-options: ${{ env.AUTH_EMULATOR_OPTIONS }}
                   disable-animations: true
-                  script: bash .github/scripts/debug-auth-emulator.sh recovery-reset
+                  script: .github/scripts/run-auth-online-tests.sh recovery-reset
 
             - name: Run recovery verification session
               if: matrix.lane == 'recovery-password'
@@ -298,7 +294,7 @@ jobs:
                   cores: 2
                   emulator-options: ${{ env.AUTH_EMULATOR_OPTIONS }}
                   disable-animations: true
-                  script: bash .github/scripts/debug-auth-emulator.sh entity-lifecycle-mutate
+                  script: .github/scripts/run-auth-online-tests.sh entity-lifecycle-mutate
 
             - name: Run lifecycle restore and delete session
               if: matrix.lane == 'entity-lifecycle'
@@ -312,7 +308,7 @@ jobs:
                   cores: 2
                   emulator-options: ${{ env.AUTH_EMULATOR_OPTIONS }}
                   disable-animations: true
-                  script: bash .github/scripts/debug-auth-emulator.sh entity-lifecycle-finish
+                  script: .github/scripts/run-auth-online-tests.sh entity-lifecycle-finish
 
             # This phase stops at the empty email screen; no credentials are entered.
             - name: Upload startup diagnostics
@@ -341,14 +337,6 @@ jobs:
                   if-no-files-found: error
                   retention-days: 7
 
-            - name: Upload emulator exit trace
-              if: always() && (matrix.lane == 'recovery-password' || matrix.lane == 'entity-lifecycle')
-              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-              with:
-                  name: auth-online-${{ matrix.lane }}-exit-trace
-                  path: artifacts/maestro/runtime-health/*-exit.txt
-                  retention-days: 3
-
             - name: Summarize ${{ matrix.lane }} tests
               if: always()
               env:
@@ -371,7 +359,7 @@ jobs:
                       echo "- Asset ID: \`$AUTH_APK_ASSET_ID\`"
                       echo "- Auth APK SHA-256: \`$AUTH_APK_SHA256\`"
                       echo "- Android runtime: API \`$AUTH_ANDROID_API\`, target \`$AUTH_ANDROID_TARGET\`"
-                      echo "- Emulator build: \`$AUTH_EMULATOR_BUILD\` (KVM, Vulkan disabled)"
+                      echo "- Emulator build: \`$AUTH_EMULATOR_BUILD\` (KVM, Mesa/Lavapipe graphics)"
                       echo "- Maestro: \`$MAESTRO_VERSION\`"
                       echo "- Backend: checked-in public Museum fixture v2"
                       case "${{ matrix.lane }}" in
