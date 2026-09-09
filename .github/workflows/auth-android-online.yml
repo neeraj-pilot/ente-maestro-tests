@@ -320,6 +320,16 @@ jobs:
                   retention-days: 3
 
             # These lanes use only checked-in public credentials, unlike signup.
+            - name: Upload public TOTP fixture failure diagnostics
+              if: failure() && matrix.lane == 'account-auth'
+              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+              with:
+                  name: auth-online-totp-diagnostics
+                  path: |
+                      artifacts/maestro/online-debug/account-auth/prepared-totp-start
+                      artifacts/maestro/online-debug/account-auth/prepared-totp-complete
+                  retention-days: 3
+
             - name: Upload public-fixture failure diagnostics
               if: failure() && matrix.lane != 'account-auth' && matrix.lane != 'startup'
               uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
