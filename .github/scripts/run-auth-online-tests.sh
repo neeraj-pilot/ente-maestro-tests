@@ -16,7 +16,8 @@ if [[ ${GITHUB_ACTIONS:-} != true ]]; then
     artifacts_dir=$(mktemp -d "$artifacts_dir/$phase-XXXXXX")
     echo "Results: $artifacts_dir"
 fi
-: "${FIXTURE_MUTATION_TAG:=Synced}"
+# Keep tag chips on one row; see the tag-sheet limitation in docs/auth-test-rollout.md.
+: "${FIXTURE_MUTATION_TAG:=CI}"
 : "${FIXTURE_LIFECYCLE_ACCOUNT:=lifecycle.fixture@example.org}"
 : "${FIXTURE_LIFECYCLE_EDITED_ACCOUNT:=automation.fixture@example.org}"
 : "${FIXTURE_LIFECYCLE_TAG:=Flow}"

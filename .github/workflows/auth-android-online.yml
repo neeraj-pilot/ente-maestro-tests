@@ -67,7 +67,8 @@ env:
     MAESTRO_API_URL: http://127.0.0.1:9
     AUTH_ANDROID_API: 34
     AUTH_ANDROID_TARGET: default
-    AUTH_EMULATOR_OPTIONS: -no-window -gpu swiftshader -accel on -no-metrics -no-snapshot -noaudio -no-boot-anim -memory 4096
+    AUTH_EMULATOR_BUILD: 15917651
+    AUTH_EMULATOR_OPTIONS: -no-window -gpu swiftshader -feature -Vulkan -accel on -no-metrics -no-snapshot -noaudio -no-boot-anim -memory 4096
     ONLINE_ENDPOINT: http://10.0.2.2:8080
     ONLINE_OTT: 123456
 
@@ -177,7 +178,6 @@ jobs:
             AUTH_SOURCE_REPOSITORY: ${{ needs.resolve.outputs.source_repository }}
             AUTH_APK_PATH: ${{ github.workspace }}/artifacts/auth/${{ needs.resolve.outputs.apk_name }}
             AUTH_FIXTURE_COMPOSE_PROJECT: auth-online-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.lane }}
-            FIXTURE_MUTATION_TAG: Synced
             MISSING_EMAIL: missing-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.lane }}@example.org
             ONLINE_CODE_ACCOUNT: first-key-${{ github.run_id }}-${{ github.run_attempt }}@example.org
             ONLINE_EMAIL: auth-ci-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.lane }}@example.org
@@ -231,6 +231,7 @@ jobs:
               uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
               with:
                   api-level: ${{ env.AUTH_ANDROID_API }}
+                  emulator-build: ${{ env.AUTH_EMULATOR_BUILD }}
                   target: ${{ env.AUTH_ANDROID_TARGET }}
                   arch: x86_64
                   profile: pixel_5
@@ -244,6 +245,7 @@ jobs:
               uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
               with:
                   api-level: ${{ env.AUTH_ANDROID_API }}
+                  emulator-build: ${{ env.AUTH_EMULATOR_BUILD }}
                   target: ${{ env.AUTH_ANDROID_TARGET }}
                   arch: x86_64
                   profile: pixel_5
@@ -257,6 +259,7 @@ jobs:
               uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
               with:
                   api-level: ${{ env.AUTH_ANDROID_API }}
+                  emulator-build: ${{ env.AUTH_EMULATOR_BUILD }}
                   target: ${{ env.AUTH_ANDROID_TARGET }}
                   arch: x86_64
                   profile: pixel_5
@@ -270,6 +273,7 @@ jobs:
               uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
               with:
                   api-level: ${{ env.AUTH_ANDROID_API }}
+                  emulator-build: ${{ env.AUTH_EMULATOR_BUILD }}
                   target: ${{ env.AUTH_ANDROID_TARGET }}
                   arch: x86_64
                   profile: pixel_5
@@ -283,6 +287,7 @@ jobs:
               uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
               with:
                   api-level: ${{ env.AUTH_ANDROID_API }}
+                  emulator-build: ${{ env.AUTH_EMULATOR_BUILD }}
                   target: ${{ env.AUTH_ANDROID_TARGET }}
                   arch: x86_64
                   profile: pixel_5
@@ -296,6 +301,7 @@ jobs:
               uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
               with:
                   api-level: ${{ env.AUTH_ANDROID_API }}
+                  emulator-build: ${{ env.AUTH_EMULATOR_BUILD }}
                   target: ${{ env.AUTH_ANDROID_TARGET }}
                   arch: x86_64
                   profile: pixel_5
@@ -353,6 +359,7 @@ jobs:
                       echo "- Asset ID: \`$AUTH_APK_ASSET_ID\`"
                       echo "- Auth APK SHA-256: \`$AUTH_APK_SHA256\`"
                       echo "- Android runtime: API \`$AUTH_ANDROID_API\`, target \`$AUTH_ANDROID_TARGET\`"
+                      echo "- Emulator build: \`$AUTH_EMULATOR_BUILD\` (KVM, Vulkan disabled)"
                       echo "- Maestro: \`$MAESTRO_VERSION\`"
                       echo "- Backend: checked-in public Museum fixture v2"
                       case "${{ matrix.lane }}" in

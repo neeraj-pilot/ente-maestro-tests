@@ -24,6 +24,7 @@ Offline uses five Ubuntu shards. Online uses four Ubuntu lanes with required
 KVM acceleration, two virtual CPUs, and 4 GiB Android guest memory. Account auth
 and data sync each use one emulator session, recovery uses two, and entity
 lifecycle uses three.
+Online pins emulator 37.1.11 (build `15917651`) with Vulkan disabled.
 
 ## Adding or changing a flow
 
@@ -121,7 +122,7 @@ the reported accessibility bounds remain below the rendered controls: Maestro
 taps below `Done`, leaving the sheet open. Waiting ten seconds does not fix the
 mismatch. See the [captured failure](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/34350696836).
 
-Online fixtures use short tags (`Synced`, `Flow`) to keep this sheet on one row.
+Online fixtures use short tags (`CI`, `Flow`) to keep this sheet on one row.
 Bulk edits and fresh-login persistence remain asserted; wrapped-sheet
 accessibility is **not covered**. Investigate the sheet's semantics after dynamic
 resizing in Auth/Flutter, and restore a long-tag regression once fixed.
