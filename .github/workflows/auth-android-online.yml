@@ -68,7 +68,7 @@ env:
     AUTH_ANDROID_API: 34
     AUTH_ANDROID_TARGET: default
     AUTH_EMULATOR_BUILD: 15917651
-    AUTH_EMULATOR_OPTIONS: -no-window -gpu lavapipe -feature -Vulkan -accel on -no-metrics -no-snapshot -noaudio -no-boot-anim -memory 4096
+    AUTH_EMULATOR_OPTIONS: -no-window -gpu lavapipe -feature -Vulkan -accel on -no-metrics -no-snapshot -noaudio -no-boot-anim -memory 3072
     ONLINE_ENDPOINT: http://10.0.2.2:8080
     ONLINE_OTT: 123456
 
