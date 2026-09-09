@@ -98,9 +98,9 @@ Keep the real offline warning in onboarding tests. Do not require Auth to show a
 - Online failures retain runtime health for three days. Device state and app
   memory are captured inside the runner before emulator teardown. Workflow-level
   diagnostics provide host memory/disk information and the local Museum log.
-- Online Maestro debug output is not uploaded: login/signup/recovery screens can
-  contain credentials. Maestro 2.7+ captures a screenshot before every step;
-  do not upload raw screens or input traces from these phases.
+- Online public-fixture lanes retain failure screenshots and traces for three
+  days. Their credentials are already checked in. The account-auth lane does not
+  upload Maestro debug output because signup generates a private test password.
 
 Coverage descriptions live in the README; executed outcomes live in Actions,
 not hand-edited green badges. Keep app bugs and performance investigations in

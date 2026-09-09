@@ -15,8 +15,17 @@ tags: [auth, android, online, fixture, sync, bulk]
 - tapOn: "Add new"
 - assertVisible: "Create new tag"
 - inputText: ${FIXTURE_MUTATION_TAG}
+- hideKeyboard
 - tapOn: "Create"
-- tapOn: "Done"
+- assertNotVisible: "Create new tag"
+- tapOn:
+    text: "Done"
+    childOf:
+      id: auth_add_tag_sheet
+- extendedWaitUntil:
+    notVisible:
+      id: auth_add_tag_sheet
+    timeout: 10000
 - extendedWaitUntil:
     visible: ${FIXTURE_MUTATION_TAG}
     timeout: 30000
