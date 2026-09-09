@@ -226,6 +226,10 @@ jobs:
                   echo "::add-mask::$password"
                   echo "ONLINE_PASSWORD=$password" >> "$GITHUB_ENV"
 
+            - name: Install native crash debugger
+              if: matrix.lane == 'entity-lifecycle'
+              run: sudo apt-get update && sudo apt-get install --no-install-recommends -y gdb
+
             - name: Run ${{ matrix.lane }} session
               if: matrix.lane == 'account-auth' || matrix.lane == 'data-sync' || matrix.lane == 'startup'
               uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
@@ -280,7 +284,7 @@ jobs:
                   cores: 2
                   emulator-options: ${{ env.AUTH_EMULATOR_OPTIONS }}
                   disable-animations: true
-                  script: .github/scripts/run-auth-online-tests.sh entity-lifecycle-create
+                  script: bash .github/scripts/debug-auth-emulator.sh entity-lifecycle-create
 
             - name: Run lifecycle mutation session
               if: matrix.lane == 'entity-lifecycle'
