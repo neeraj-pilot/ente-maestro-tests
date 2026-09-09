@@ -177,7 +177,7 @@ jobs:
             AUTH_SOURCE_REPOSITORY: ${{ needs.resolve.outputs.source_repository }}
             AUTH_APK_PATH: ${{ github.workspace }}/artifacts/auth/${{ needs.resolve.outputs.apk_name }}
             AUTH_FIXTURE_COMPOSE_PROJECT: auth-online-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.lane }}
-            FIXTURE_MUTATION_TAG: FixturePersisted
+            FIXTURE_MUTATION_TAG: Synced
             MISSING_EMAIL: missing-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.lane }}@example.org
             ONLINE_CODE_ACCOUNT: first-key-${{ github.run_id }}-${{ github.run_attempt }}@example.org
             ONLINE_EMAIL: auth-ci-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.lane }}@example.org

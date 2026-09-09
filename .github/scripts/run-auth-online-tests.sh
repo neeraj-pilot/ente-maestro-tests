@@ -16,10 +16,10 @@ if [[ ${GITHUB_ACTIONS:-} != true ]]; then
     artifacts_dir=$(mktemp -d "$artifacts_dir/$phase-XXXXXX")
     echo "Results: $artifacts_dir"
 fi
-: "${FIXTURE_MUTATION_TAG:=FixturePersisted}"
+: "${FIXTURE_MUTATION_TAG:=Synced}"
 : "${FIXTURE_LIFECYCLE_ACCOUNT:=lifecycle.fixture@example.org}"
 : "${FIXTURE_LIFECYCLE_EDITED_ACCOUNT:=automation.fixture@example.org}"
-: "${FIXTURE_LIFECYCLE_TAG:=Lifecycle}"
+: "${FIXTURE_LIFECYCLE_TAG:=Flow}"
 : "${ONLINE_CODE_ACCOUNT:=first-key-${GITHUB_RUN_ID:-local}-${GITHUB_RUN_ATTEMPT:-1}@example.org}"
 credentials=museum/fixtures/public-test-credentials.json
 fixture_basic_email=$(jq --raw-output '.accounts.basic.email' "$credentials")

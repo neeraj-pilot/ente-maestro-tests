@@ -112,3 +112,16 @@ Imports and local backups stay local-only until they work reliably on the hosted
 Android runtime. Backup restore remains a coverage gap; encrypted JSON fields
 alone do not prove a usable backup. Promote a flow after its selectors and device
 behavior are validated, then require a clean hosted run before claiming coverage.
+
+## Tag-sheet accessibility limitation
+
+On APK asset `551456158` (created September 8, 2026), creating a long tag
+(`FixturePersisted`) beside `Work` makes the tag chips wrap. After the sheet grows,
+the reported accessibility bounds remain below the rendered controls: Maestro
+taps below `Done`, leaving the sheet open. Waiting ten seconds does not fix the
+mismatch. See the [captured failure](https://github.com/neeraj-pilot/ente-maestro-tests/actions/runs/34350696836).
+
+Online fixtures use short tags (`Synced`, `Flow`) to keep this sheet on one row.
+Bulk edits and fresh-login persistence remain asserted; wrapped-sheet
+accessibility is **not covered**. Investigate the sheet's semantics after dynamic
+resizing in Auth/Flutter, and restore a long-tag regression once fixed.
