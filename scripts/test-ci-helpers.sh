@@ -108,6 +108,7 @@ grep -Fx 'fixture-memory-info' "$temp_dir"/diagnostics/data-sync-*/runtime-healt
 cat > "$temp_dir/bin/adb" <<'SH'
 #!/usr/bin/env bash
 case "$*" in
+    'shell true') exit "${MOCK_DEVICE_STATUS:-0}" ;;
     'shell id -u'|'shell am get-current-user') echo 0 ;;
     'shell stat '*) echo 1000:1000 ;;
     'shell pidof '*) echo 123 ;;
@@ -151,6 +152,11 @@ if grep -Fxq -- '--device' "$MOCK_CALLS"; then
 fi
 run_online selected ONLINE_ENDPOINT=http://10.0.2.2:8080 MAESTRO_DEVICE=fixture-device
 [[ $(sed -n '/^--device$/{n;p;}' "$MOCK_CALLS") == fixture-device ]]
+
+status=0
+run_online disconnected ONLINE_ENDPOINT=http://10.0.2.2:8080 MOCK_DEVICE_STATUS=23 || status=$?
+[[ $status -eq 23 ]]
+grep -Fxq 'fixture-memory-info' "$temp_dir/online-disconnected/runtime-health/recovery-reset-device.txt"
 
 MOCK_ONLINE_PHASE=startup run_online startup ONLINE_ENDPOINT=http://10.0.2.2:8080
 [[ $(grep -E '^maestro/.*\.yaml$' "$MOCK_CALLS") == maestro/auth/online/startup.yaml ]]

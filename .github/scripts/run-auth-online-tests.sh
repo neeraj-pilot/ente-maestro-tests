@@ -93,6 +93,8 @@ run_maestro() {
         echo "Maestro did not produce a nonempty JUnit report: $results_dir/$result_name.xml" >&2
         return 1
     fi
+    # Maestro can exit successfully even if the emulator crashes during driver cleanup.
+    adb shell true
 }
 
 prepare_fixture_app() {
