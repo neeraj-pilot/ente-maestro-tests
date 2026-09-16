@@ -7,7 +7,6 @@ on:
         branches: [main]
         paths: &test_paths
             - ".github/workflows/auth-android.yml"
-            - ".github/scripts/**"
             - "maestro/auth/**"
             - "maestro/fixtures/**"
             - "scripts/**"
@@ -49,20 +48,21 @@ env:
     MAESTRO_CLI_NO_ANALYTICS: 1
     # Analytics opt-out does not cover error reports (Maestro issue #3488).
     MAESTRO_API_URL: http://127.0.0.1:9
+    # Use Mesa's host OpenGL implementation, not the crashing bundled renderers.
+    LIBGL_ALWAYS_SOFTWARE: 1
 
 jobs:
     prepare:
         name: Prepare Auth tests
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-24.04
+        timeout-minutes: 10
         outputs:
             offline: ${{ steps.select.outputs.offline }}
             online: ${{ steps.select.outputs.online }}
             has_offline: ${{ steps.select.outputs.has_offline }}
             has_online: ${{ steps.select.outputs.has_online }}
             should_run: ${{ steps.freshness.outputs.should_run }}
-            apk_asset_id: ${{ steps.apk.outputs.apk_asset_id }}
-            apk_sha256: ${{ steps.apk.outputs.apk_sha256 }}
-            source_repository: ${{ steps.apk.outputs.source_repository }}
+            build: ${{ steps.apk.outputs.build }}
         steps:
             - name: Checkout tests
               uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -72,12 +72,9 @@ jobs:
 
             - name: Validate hosted test configuration
               run: |
-                  scripts/test-select-auth-ci-suites.sh
-                  scripts/test-select-auth-online-lanes.sh
-                  scripts/test-select-auth-tests.sh
-                  scripts/test-hosted-flow-registration.sh
-                  scripts/test-resolve-nightly-apk.sh
-                  scripts/test-ci-helpers.sh
+                  python3 -m unittest discover -s scripts/tests
+                  scripts/tests/apk.sh
+                  scripts/tests/runners.sh
 
             - name: Select suites
               id: select
@@ -86,20 +83,22 @@ jobs:
                   BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
                   HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
                   REQUESTED_SUITE: ${{ inputs.suite || 'all' }}
-              run: .github/scripts/select-auth-tests.sh
+              run: python3 scripts/suites.py --suite "$REQUESTED_SUITE" --github-output "$GITHUB_OUTPUT"
 
             - name: Resolve published Auth build
               id: apk
               if: steps.select.outputs.has_offline == 'true' || steps.select.outputs.has_online == 'true'
               env:
                   GH_TOKEN: ${{ github.token }}
-              run: scripts/resolve-nightly-apk.sh --github-output "$GITHUB_OUTPUT"
+              run: |
+                  build=$(scripts/apk.sh resolve)
+                  echo "build=$build" >> "$GITHUB_OUTPUT"
 
             - name: Check scheduled build freshness
               id: freshness
               if: steps.apk.outcome == 'success'
               env:
-                  APK_CREATED_AT: ${{ steps.apk.outputs.apk_created_at }}
+                  APK_CREATED_AT: ${{ fromJSON(steps.apk.outputs.build).apk_created_at }}
                   EVENT_NAME: ${{ github.event_name }}
               run: |
                   should_run=true
@@ -117,25 +116,15 @@ jobs:
                   OFFLINE: ${{ steps.select.outputs.offline }}
                   ONLINE: ${{ steps.select.outputs.online }}
                   SHOULD_RUN: ${{ steps.freshness.outputs.should_run }}
-                  APK_NAME: ${{ steps.apk.outputs.apk_name }}
-                  APK_CREATED_AT: ${{ steps.apk.outputs.apk_created_at }}
-                  APK_ASSET_ID: ${{ steps.apk.outputs.apk_asset_id }}
-                  APK_SHA256: ${{ steps.apk.outputs.apk_sha256 }}
-                  RELEASE_TAG: ${{ steps.apk.outputs.release_tag }}
-                  CHANNEL: ${{ steps.apk.outputs.channel }}
-                  SOURCE_REPOSITORY: ${{ steps.apk.outputs.source_repository }}
+                  BUILD: ${{ steps.apk.outputs.build }}
               run: |
                   {
                       echo "### Auth Android test plan"
                       echo
-                      if [[ -z "$APK_ASSET_ID" ]]; then
+                      if [[ -z "$BUILD" ]]; then
                           echo "No hosted suites selected for these changes."
                       else
-                          echo "- Build: \`$APK_NAME\`"
-                          echo "- Asset created: \`$APK_CREATED_AT\`"
-                          echo "- Source: \`$SOURCE_REPOSITORY\`, release \`$RELEASE_TAG\` ($CHANNEL)"
-                          echo "- Asset ID: \`$APK_ASSET_ID\`"
-                          echo "- SHA-256: \`$APK_SHA256\`"
+                          jq -r '"- Build: `\(.apk_name)`\n- Asset created: `\(.apk_created_at)`\n- Source: `\(.source_repository)`, release `\(.release_tag)` (\(.channel))\n- Asset ID: `\(.apk_asset_id)`\n- SHA-256: `\(.apk_sha256)`"' <<< "$BUILD"
                           echo "- Offline: $(jq -r '.include | map(.suite) | join(", ")' <<< "$OFFLINE")"
                           echo "- Online: $(jq -r 'join(", ")' <<< "$ONLINE")"
                           if [[ "$SHOULD_RUN" != true ]]; then
@@ -146,10 +135,10 @@ jobs:
                   } >> "$GITHUB_STEP_SUMMARY"
 
     offline:
-        name: ${{ matrix.name }}
+        name: Offline ${{ matrix.suite }}
         needs: prepare
         if: needs.prepare.outputs.should_run == 'true' && needs.prepare.outputs.has_offline == 'true'
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-24.04
         timeout-minutes: 30
         strategy:
             fail-fast: false
@@ -172,10 +161,8 @@ jobs:
               name: Download resolved Auth build
               env:
                   GH_TOKEN: ${{ github.token }}
-                  SOURCE_REPOSITORY: ${{ needs.prepare.outputs.source_repository }}
-                  APK_ASSET_ID: ${{ needs.prepare.outputs.apk_asset_id }}
-                  APK_SHA256: ${{ needs.prepare.outputs.apk_sha256 }}
-              run: scripts/download-auth-apk.sh "$SOURCE_REPOSITORY" "$APK_ASSET_ID" "$APK_SHA256" "$AUTH_APK_PATH"
+                  BUILD: ${{ needs.prepare.outputs.build }}
+              run: scripts/apk.sh download "$BUILD" "$AUTH_APK_PATH"
 
             - &maestro
               name: Install pinned Maestro
@@ -189,19 +176,29 @@ jobs:
                   sudo udevadm trigger --name-match=kvm --settle
                   test -r /dev/kvm && test -w /dev/kvm
 
+            - &display
+              name: Start virtual display for Mesa
+              timeout-minutes: 1
+              run: |
+                  read -r display < <(Xvfb -displayfd 1 -screen 0 1280x1024x24 -nolisten tcp 2> /tmp/auth-xvfb.log)
+                  echo "DISPLAY=:$display" >> "$GITHUB_ENV"
+
             - name: Run offline tests
               id: tests
               uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
               env:
                   MAESTRO_ARTIFACTS_DIR: artifacts/maestro
+                  AUTH_TEST_SUITE: ${{ matrix.suite }}
               with:
                   api-level: 34
+                  emulator-build: 15917651
                   target: default
                   arch: x86_64
                   profile: pixel_5
-                  emulator-options: -no-window -gpu swiftshader -no-snapshot -noaudio -no-boot-anim
+                  cores: 2
+                  emulator-options: &emulator_options -no-window -gpu host -feature -Vulkan -accel on -no-metrics -no-snapshot -noaudio -no-boot-anim -memory 4096
                   disable-animations: true
-                  script: scripts/run-auth-android-local.sh --apk "$AUTH_APK_PATH" --app-id "$APP_ID" --suite "${{ matrix.suite }}"
+                  script: scripts/run-auth-android-local.sh --apk "$AUTH_APK_PATH" --app-id "$APP_ID" --suite "$AUTH_TEST_SUITE"
 
             - name: Upload offline results
               if: always() && steps.tests.outcome != 'skipped'
@@ -224,14 +221,13 @@ jobs:
               if: always()
               env:
                   RESULT: ${{ job.status }}
-                  SUITE: ${{ matrix.name }}
-                  COVERAGE: ${{ matrix.coverage }}
+                  SUITE: ${{ matrix.suite }}
               run: |
                   {
-                      echo "### $SUITE: $RESULT"
+                      echo "### Offline $SUITE: $RESULT"
                       echo
-                      echo "Suite scope: $COVERAGE."
-                      echo "Android API 34; Maestro $MAESTRO_VERSION. Executed tests are in the JUnit artifact."
+                      echo "Android API 34, emulator build 15917651 (Mesa), Maestro $MAESTRO_VERSION."
+                      echo "Executed tests are in the JUnit artifact; suite scope is documented in the README."
                   } >> "$GITHUB_STEP_SUMMARY"
 
     online:
@@ -247,8 +243,6 @@ jobs:
         env:
             ONLINE_ENDPOINT: http://10.0.2.2:8080
             ONLINE_OTT: 123456
-            # Use Mesa's host OpenGL implementation, not the crashing bundled renderers.
-            LIBGL_ALWAYS_SOFTWARE: 1
             AUTH_FIXTURE_COMPOSE_PROJECT: auth-online-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.lane }}
             MISSING_EMAIL: missing-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.lane }}@example.org
             ONLINE_CODE_ACCOUNT: first-key-${{ github.run_id }}-${{ github.run_attempt }}@example.org
@@ -259,23 +253,12 @@ jobs:
             - *download_apk
             - *maestro
             - *kvm
-
-            - name: Set up Node for live TOTP generation
-              if: matrix.lane == 'account-auth'
-              uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
-              with:
-                  node-version: 24
+            - *display
 
             - name: Restore Auth backend fixture
               env:
                   ALLOW_AUTH_FIXTURE_RESTORE: 1
               run: scripts/fixtures/restore-auth-fixture.sh
-
-            - name: Start virtual display for Mesa
-              timeout-minutes: 1
-              run: |
-                  read -r display < <(Xvfb -displayfd 1 -screen 0 1280x1024x24 -nolisten tcp 2> /tmp/auth-xvfb.log)
-                  echo "DISPLAY=:$display" >> "$GITHUB_ENV"
 
             - name: Prepare private test password
               if: matrix.lane == 'account-auth'
@@ -296,9 +279,9 @@ jobs:
                   arch: x86_64
                   profile: pixel_5
                   cores: 2
-                  emulator-options: -no-window -gpu host -feature -Vulkan -accel on -no-metrics -no-snapshot -noaudio -no-boot-anim -memory 4096
+                  emulator-options: *emulator_options
                   disable-animations: true
-                  script: .github/scripts/run-auth-online-tests.sh "$AUTH_TEST_PHASE"
+                  script: scripts/run-auth-online.sh "$AUTH_TEST_PHASE"
 
             - name: Run recovery reset session
               if: matrix.lane == 'recovery-password'
@@ -415,9 +398,11 @@ jobs:
 
     result:
         name: Auth test result
+        permissions: {}
         if: always()
         needs: [prepare, offline, online]
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-24.04
+        timeout-minutes: 5
         steps:
             - name: Verify selected suites
               env:

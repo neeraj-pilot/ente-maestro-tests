@@ -113,14 +113,14 @@ case "$suite" in
         ;;
     basics|organization|tags|trash|required)
         if [[ "$suite" == required ]]; then
-            matrix=$("$workspace_root/scripts/select-auth-ci-suites.sh" --all)
+            matrix=$(python3 "$workspace_root/scripts/suites.py" --suite offline)
         else
-            matrix=$("$workspace_root/scripts/select-auth-ci-suites.sh" --suite "$suite")
+            matrix=$(python3 "$workspace_root/scripts/suites.py" --suite "$suite")
         fi
         flows=()
         while IFS= read -r flow; do
             flows+=("$flow")
-        done < <(jq -r '.include[].flows | split(" ")[]' <<< "$matrix")
+        done < <(jq -r '.offline.include[].flows[]' <<< "$matrix")
         ;;
     imports)
         flows=(maestro/auth/offline/imports.yaml)

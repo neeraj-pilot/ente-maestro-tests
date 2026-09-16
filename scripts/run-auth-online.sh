@@ -237,7 +237,7 @@ run_account_auth() {
     fixture_totp_code=$(
         TOTP_SECRET="$fixture_totp_secret" \
             TOTP_MIN_VALIDITY_SECONDS=20 \
-            node scripts/current-totp.mjs
+            python3 scripts/current-totp.py
     )
     run_maestro prepared-totp-complete \
         -e FIXTURE_TOTP_CODE="$fixture_totp_code" \

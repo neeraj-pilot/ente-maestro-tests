@@ -11,9 +11,8 @@ curl --fail --location --silent --show-error \
     "https://github.com/mobile-dev-inc/maestro/releases/download/cli-$version/maestro.zip" \
     --output "$archive"
 echo "$sha256  $archive" | shasum -a 256 --check -
-mkdir -p "$HOME/.maestro"
-unzip -q -o "$archive" -d "$HOME/.maestro"
-bin="$HOME/.maestro/maestro/bin"
+unzip -q "$archive" -d "$RUNNER_TEMP/maestro-cli"
+bin="$RUNNER_TEMP/maestro-cli/maestro/bin"
 installed_version=$("$bin/maestro" --version)
 if [[ "$installed_version" != "$version" ]]; then
     echo "Expected Maestro $version, installed $installed_version" >&2

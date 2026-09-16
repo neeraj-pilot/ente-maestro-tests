@@ -45,12 +45,12 @@ passkeys and camera scanning are not currently covered by hosted tests.
 
 ## Run locally
 
-Requires Android platform tools, Java, Maestro, GitHub CLI and jq. Use a dedicated
-test device or emulator: flows clear Auth state, and the local runner reinstalls
+Requires Android platform tools, Java 17+, Maestro, Python 3.9+, GitHub CLI and jq.
+Use a dedicated test device or emulator: flows clear Auth state, and the local runner reinstalls
 the independent Auth package. Do not point it at an app containing personal codes.
 
 ```sh
-apk_path=$(scripts/download-auth-nightly.sh)
+apk_path=$(scripts/apk.sh fetch)
 scripts/run-auth-android-local.sh --apk "$apk_path" --serial <adb-serial> --suite basics
 ```
 

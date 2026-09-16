@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-readonly root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+readonly root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 readonly temp_dir="$(mktemp -d)"
 trap 'rm -rf "$temp_dir"' EXIT
 mkdir -p "$temp_dir/bin"
@@ -10,45 +10,7 @@ export PATH="$temp_dir/bin:$PATH"
 export MOCK_CALLS="$temp_dir/calls"
 export MAESTRO_ARTIFACTS_DIR="$temp_dir/runs"
 
-cat > "$temp_dir/bin/gh" <<'SH'
-#!/usr/bin/env bash
-echo "$*" >> "$MOCK_CALLS"
-case "$DOWNLOAD_MODE" in
-    fail) exit 1 ;;
-    retry) [[ $(wc -l < "$MOCK_CALLS") -gt 1 ]] || exit 1 ;;
-esac
-printf 'fixture APK'
-SH
-cat > "$temp_dir/bin/sleep" <<'SH'
-#!/usr/bin/env bash
-exit 0
-SH
-chmod +x "$temp_dir/bin/gh" "$temp_dir/bin/sleep"
-digest=$(printf 'fixture APK' | shasum -a 256 | awk '{print $1}')
-
-export DOWNLOAD_MODE=success
-"$root/scripts/download-auth-apk.sh" ente/nightly 123 "sha256:$digest" "$temp_dir/auth.apk"
-grep -Fx 'api -H Accept: application/octet-stream repos/ente/nightly/releases/assets/123' "$MOCK_CALLS"
-[[ $(shasum -a 256 "$temp_dir/auth.apk" | awk '{print $1}') == "$digest" ]]
-
-if "$root/scripts/download-auth-apk.sh" ente/nightly 123 wrong-digest "$temp_dir/auth.apk" 2> "$temp_dir/error"; then
-    echo "A mismatched APK digest must fail" >&2
-    exit 1
-fi
-grep -F 'does not match' "$temp_dir/error"
-
-export DOWNLOAD_MODE=retry
-: > "$MOCK_CALLS"
-"$root/scripts/download-auth-apk.sh" ente/nightly 123 "$digest" "$temp_dir/auth.apk"
-[[ $(wc -l < "$MOCK_CALLS") -eq 2 ]]
-
-export DOWNLOAD_MODE=fail
-: > "$MOCK_CALLS"
-if "$root/scripts/download-auth-apk.sh" ente/nightly 123 "$digest" "$temp_dir/auth.apk"; then
-    echo "An exhausted download must fail" >&2
-    exit 1
-fi
-[[ $(wc -l < "$MOCK_CALLS") -eq 3 ]]
+touch "$temp_dir/auth.apk"
 
 # Local and hosted runs must resolve the same flow lists. No device is touched.
 if grep -RL '^appId: ${APP_ID}$' "$root/maestro/auth" --include='*.yaml' | grep -q .; then
@@ -88,11 +50,11 @@ for suite in basics organization tags trash required basics; do
     "$root/scripts/run-auth-android-local.sh" --serial fixture-device \
         --apk "$temp_dir/auth.apk" --skip-install --suite "$suite"
     if [[ "$suite" == required ]]; then
-        matrix=$("$root/scripts/select-auth-ci-suites.sh" --all)
+        matrix=$(python3 "$root/scripts/suites.py" --suite offline)
     else
-        matrix=$("$root/scripts/select-auth-ci-suites.sh" --suite "$suite")
+        matrix=$(python3 "$root/scripts/suites.py" --suite "$suite")
     fi
-    expected=$(jq -r '.include[].flows | split(" ")[]' <<< "$matrix")
+    expected=$(jq -r '.offline.include[].flows[]' <<< "$matrix")
     [[ $(< "$MOCK_CALLS") == "$expected" ]]
 done
 
@@ -132,7 +94,7 @@ status=0
     cd "$root"
     GITHUB_ACTIONS=false APP_ID=io.ente.auth.independent AUTH_APK_PATH="$temp_dir/auth.apk" \
         MAESTRO_ARTIFACTS_DIR="$temp_dir/diagnostics" \
-        .github/scripts/run-auth-online-tests.sh data-sync
+        scripts/run-auth-online.sh data-sync
 ) || status=$?
 [[ $status -eq 37 ]]
 grep -Fx 'fixture-memory-info' "$temp_dir"/diagnostics/data-sync-*/runtime-health/data-sync-device.txt
@@ -175,7 +137,7 @@ run_online() (
         GITHUB_ACTIONS=true APP_ID=io.ente.auth.independent ONLINE_OTT=123456 \
         AUTH_APK_PATH="$temp_dir/auth.apk" \
         MAESTRO_ARTIFACTS_DIR="$temp_dir/online-$name" \
-        "$@" /bin/bash .github/scripts/run-auth-online-tests.sh "${MOCK_ONLINE_PHASE:-recovery-reset}"
+        "$@" /bin/bash scripts/run-auth-online.sh "${MOCK_ONLINE_PHASE:-recovery-reset}"
 )
 
 run_online automatic ONLINE_ENDPOINT=http://10.0.2.2:8080

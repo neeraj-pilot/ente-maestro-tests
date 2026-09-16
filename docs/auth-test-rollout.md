@@ -22,15 +22,15 @@ parallel, followed by a combined result that requires every selected group to pa
 The daily freshness check is not build deduplication and is subject to schedule
 delays. Do not interpret a skipped run as fresh coverage.
 
-Offline uses four Ubuntu shards: basics, organization, tags and trash. Basics
+Offline uses four shards: basics, organization, tags and trash. Basics
 combines onboarding, manual setup, validation and settings in one emulator.
-Online uses four Ubuntu 24.04 lanes with required
+Online uses four lanes. All device jobs use Ubuntu 24.04 with required
 KVM acceleration, two virtual CPUs, and 4 GiB Android guest memory. Account auth
 and data sync each use one emulator session, recovery uses two, and entity
 lifecycle uses three.
-Online pins emulator 37.1.11 (build `15917651`) with host OpenGL software
+Both groups pin emulator 37.1.11 (build `15917651`) with host OpenGL software
 rendering (`LIBGL_ALWAYS_SOFTWARE=1`), a virtual X display, and guest Vulkan
-disabled. Do not change this configuration without running all four online lanes.
+disabled. A change to this shared configuration requires both hosted groups to pass.
 
 ## Adding or changing a flow
 
@@ -42,26 +42,67 @@ disabled. Do not change this configuration without running all four online lanes
    starting states.
 4. Reuse a small subflow for a stable interaction, not a generic sequence that
    hides product state. Keep product demos separate from regression flows.
-5. Register hosted offline flows in `scripts/select-auth-ci-suites.sh`, or online
-   phases in `.github/scripts/run-auth-online-tests.sh` and their lane selector.
+5. Register hosted flows in `scripts/suites.py` and new online phases in
+   `scripts/run-auth-online.sh`.
    Registration checks catch unreachable flows. Imports and local backups are
    explicit local-only exceptions.
 6. Run local configuration checks and the smallest affected device suite before
    pushing. There is no need to dispatch CI for documentation-only cleanup.
 
 ```sh
-scripts/test-select-auth-ci-suites.sh
-scripts/test-select-auth-online-lanes.sh
-scripts/test-select-auth-tests.sh
-scripts/test-hosted-flow-registration.sh
-scripts/test-resolve-nightly-apk.sh
-scripts/test-ci-helpers.sh
+python3 -m unittest discover -s scripts/tests
+scripts/tests/apk.sh
+scripts/tests/runners.sh
 scripts/fixtures/verify-auth-fixture.sh
 ```
 
 The helper tests mock downloads and devices; they do not contact GitHub, launch
 emulators or need Museum. The [README](../README.md#run-locally) has the device
 runner command.
+
+## Script boundaries
+
+| Entry point | Responsibility |
+| --- | --- |
+| `scripts/suites.py` | One suite registry for local execution and CI change selection. Python standard library only. |
+| `scripts/apk.sh` | Resolve release metadata, download a resolved asset, or fetch the latest APK locally. |
+| `scripts/install-maestro.sh` | Install the exact CLI archive into the GitHub runner's temporary directory. |
+| `scripts/run-auth-android-local.sh` | Prepare an Android device and run offline suites, locally or on CI. |
+| `scripts/run-auth-online.sh` | Run online phases against a prepared Museum fixture. |
+| `scripts/run-maestro.sh` | Shared Maestro invocation, JUnit requirement and post-run device health check. |
+| `scripts/current-totp.py` | Generate a public-fixture TOTP without an additional package or Node runtime. |
+| `scripts/fixtures/` | Deliberate fixture regeneration/restore, verification and native local Museum lifecycle. |
+| `scripts/verify-local-auth-backups.sh` | Inspect local backup files; not a backup-restore test. |
+| `scripts/tests/` | Fast host checks for selectors, APK handling, TOTP and runners. |
+
+Keep orchestration in the workflow and reusable behavior in these scripts. Do not
+add forwarding wrappers or create a generic command framework for unrelated tasks.
+
+## Workflow dependencies and security
+
+- Keep `contents: read` as the default token permission; the final result job
+  needs no token permissions. Checkout must not persist credentials. Do not run
+  pull-request code with elevated permissions through `pull_request_target`.
+- Pin actions to full commit SHAs, with the release version in a comment. Pin
+  backend images by digest. Review upstream changes and security advisories
+  before updating either, and run the affected suites.
+- Maestro's [installation guide](https://docs.maestro.dev/maestro-cli/how-to-install-maestro-cli)
+  offers a shell installer, Homebrew and release archives. CI deliberately uses
+  the official release archive with a fixed version and SHA-256, then checks the
+  installed version. This avoids executing a changing installer or adding a
+  third-party setup action. Update the version and checksum together after
+  verifying the upstream release; use the same CLI version locally.
+- Resolve the Auth APK once, pass compact metadata to every shard, and verify
+  each download against the release asset digest. An API error must fail the
+  run, not silently select a stable build. Stable fallback is only for an absent
+  compatible prerelease.
+- Pass event data through quoted environment variables, not interpolated shell
+  commands. Keep private signup credentials masked and out of uploaded traces;
+  public-fixture diagnostics have a separate, restricted upload scope.
+
+These conventions follow GitHub's [secure-use guidance](https://docs.github.com/en/actions/reference/security/secure-use).
+They do not make pull-request code trusted: fork contributions still need review
+before approval to run. No production secrets or accounts belong in this repo.
 
 ## Online fixture setup
 
