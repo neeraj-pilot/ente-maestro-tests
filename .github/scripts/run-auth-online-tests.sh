@@ -322,6 +322,7 @@ run_data_sync() {
         -e FIXTURE_BASIC_PASSWORD="$fixture_basic_password" \
         -e FIXTURE_MUTATION_TAG="$FIXTURE_MUTATION_TAG" \
         maestro/auth/online/prepared-bulk-mutation-complete.yaml
+    run_maestro prepared-logout maestro/auth/online/prepared-logout.yaml
 }
 
 run_entity_lifecycle_create() {

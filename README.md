@@ -25,7 +25,7 @@ This is a coverage inventory, not a manually maintained green-status dashboard.
 | --- | --- |
 | Online account auth | Signup and first code upload; fresh password login; unknown-account rejection; live TOTP challenge and synchronized code visibility. |
 | Online recovery | Recovery-key password reset; old-password rejection; new-password login with the synchronized code preserved. |
-| Online data sync | Prepared-account login; active and trashed codes; Account/Security settings; bulk-tag edits verified after fresh login. |
+| Online data sync | Prepared-account login; active and trashed codes; Account/Security settings; bulk-tag edits verified after fresh login; logout persisted across a cold relaunch. |
 | Online entity lifecycle | Import, edit, notes, tags, pin, trash, restore and permanent deletion, with fresh-session persistence checks. |
 | Offline setup | Onboarding, offline backup warning, manual account creation, and required/advanced-field validation. |
 | Offline organization | Editing and cold-relaunch persistence; search, sorting, and bulk pin/unpin. |

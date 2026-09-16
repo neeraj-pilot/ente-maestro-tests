@@ -24,6 +24,7 @@ assert_lanes "recovery-password" --changed-file maestro/auth/online/prepared-rec
 assert_lanes "account-auth,entity-lifecycle" --changed-file maestro/auth/online/subflows/add-online-code.yaml
 assert_lanes "account-auth" --changed-file scripts/current-totp.mjs
 assert_lanes "data-sync" --changed-file maestro/auth/online/prepared-password-login.yaml
+assert_lanes "data-sync" --changed-file maestro/auth/online/prepared-logout.yaml
 assert_lanes "data-sync,entity-lifecycle" --changed-file maestro/auth/online/prepared-basic-login.yaml
 assert_lanes "data-sync" --changed-file maestro/auth/online/prepared-bulk-mutation-start.yaml
 assert_lanes "entity-lifecycle" --changed-file maestro/auth/online/prepared-entity-lifecycle-create.yaml

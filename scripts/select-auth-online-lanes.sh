@@ -66,7 +66,7 @@ if [[ ${#changed_files[@]} -gt 0 ]]; then
             maestro/auth/online/prepared-recovery-login.yaml|maestro/auth/online/prepared-recovery-old-password.yaml|maestro/auth/online/prepared-recovery-password-reset.yaml)
                 add_lane recovery-password
                 ;;
-            maestro/auth/online/prepared-bulk-mutation-complete.yaml|maestro/auth/online/prepared-bulk-mutation-start.yaml|maestro/auth/online/prepared-password-login.yaml)
+            maestro/auth/online/prepared-bulk-mutation-complete.yaml|maestro/auth/online/prepared-bulk-mutation-start.yaml|maestro/auth/online/prepared-logout.yaml|maestro/auth/online/prepared-password-login.yaml)
                 add_lane data-sync
                 ;;
             maestro/auth/online/prepared-basic-login.yaml)

@@ -1,0 +1,21 @@
+appId: ${APP_ID}
+name: Auth persists logout across a cold relaunch
+tags: [auth, android, online, fixture, logout]
+---
+- launchApp
+- assertVisible: "Settings"
+- tapOn: "Settings"
+- scrollUntilVisible:
+    element:
+      id: auth_settings_logout
+    direction: DOWN
+    centerElement: true
+- tapOn:
+    id: auth_settings_logout
+- tapOn: "Yes, logout"
+- extendedWaitUntil:
+    visible: "Log in"
+    timeout: 30000
+- stopApp
+- launchApp
+- assertVisible: "Log in"
