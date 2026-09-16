@@ -39,8 +39,10 @@ assert_lanes "account-auth,recovery-password,data-sync,entity-lifecycle" --chang
 assert_lanes "account-auth,recovery-password,data-sync,entity-lifecycle" --changed-file scripts/test-hosted-flow-registration.sh
 assert_lanes "account-auth,recovery-password,data-sync,entity-lifecycle" --changed-file scripts/test-resolve-nightly-apk.sh
 assert_lanes "" --changed-file README.md
+assert_lanes "" --changed-file scripts/run-auth-android-local.sh
+assert_lanes "" --changed-file maestro/auth/offline/settings.yaml
 
-for path in scripts/download-auth-apk.sh scripts/install-maestro.sh scripts/test-ci-helpers.sh tools/auth-fixture-generator/src/main.rs tools/auth-fixture-generator/Cargo.lock; do
+for path in .github/workflows/auth-android.yml .github/scripts/select-auth-tests.sh scripts/test-select-auth-tests.sh scripts/run-maestro.sh scripts/download-auth-apk.sh scripts/install-maestro.sh scripts/test-ci-helpers.sh tools/auth-fixture-generator/src/main.rs tools/auth-fixture-generator/Cargo.lock; do
     assert_lanes "account-auth,recovery-password,data-sync,entity-lifecycle" --changed-file "$path"
 done
 

@@ -57,7 +57,11 @@ if grep -RL '^appId: ${APP_ID}$' "$root/maestro/auth" --include='*.yaml' | grep 
 fi
 cat > "$temp_dir/bin/adb" <<'SH'
 #!/usr/bin/env bash
-[[ "$*" != *get-state ]] || echo device
+[[ "$1" != -s ]] || shift 2
+case "$*" in
+    get-state) echo device ;;
+    'shell true') exit "${MOCK_DEVICE_STATUS:-0}" ;;
+esac
 exit 0
 SH
 cat > "$temp_dir/bin/maestro" <<'SH'
@@ -67,10 +71,20 @@ if [[ "$1" == --version ]]; then
     echo 2.10.0
 else
     printf '%s\n' "$@" | sed -n '/^maestro\/.*\.yaml$/p' > "$MOCK_CALLS"
+    [[ ${MOCK_MAESTRO_MODE:-} != fail ]] || exit 42
+    while [[ $# -gt 0 ]]; do
+        if [[ "$1" == --output ]]; then report=$2; break; fi
+        shift
+    done
+    case ${MOCK_MAESTRO_MODE:-} in
+        missing) ;;
+        empty) : > "$report" ;;
+        *) printf '<testsuite tests="1" failures="0"><testcase name="fixture"/></testsuite>\n' > "$report" ;;
+    esac
 fi
 SH
 chmod +x "$temp_dir/bin/adb" "$temp_dir/bin/maestro"
-for suite in setup organization settings tags trash required setup; do
+for suite in basics organization tags trash required basics; do
     "$root/scripts/run-auth-android-local.sh" --serial fixture-device \
         --apk "$temp_dir/auth.apk" --skip-install --suite "$suite"
     if [[ "$suite" == required ]]; then
@@ -82,11 +96,30 @@ for suite in setup organization settings tags trash required setup; do
     [[ $(< "$MOCK_CALLS") == "$expected" ]]
 done
 
-[[ $(find "$temp_dir/runs" -mindepth 1 -maxdepth 1 -type d | wc -l) -eq 7 ]]
+[[ $(find "$temp_dir/runs" -mindepth 1 -maxdepth 1 -type d | wc -l) -eq 6 ]]
+
+for mode in fail missing empty disconnected; do
+    status=0
+    device_status=0
+    expected=1
+    case "$mode" in
+        fail) expected=42 ;;
+        disconnected) device_status=23; expected=23 ;;
+    esac
+    MOCK_MAESTRO_MODE="$mode" MOCK_DEVICE_STATUS="$device_status" \
+        "$root/scripts/run-auth-android-local.sh" --serial fixture-device \
+        --apk "$temp_dir/auth.apk" --skip-install --suite basics \
+        > /dev/null 2> "$temp_dir/error" || status=$?
+    [[ $status -eq $expected ]]
+    if [[ "$mode" == missing || "$mode" == empty ]]; then
+        grep -Fq 'nonempty JUnit report' "$temp_dir/error"
+    fi
+done
 
 # A failing device command retains its status and captures health before teardown.
 cat > "$temp_dir/bin/adb" <<'SH'
 #!/usr/bin/env bash
+[[ "$1" != -s ]] || shift 2
 case "$*" in
     install*) exit 37 ;;
     get-state) echo device ;;
@@ -107,6 +140,7 @@ grep -Fx 'fixture-memory-info' "$temp_dir"/diagnostics/data-sync-*/runtime-healt
 # Exercise the actual online runner under the host's system Bash (3.2 on macOS).
 cat > "$temp_dir/bin/adb" <<'SH'
 #!/usr/bin/env bash
+[[ "$1" != -s ]] || shift 2
 case "$*" in
     'shell true') exit "${MOCK_DEVICE_STATUS:-0}" ;;
     'shell id -u'|'shell am get-current-user') echo 0 ;;

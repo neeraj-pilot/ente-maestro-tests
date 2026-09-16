@@ -78,23 +78,9 @@ adb install -r "$AUTH_APK_PATH"
 run_maestro() {
     local result_name=$1
     shift
-    if [[ -n ${MAESTRO_DEVICE:-} ]]; then
-        set -- --device "$MAESTRO_DEVICE" "$@"
-    fi
-    maestro test --no-ansi \
-        --format JUNIT \
-        --output "$results_dir/$result_name.xml" \
-        --debug-output "$debug_dir/$result_name" \
-        --flatten-debug-output \
-        -e APP_ID="$APP_ID" \
+    scripts/run-maestro.sh "$results_dir/$result_name.xml" "$debug_dir/$result_name" \
         -e ONLINE_ENDPOINT="$ONLINE_ENDPOINT" \
         "$@"
-    if [[ ! -s "$results_dir/$result_name.xml" ]]; then
-        echo "Maestro did not produce a nonempty JUnit report: $results_dir/$result_name.xml" >&2
-        return 1
-    fi
-    # Maestro can exit successfully even if the emulator crashes during driver cleanup.
-    adb shell true
 }
 
 prepare_fixture_app() {

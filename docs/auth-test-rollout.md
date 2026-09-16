@@ -2,25 +2,29 @@
 
 ## Build and CI contract
 
-Each hosted workflow resolves the newest Auth beta/RC APK in `ente/nightly`,
+The Auth Android workflow resolves the newest Auth beta/RC APK in `ente/nightly`,
 falling back to a stable `ente/ente` asset only when no prerelease is available.
 Selection uses asset creation time, not tag publication time. Every shard within
-that workflow receives the same asset ID and verifies its SHA-256.
+the offline and online jobs receives the same asset ID and verifies its SHA-256.
 
 These are published-build tests. They do not build or validate unshipped Auth
-changes from a product PR. Offline and online workflows resolve independently.
+changes from a product PR. One preparation job validates configuration, selects
+suites, resolves the APK and checks its age. Offline and online jobs then run in
+parallel, followed by a combined result that requires every selected group to pass.
 
 | Trigger | Execution |
 | --- | --- |
 | Daily, 01:17 UTC | Full hosted matrix only if the resolved APK was created in the preceding 24 hours; otherwise an explicit skip summary. |
 | Pull request matching workflow paths | Affected suites; shared helpers and fixture changes select the relevant full matrix. |
-| Push to main matching workflow paths | Full matrix for each triggered workflow. Documentation-only merges do not run tests. |
-| Manual | Full matrix or one selected suite/lane, regardless of APK age. |
+| Push to main matching workflow paths | Full matrix for each affected group. Online-only changes do not launch offline emulators, and vice versa. Documentation-only merges do not run tests. |
+| Manual | All suites, the offline/online group, or one selected suite, regardless of APK age. |
 
 The daily freshness check is not build deduplication and is subject to schedule
 delays. Do not interpret a skipped run as fresh coverage.
 
-Offline uses five Ubuntu shards. Online uses four Ubuntu 24.04 lanes with required
+Offline uses four Ubuntu shards: basics, organization, tags and trash. Basics
+combines onboarding, manual setup, validation and settings in one emulator.
+Online uses four Ubuntu 24.04 lanes with required
 KVM acceleration, two virtual CPUs, and 4 GiB Android guest memory. Account auth
 and data sync each use one emulator session, recovery uses two, and entity
 lifecycle uses three.
@@ -48,6 +52,7 @@ disabled. Do not change this configuration without running all four online lanes
 ```sh
 scripts/test-select-auth-ci-suites.sh
 scripts/test-select-auth-online-lanes.sh
+scripts/test-select-auth-tests.sh
 scripts/test-hosted-flow-registration.sh
 scripts/test-resolve-nightly-apk.sh
 scripts/test-ci-helpers.sh
@@ -93,7 +98,8 @@ Keep the real offline warning in onboarding tests. Do not require Auth to show a
   The analytics opt-out alone does not disable exception-report uploads
   ([upstream issue](https://github.com/mobile-dev-inc/Maestro/issues/3488)).
   This repository does not use Maestro Cloud.
-- Each job summary records immutable APK provenance, suite and outcome.
+- The preparation summary records immutable APK provenance and selected suites.
+  Each suite reports its outcome and JUnit artifact; the final result checks both groups.
 - JUnit results are retained for seven days.
 - Local runners create a separate artifact directory for each invocation;
   reruns do not mix reports or debug files from different attempts.
@@ -101,7 +107,8 @@ Keep the real offline warning in onboarding tests. Do not require Auth to show a
 - Online failures retain runtime health for three days. Device state and app
   memory are captured inside the runner before emulator teardown. Workflow-level
   diagnostics provide host memory/disk information and the local Museum log.
-- A flow must produce a nonempty JUnit report and leave the device responsive;
+- Hosted and local runners share `scripts/run-maestro.sh`. Each invocation must
+  produce a nonempty JUnit report and leave the device responsive;
   Maestro can otherwise report success after a crash during driver cleanup.
 - Online public-fixture lanes retain failure screenshots and traces for three
   days. Their credentials are already checked in. The account-auth lane uploads

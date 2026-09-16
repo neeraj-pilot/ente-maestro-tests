@@ -7,8 +7,8 @@ test. No Maestro Cloud or production account is required.
 
 ## Results
 
-- [Online runs](https://github.com/neeraj-pilot/ente-maestro-tests/actions/workflows/auth-android-online.yml)
-- [Offline runs](https://github.com/neeraj-pilot/ente-maestro-tests/actions/workflows/auth-android-smoke.yml)
+[Auth Android runs](https://github.com/neeraj-pilot/ente-maestro-tests/actions/workflows/auth-android.yml)
+contain the selected online and offline suites in parallel, using the same APK.
 
 Open a run's job summaries for the **APK name, creation date, asset ID, SHA-256,
 selected suite and result**. Release tags are reused; a version name alone does
@@ -27,9 +27,8 @@ This is a coverage inventory, not a manually maintained green-status dashboard.
 | Online recovery | Recovery-key password reset; old-password rejection; new-password login with the synchronized code preserved. |
 | Online data sync | Prepared-account login; active and trashed codes; Account/Security settings; bulk-tag edits verified after fresh login; logout persisted across a cold relaunch. |
 | Online entity lifecycle | Import, edit, notes, tags, pin, trash, restore and permanent deletion, with fresh-session persistence checks. |
-| Offline setup | Onboarding, offline backup warning, manual account creation, and required/advanced-field validation. |
+| Offline basics | Onboarding, offline backup warning, manual creation and field validation; Settings, General, About, themes and duplicate-code groups. |
 | Offline organization | Editing and cold-relaunch persistence; search, sorting, and bulk pin/unpin. |
-| Offline settings | Settings sections, General, About, theme choices and duplicate-code groups. |
 | Offline tags | Create/filter tags; bulk apply and removal. |
 | Offline trash | Single and bulk trash/restore; permanent deletion. |
 
@@ -42,7 +41,7 @@ This is a coverage inventory, not a manually maintained green-status dashboard.
 
 These platform flows are excluded from hosted CI pending reliable picker
 validation. Do not report local results as hosted coverage. App lock/biometrics,
-passkeys, camera scanning and logout are not currently covered by hosted tests.
+passkeys and camera scanning are not currently covered by hosted tests.
 
 ## Run locally
 
@@ -52,14 +51,17 @@ the independent Auth package. Do not point it at an app containing personal code
 
 ```sh
 apk_path=$(scripts/download-auth-nightly.sh)
-scripts/run-auth-android-local.sh --apk "$apk_path" --serial <adb-serial> --suite setup
+scripts/run-auth-android-local.sh --apk "$apk_path" --serial <adb-serial> --suite basics
 ```
 
-Local suites: `smoke`, `setup`, `organization`, `settings`, `tags`, `trash`,
+Local suites: `smoke`, `basics`, `organization`, `tags`, `trash`,
 `imports`, `backup`, or `required` (all hosted offline suites). Each run gets its
 own directory under `artifacts/maestro/local/`, printed by the runner. Set
 `MAESTRO_ARTIFACTS_DIR` to use another parent directory. The runner and hosted CI
 share the same offline suite definitions.
+
+For a single flow, use Maestro directly, for example:
+`maestro test -e APP_ID=io.ente.auth.independent maestro/auth/offline/settings.yaml`.
 
 See the [test guide](docs/auth-test-rollout.md) for CI selection, adding flows,
 diagnostics and online setup, and the [fixture guide](museum/fixtures/README.md)

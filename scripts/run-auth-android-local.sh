@@ -19,7 +19,7 @@ Options:
   --maestro <path>   Maestro executable. Defaults to MAESTRO_BIN or maestro on PATH.
   --app-id <id>      Auth application id. Defaults to the published independent Android app.
   --serial <serial>  adb device serial. Defaults to ANDROID_SERIAL or the only attached device.
-  --suite <name>     smoke, setup, organization, settings, tags, trash, imports, backup, or required.
+  --suite <name>     smoke, basics, organization, tags, trash, imports, backup, or required.
                     Defaults to required.
   --skip-install     Reuse the installed Auth app instead of installing the APK.
   -h, --help         Show this help.
@@ -111,7 +111,7 @@ case "$suite" in
             maestro/auth/smoke/offline-mode.yaml
         )
         ;;
-    setup|organization|settings|tags|trash|required)
+    basics|organization|tags|trash|required)
         if [[ "$suite" == required ]]; then
             matrix=$("$workspace_root/scripts/select-auth-ci-suites.sh" --all)
         else
@@ -171,14 +171,8 @@ if [[ "$suite" == "backup" ]]; then
 fi
 
 adb -s "$serial" shell settings put system screen_off_timeout 2147483647
-"$maestro_bin" test \
-    --no-ansi \
-    --udid "$serial" \
-    -e "APP_ID=$app_id" \
-    --format JUNIT \
-    --output "$run_dir/results.xml" \
-    --debug-output "$run_dir/debug" \
-    --flatten-debug-output \
+APP_ID="$app_id" MAESTRO_BIN="$maestro_bin" MAESTRO_DEVICE="$serial" \
+    scripts/run-maestro.sh "$run_dir/results.xml" "$run_dir/debug" \
     "${flows[@]}"
 
 if [[ "$suite" == "backup" ]]; then
