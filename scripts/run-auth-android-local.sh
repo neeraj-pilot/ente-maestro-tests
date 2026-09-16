@@ -12,15 +12,15 @@ usage() {
     cat <<'EOF'
 Usage: scripts/run-auth-android-local.sh --apk <path> [options]
 
-Run one Auth Android Maestro suite against an explicitly selected local device.
+Run Auth Android Maestro suites sequentially on one selected local device.
 
 Options:
   --apk <path>       Auth APK to install before the run (required).
   --maestro <path>   Maestro executable. Defaults to MAESTRO_BIN or maestro on PATH.
   --app-id <id>      Auth application id. Defaults to the published independent Android app.
   --serial <serial>  adb device serial. Defaults to ANDROID_SERIAL or the only attached device.
-  --suite <name>     smoke, basics, organization, tags, trash, imports, backup, or required.
-                    Defaults to required.
+  --suite <names>    Space-separated suite names: smoke, basics, organization, tags,
+                    trash, imports, backup. Defaults to required (all hosted offline suites).
   --skip-install     Reuse the installed Auth app instead of installing the APK.
   -h, --help         Show this help.
 EOF
@@ -81,6 +81,22 @@ if [[ ! -f "$apk_path" ]]; then
     exit 2
 fi
 
+if [[ "$suite" == required ]]; then
+    selection=$(python3 "$workspace_root/scripts/suites.py" --suite offline)
+    suite=$(jq -r '[.offline.include[].suite] | join(" ")' <<< "$selection")
+fi
+read -r -a suites <<< "$suite"
+if [[ ${#suites[@]} -eq 0 ]]; then
+    echo "Select at least one Auth suite" >&2
+    exit 2
+fi
+for suite in "${suites[@]}"; do
+    case "$suite" in
+        smoke|basics|organization|tags|trash|imports|backup) ;;
+        *) echo "Unknown suite: $suite" >&2; exit 2 ;;
+    esac
+done
+
 if ! "$maestro_bin" --version > /dev/null; then
     echo "Maestro executable is not runnable: $maestro_bin" >&2
     exit 2
@@ -103,42 +119,10 @@ if [[ "$(adb -s "$serial" get-state)" != "device" ]]; then
     exit 2
 fi
 
-declare -a flows
-case "$suite" in
-    smoke)
-        flows=(
-            maestro/auth/smoke/onboarding.yaml
-            maestro/auth/smoke/offline-mode.yaml
-        )
-        ;;
-    basics|organization|tags|trash|required)
-        if [[ "$suite" == required ]]; then
-            matrix=$(python3 "$workspace_root/scripts/suites.py" --suite offline)
-        else
-            matrix=$(python3 "$workspace_root/scripts/suites.py" --suite "$suite")
-        fi
-        flows=()
-        while IFS= read -r flow; do
-            flows+=("$flow")
-        done < <(jq -r '.offline.include[].flows[]' <<< "$matrix")
-        ;;
-    imports)
-        flows=(maestro/auth/offline/imports.yaml)
-        ;;
-    backup)
-        flows=(maestro/auth/offline/local-backup.yaml)
-        ;;
-    *)
-        echo "Unknown suite: $suite" >&2
-        usage >&2
-        exit 2
-        ;;
-esac
-
 cd "$workspace_root"
 artifacts_dir=${MAESTRO_ARTIFACTS_DIR:-artifacts/maestro/local}
 mkdir -p "$artifacts_dir"
-run_dir=$(mktemp -d "$artifacts_dir/${suite}-$(date -u +%Y%m%dT%H%M%SZ)-XXXXXX")
+run_dir=$(mktemp -d "$artifacts_dir/auth-$(date -u +%Y%m%dT%H%M%SZ)-XXXXXX")
 echo "Results: $run_dir"
 
 wait_for_downloads() {
@@ -158,23 +142,52 @@ if [[ "$install_apk" == true ]]; then
     adb -s "$serial" install -r "$apk_path"
 fi
 
-if [[ "$suite" == "imports" ]]; then
-    wait_for_downloads
-    adb -s "$serial" push maestro/fixtures/plain_text_import.txt /sdcard/Download/plain_text_import.txt
-    adb -s "$serial" push maestro/fixtures/google_auth_migration.png /sdcard/Download/google_auth_migration.png
-fi
-
-if [[ "$suite" == "backup" ]]; then
-    wait_for_downloads
-    adb -s "$serial" shell "mkdir -p /sdcard/Download/EnteAuthBackups"
-    adb -s "$serial" shell "rm -f /sdcard/Download/EnteAuthBackups/ente-auth-daily-backup-*.json /sdcard/Download/EnteAuthBackups/ente-auth-manual-backup-*.json"
-fi
-
 adb -s "$serial" shell settings put system screen_off_timeout 2147483647
-APP_ID="$app_id" MAESTRO_BIN="$maestro_bin" MAESTRO_DEVICE="$serial" \
-    scripts/run-maestro.sh "$run_dir/results.xml" "$run_dir/debug" \
-    "${flows[@]}"
-
-if [[ "$suite" == "backup" ]]; then
-    scripts/verify-local-auth-backups.sh --serial "$serial"
+if [[ -n ${GITHUB_STEP_SUMMARY:-} ]]; then
+    printf '### Offline suites\n\n| Suite | Result |\n| --- | --- |\n' >> "$GITHUB_STEP_SUMMARY"
 fi
+status=0
+for suite in "${suites[@]}"; do
+    case "$suite" in
+        smoke)
+            flows=(maestro/auth/smoke/onboarding.yaml maestro/auth/smoke/offline-mode.yaml)
+            ;;
+        basics|organization|tags|trash)
+            selection=$(python3 "$workspace_root/scripts/suites.py" --suite "$suite")
+            flows=()
+            while IFS= read -r flow; do
+                flows+=("$flow")
+            done < <(jq -r '.offline.include[].flows[]' <<< "$selection")
+            ;;
+        imports)
+            flows=(maestro/auth/offline/imports.yaml)
+            wait_for_downloads
+            adb -s "$serial" push maestro/fixtures/plain_text_import.txt /sdcard/Download/plain_text_import.txt
+            adb -s "$serial" push maestro/fixtures/google_auth_migration.png /sdcard/Download/google_auth_migration.png
+            ;;
+        backup)
+            flows=(maestro/auth/offline/local-backup.yaml)
+            wait_for_downloads
+            adb -s "$serial" shell "mkdir -p /sdcard/Download/EnteAuthBackups"
+            adb -s "$serial" shell "rm -f /sdcard/Download/EnteAuthBackups/ente-auth-daily-backup-*.json /sdcard/Download/EnteAuthBackups/ente-auth-manual-backup-*.json"
+            ;;
+    esac
+
+    suite_status=0
+    APP_ID="$app_id" MAESTRO_BIN="$maestro_bin" MAESTRO_DEVICE="$serial" \
+        scripts/run-maestro.sh "$run_dir/$suite/results.xml" "$run_dir/$suite/debug" \
+        "${flows[@]}" || suite_status=$?
+    if [[ $suite_status -eq 0 && "$suite" == backup ]]; then
+        scripts/verify-local-auth-backups.sh --serial "$serial" || suite_status=$?
+    fi
+    result=success
+    if [[ $suite_status -ne 0 ]]; then
+        result=failure
+        status=$suite_status
+    fi
+    echo "$suite: $result"
+    if [[ -n ${GITHUB_STEP_SUMMARY:-} ]]; then
+        printf '| %s | %s |\n' "$suite" "$result" >> "$GITHUB_STEP_SUMMARY"
+    fi
+done
+exit "$status"

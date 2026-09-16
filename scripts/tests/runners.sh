@@ -9,6 +9,8 @@ mkdir -p "$temp_dir/bin"
 export PATH="$temp_dir/bin:$PATH"
 export MOCK_CALLS="$temp_dir/calls"
 export MAESTRO_ARTIFACTS_DIR="$temp_dir/runs"
+# Mock suite results must not appear in the preparation job's real test summary.
+unset GITHUB_STEP_SUMMARY
 
 touch "$temp_dir/auth.apk"
 
@@ -20,7 +22,9 @@ fi
 cat > "$temp_dir/bin/adb" <<'SH'
 #!/usr/bin/env bash
 [[ "$1" != -s ]] || shift 2
+if [[ -n ${MOCK_DEVICE_CALLS:-} ]]; then printf '%s\n' "$*" >> "$MOCK_DEVICE_CALLS"; fi
 case "$*" in
+    install*) exit "${MOCK_INSTALL_STATUS:-0}" ;;
     get-state) echo device ;;
     'shell true') exit "${MOCK_DEVICE_STATUS:-0}" ;;
 esac
@@ -32,8 +36,11 @@ cat > "$temp_dir/bin/maestro" <<'SH'
 if [[ "$1" == --version ]]; then
     echo 2.10.0
 else
-    printf '%s\n' "$@" | sed -n '/^maestro\/.*\.yaml$/p' > "$MOCK_CALLS"
+    printf '%s\n' "$@" | sed -n '/^maestro\/.*\.yaml$/p' >> "$MOCK_CALLS"
     [[ ${MOCK_MAESTRO_MODE:-} != fail ]] || exit 42
+    for argument in "$@"; do
+        if [[ "$argument" == "${MOCK_FAIL_FLOW:-}" ]]; then exit 42; fi
+    done
     while [[ $# -gt 0 ]]; do
         if [[ "$1" == --output ]]; then report=$2; break; fi
         shift
@@ -47,6 +54,7 @@ fi
 SH
 chmod +x "$temp_dir/bin/adb" "$temp_dir/bin/maestro"
 for suite in basics organization tags trash required basics; do
+    : > "$MOCK_CALLS"
     "$root/scripts/run-auth-android-local.sh" --serial fixture-device \
         --apk "$temp_dir/auth.apk" --skip-install --suite "$suite"
     if [[ "$suite" == required ]]; then
@@ -59,6 +67,29 @@ for suite in basics organization tags trash required basics; do
 done
 
 [[ $(find "$temp_dir/runs" -mindepth 1 -maxdepth 1 -type d | wc -l) -eq 6 ]]
+
+# A failed suite must not hide the next suite or trigger another APK installation.
+: > "$MOCK_CALLS"
+status=0
+MOCK_DEVICE_CALLS="$temp_dir/device-calls" \
+    MOCK_FAIL_FLOW=maestro/auth/smoke/onboarding.yaml \
+    MAESTRO_ARTIFACTS_DIR="$temp_dir/combined" \
+    GITHUB_STEP_SUMMARY="$temp_dir/summary" \
+    "$root/scripts/run-auth-android-local.sh" --serial fixture-device \
+    --apk "$temp_dir/auth.apk" --suite 'basics trash' || status=$?
+[[ $status -eq 42 ]]
+[[ $(grep -c '^install ' "$temp_dir/device-calls") -eq 1 ]]
+selection=$(python3 "$root/scripts/suites.py" --suite offline)
+[[ $(< "$MOCK_CALLS") == "$(jq -r '.offline.include[] | select(.suite == "basics" or .suite == "trash") | .flows[]' <<< "$selection")" ]]
+grep -Fxq '| basics | failure |' "$temp_dir/summary"
+grep -Fxq '| trash | success |' "$temp_dir/summary"
+grep -Fq '<testcase' "$temp_dir"/combined/*/trash/results.xml
+
+: > "$MOCK_CALLS"
+status=0
+MOCK_INSTALL_STATUS=17 "$root/scripts/run-auth-android-local.sh" --serial fixture-device \
+    --apk "$temp_dir/auth.apk" --suite 'basics trash' || status=$?
+[[ $status -eq 17 && ! -s "$MOCK_CALLS" ]]
 
 for mode in fail missing empty disconnected; do
     status=0
@@ -105,6 +136,20 @@ cat > "$temp_dir/bin/adb" <<'SH'
 [[ "$1" != -s ]] || shift 2
 case "$*" in
     'shell true') exit "${MOCK_DEVICE_STATUS:-0}" ;;
+    'shell dumpsys connectivity')
+        echo check >> "$MOCK_NETWORK_CALLS"
+        case ${MOCK_NETWORK_MODE:-} in
+            absent) echo 'Active default network: none'; exit ;;
+            delayed)
+                if [[ $(wc -l < "$MOCK_NETWORK_CALLS") -lt 3 ]]; then
+                    echo 'Active default network: none'
+                    exit
+                fi
+                ;;
+        esac
+        echo 'Active default network: 101'
+        [[ ${MOCK_NETWORK_MODE:-} != failed-command ]] || exit 29
+        ;;
     'shell id -u'|'shell am get-current-user') echo 0 ;;
     'shell stat '*) echo 1000:1000 ;;
     'shell pidof '*) echo 123 ;;
@@ -113,6 +158,16 @@ case "$*" in
     'logcat -d') echo fixture-startup-logcat ;;
 esac
 SH
+cat > "$temp_dir/bin/sleep" <<'SH'
+#!/usr/bin/env bash
+exit 0
+SH
+chmod +x "$temp_dir/bin/sleep"
+cat > "$temp_dir/bin/docker" <<'SH'
+#!/usr/bin/env bash
+echo fixture-backend-log
+SH
+chmod +x "$temp_dir/bin/docker"
 cat > "$temp_dir/bin/maestro" <<'SH'
 #!/usr/bin/env bash
 printf '%s\n' "$@" >> "$MOCK_CALLS"
@@ -133,9 +188,12 @@ run_online() (
     shift
     cd "$root"
     : > "$MOCK_CALLS"
+    export MOCK_NETWORK_CALLS="$temp_dir/network-calls"
+    : > "$MOCK_NETWORK_CALLS"
     env -u MAESTRO_DEVICE -u ONLINE_ENDPOINT \
         GITHUB_ACTIONS=true APP_ID=io.ente.auth.independent ONLINE_OTT=123456 \
         AUTH_APK_PATH="$temp_dir/auth.apk" \
+        AUTH_FIXTURE_COMPOSE_PROJECT=mock-backend \
         MAESTRO_ARTIFACTS_DIR="$temp_dir/online-$name" \
         "$@" /bin/bash scripts/run-auth-online.sh "${MOCK_ONLINE_PHASE:-recovery-reset}"
 )
@@ -149,10 +207,23 @@ fi
 run_online selected ONLINE_ENDPOINT=http://10.0.2.2:8080 MAESTRO_DEVICE=fixture-device
 [[ $(sed -n '/^--device$/{n;p;}' "$MOCK_CALLS") == fixture-device ]]
 
+run_online network-delayed ONLINE_ENDPOINT=http://10.0.2.2:8080 MOCK_NETWORK_MODE=delayed
+[[ $(wc -l < "$temp_dir/network-calls") -eq 3 ]]
+grep -Fxq 'maestro/auth/online/prepared-recovery-password-reset.yaml' "$MOCK_CALLS"
+for mode in absent failed-command; do
+    status=0
+    run_online "network-$mode" ONLINE_ENDPOINT=http://10.0.2.2:8080 MOCK_NETWORK_MODE="$mode" \
+        2> "$temp_dir/error" || status=$?
+    [[ $status -eq 1 && ! -s "$MOCK_CALLS" ]]
+    grep -Fq 'Android has no active default network' "$temp_dir/error"
+    grep -Fq 'Active default network:' "$temp_dir/online-network-$mode/runtime-health/recovery-reset-device.txt"
+done
+
 status=0
 run_online disconnected ONLINE_ENDPOINT=http://10.0.2.2:8080 MOCK_DEVICE_STATUS=23 || status=$?
 [[ $status -eq 23 ]]
 grep -Fxq 'fixture-memory-info' "$temp_dir/online-disconnected/runtime-health/recovery-reset-device.txt"
+grep -Fxq 'fixture-backend-log' "$temp_dir/online-disconnected/runtime-health/recovery-reset-backend.log"
 
 MOCK_ONLINE_PHASE=startup run_online startup ONLINE_ENDPOINT=http://10.0.2.2:8080
 [[ $(grep -E '^maestro/.*\.yaml$' "$MOCK_CALLS") == maestro/auth/online/startup.yaml ]]

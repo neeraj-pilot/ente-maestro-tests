@@ -66,7 +66,13 @@ record_runtime_health() {
             printf 'app_pid='
             adb shell pidof "$APP_ID" || true
             adb shell dumpsys meminfo "$APP_ID" || true
+            adb shell dumpsys connectivity || true
         } > "$runtime_dir/$phase-device.txt" 2>&1
+        # The next independent suite restores the fixture and removes these containers.
+        if [[ ${AUTH_FIXTURE_DB_MODE:-compose} == compose && -n ${AUTH_FIXTURE_COMPOSE_PROJECT:-} ]]; then
+            docker compose --project-name "$AUTH_FIXTURE_COMPOSE_PROJECT" --file museum/compose.yaml \
+                logs --no-color > "$runtime_dir/$phase-backend.log" 2>&1 || true
+        fi
     fi
     exit "$status"
 }
@@ -78,9 +84,23 @@ adb install -r "$AUTH_APK_PATH"
 run_maestro() {
     local result_name=$1
     shift
+    wait_for_android_network
     scripts/run-maestro.sh "$results_dir/$result_name.xml" "$debug_dir/$result_name" \
         -e ONLINE_ENDPOINT="$ONLINE_ENDPOINT" \
         "$@"
+}
+
+wait_for_android_network() {
+    # Android can finish booting before Cronet has a default network.
+    for _ in {1..30}; do
+        if timeout 5 adb shell dumpsys connectivity |
+            grep -E '^Active default network: [0-9]+' > /dev/null; then
+            return
+        fi
+        sleep 2
+    done
+    echo "Android has no active default network; online UI tests have not started" >&2
+    return 1
 }
 
 prepare_fixture_app() {

@@ -8,7 +8,10 @@ test. No Maestro Cloud or production account is required.
 ## Results
 
 [Auth Android runs](https://github.com/neeraj-pilot/ente-maestro-tests/actions/workflows/auth-android.yml)
-contain the selected online and offline suites in parallel, using the same APK.
+use two test runners in parallel: one offline and one online, using the same APK.
+Selected suites run sequentially within each runner. The online runner restores
+its disposable backend between independent suites, retaining state between
+related recovery or lifecycle phases.
 
 Open a run's job summaries for the **APK name, creation date, asset ID, SHA-256,
 selected suite and result**. Release tags are reused; a version name alone does
@@ -59,6 +62,9 @@ Local suites: `smoke`, `basics`, `organization`, `tags`, `trash`,
 own directory under `artifacts/maestro/local/`, printed by the runner. Set
 `MAESTRO_ARTIFACTS_DIR` to use another parent directory. The runner and hosted CI
 share the same offline suite definitions.
+To run several suites with one APK installation, pass e.g. `--suite "basics tags"`.
+Each suite has its own results directory; a failure does not prevent the next
+independent suite from running, and the command still exits unsuccessfully.
 
 For a single flow, use Maestro directly, for example:
 `maestro test -e APP_ID=io.ente.auth.independent maestro/auth/offline/settings.yaml`.

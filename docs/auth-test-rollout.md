@@ -4,8 +4,8 @@
 
 The Auth Android workflow resolves the newest Auth beta/RC APK in `ente/nightly`,
 falling back to a stable `ente/ente` asset only when no prerelease is available.
-Selection uses asset creation time, not tag publication time. Every shard within
-the offline and online jobs receives the same asset ID and verifies its SHA-256.
+Selection uses asset creation time, not tag publication time. The offline and
+online runners each download that asset once and verify its SHA-256.
 
 These are published-build tests. They do not build or validate unshipped Auth
 changes from a product PR. One preparation job validates configuration, selects
@@ -14,20 +14,30 @@ parallel, followed by a combined result that requires every selected group to pa
 
 | Trigger | Execution |
 | --- | --- |
-| Daily, 01:17 UTC | Full hosted matrix only if the resolved APK was created in the preceding 24 hours; otherwise an explicit skip summary. |
-| Pull request matching workflow paths | Affected suites; shared helpers and fixture changes select the relevant full matrix. |
-| Push to main matching workflow paths | Full matrix for each affected group. Online-only changes do not launch offline emulators, and vice versa. Documentation-only merges do not run tests. |
+| Daily, 01:17 UTC | All hosted suites only if the resolved APK was created in the preceding 24 hours; otherwise an explicit skip summary. |
+| Pull request matching workflow paths | Affected suites; shared helpers and fixture changes select the relevant full group. |
+| Push to main matching workflow paths | All suites in each affected group. Online-only changes do not launch offline emulators, and vice versa. Documentation-only merges do not run tests. |
 | Manual | All suites, the offline/online group, or one selected suite, regardless of APK age. |
 
 The daily freshness check is not build deduplication and is subject to schedule
 delays. Do not interpret a skipped run as fresh coverage.
 
-Offline uses four shards: basics, organization, tags and trash. Basics
-combines onboarding, manual setup, validation and settings in one emulator.
-Online uses four lanes. All device jobs use Ubuntu 24.04 with required
-KVM acceleration, two virtual CPUs, and 4 GiB Android guest memory. Account auth
-and data sync each use one emulator session, recovery uses two, and entity
-lifecycle uses three.
+There are four jobs in a full run: preparation, offline, online, and the final
+result. Only the two test jobs run concurrently. Offline installs the APK once
+and runs basics, organization, tags and trash sequentially in one emulator.
+Online runs account auth, recovery, data sync and entity lifecycle sequentially
+on one runner. Account auth and data sync each use one emulator session, recovery
+uses two, and entity lifecycle uses three. Existing session boundaries are kept;
+this consolidation does not assume that emulator restarts can be removed.
+
+An independent suite still runs after an earlier suite fails. Dependent online
+phases run only when their prerequisite succeeds, and any failure fails the job.
+Suites have separate result paths and job-summary outcomes. This trades parallel
+test execution for fewer repeated downloads and tool installations; compare
+hosted elapsed time and runner-minutes before splitting a slow group again.
+
+Both test jobs use Ubuntu 24.04 with required KVM acceleration, two virtual CPUs,
+and 4 GiB Android guest memory.
 Both groups pin emulator 37.1.11 (build `15917651`) with host OpenGL software
 rendering (`LIBGL_ALWAYS_SOFTWARE=1`), a virtual X display, and guest Vulkan
 disabled. A change to this shared configuration requires both hosted groups to pass.
@@ -92,7 +102,7 @@ add forwarding wrappers or create a generic command framework for unrelated task
   installed version. This avoids executing a changing installer or adding a
   third-party setup action. Update the version and checksum together after
   verifying the upstream release; use the same CLI version locally.
-- Resolve the Auth APK once, pass compact metadata to every shard, and verify
+- Resolve the Auth APK once, pass compact metadata to each test runner, and verify
   each download against the release asset digest. An API error must fail the
   run, not silently select a stable build. Stable fallback is only for an absent
   compatible prerelease.
@@ -107,8 +117,11 @@ before approval to run. No production secrets or accounts belong in this repo.
 ## Online fixture setup
 
 Restore the [public Museum fixture](../museum/fixtures/README.md) before each
-independent lane. Preserve backend state between phases within a lane. The
-fixture generator is for deliberate refreshes, not normal test runs.
+independent suite. Data sync and entity lifecycle mutate the same basic account,
+so sharing their modified backend state would make execution order significant.
+Reuse the existing restore helper, which recreates the local stack; there is only
+one stack running at a time. Preserve backend state between phases within a suite.
+The fixture generator is for deliberate refreshes, not normal test runs.
 
 Hosted and local Docker setup use the same pinned Museum and PostgreSQL images.
 The native macOS fixture scripts remain available for local use. Neither path
@@ -127,7 +140,7 @@ Keep the real offline warning in onboarding tests. Do not require Auth to show a
 
 ## Results and diagnostics
 
-- Manually select the online `startup` lane to inspect cold startup without
+- Manually select the online `startup` suite to inspect cold startup without
   entering credentials. It uses the same emulator, backend, and preference
   preparation as the online suites, waits up to 60 seconds for `Log in`, and
   stops at the empty email screen. Its three-day diagnostic artifact includes
@@ -146,13 +159,14 @@ Keep the real offline warning in onboarding tests. Do not require Auth to show a
   reruns do not mix reports or debug files from different attempts.
 - Offline failures retain Maestro diagnostics for seven days.
 - Online failures retain runtime health for three days. Device state and app
-  memory are captured inside the runner before emulator teardown. Workflow-level
-  diagnostics provide host memory/disk information and the local Museum log.
+  memory and Museum logs are captured inside the runner before emulator teardown
+  and before the next fixture restore. Workflow-level diagnostics provide host
+  memory/disk information.
 - Hosted and local runners share `scripts/run-maestro.sh`. Each invocation must
   produce a nonempty JUnit report and leave the device responsive;
   Maestro can otherwise report success after a crash during driver cleanup.
-- Online public-fixture lanes retain failure screenshots and traces for three
-  days. Their credentials are already checked in. The account-auth lane uploads
+- Online public-fixture suites retain failure screenshots and traces for three
+  days. Their credentials are already checked in. The account-auth suite uploads
   only its public TOTP fixture phases, never the private signup/login phases.
 
 Coverage descriptions live in the README; executed outcomes live in Actions,
