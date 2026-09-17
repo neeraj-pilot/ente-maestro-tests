@@ -110,7 +110,7 @@ done
 cat > "$temp_dir/bin/adb" <<'SH'
 #!/usr/bin/env bash
 [[ "$1" != -s ]] || shift 2
-if [[ -n ${MOCK_DEVICE_CALLS:-} ]]; then printf '%s\\n' "$*" >> "$MOCK_DEVICE_CALLS"; fi
+if [[ -n ${MOCK_DEVICE_CALLS:-} ]]; then printf '%s\n' "$*" >> "$MOCK_DEVICE_CALLS"; fi
 case "$*" in
     'shell true') exit "${MOCK_DEVICE_STATUS:-0}" ;;
     'shell dumpsys connectivity')

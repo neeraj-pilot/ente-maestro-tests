@@ -98,11 +98,12 @@ jobs:
               id: freshness
               if: steps.apk.outcome == 'success'
               env:
-                  APK_CREATED_AT: ${{ fromJSON(steps.apk.outputs.build).apk_created_at }}
+                  BUILD: ${{ steps.apk.outputs.build }}
                   EVENT_NAME: ${{ github.event_name }}
               run: |
                   should_run=true
                   if [[ "$EVENT_NAME" == schedule ]]; then
+                      APK_CREATED_AT=$(jq -er '.apk_created_at' <<< "$BUILD")
                       created_epoch=$(date -u -d "$APK_CREATED_AT" +%s)
                       age_seconds=$(( $(date -u +%s) - created_epoch ))
                       if (( age_seconds < 0 || age_seconds > 86400 )); then
