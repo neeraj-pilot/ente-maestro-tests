@@ -21,52 +21,41 @@ class SelectionTests(unittest.TestCase):
         for name in suites.OFFLINE:
             with self.subTest(suite=name):
                 self.assertEqual(suites.requested(name), suites.selection([name]))
-        for name in (*suites.ONLINE, "startup"):
+        for name in suites.ONLINE:
             with self.subTest(suite=name):
                 self.assertEqual(suites.requested(name), suites.selection(online=[name]))
         with self.assertRaises(ValueError):
             suites.requested("typo")
 
-    def test_each_registered_flow_selects_its_owners(self):
-        for group, registry, prefix in (
-            ("offline", suites.OFFLINE, "maestro/auth/"),
-            ("online", suites.ONLINE, "maestro/auth/online/"),
-        ):
-            for flow in {flow for flows in registry.values() for flow in flows}:
-                with self.subTest(flow=flow):
-                    owners = [name for name, flows in registry.items() if flow in flows]
-                    self.assertEqual(suites.affected([prefix + flow]), suites.selection(**{group: owners}))
-
     def test_shared_dependencies_and_local_exclusions(self):
         cases = [
-            (["maestro/auth/offline/tags.yaml", "maestro/auth/offline/trash-restore.yaml"], ["tags", "trash"], []),
-            (["maestro/auth/online/unknown-login.yaml", "maestro/auth/online/prepared-password-login.yaml"], [], ["account-auth", "data-sync"]),
+            (["maestro/auth/offline/tags.yaml", "maestro/auth/offline/trash-restore.yaml"], suites.OFFLINE, []),
+            (["maestro/auth/online/unknown-login.yaml", "maestro/auth/online/prepared-password-login.yaml"], [], suites.ONLINE),
             (["maestro/auth/subflows/new-helper.yaml"], suites.OFFLINE, []),
             (["maestro/auth/offline/new-flow.yaml"], suites.OFFLINE, []),
             (["maestro/fixtures/new-fixture.json"], suites.OFFLINE, []),
             (["maestro/auth/online/subflows/new-helper.yaml"], [], suites.ONLINE),
             (["maestro/auth/online/new-flow.yaml"], [], suites.ONLINE),
-            (["scripts/run-auth-android-local.sh"], suites.OFFLINE, []),
+            (["scripts/run-auth-offline.sh"], suites.OFFLINE, []),
             (["scripts/run-auth-online.sh"], [], suites.ONLINE),
-            (["scripts/current-totp.py"], [], ["account-auth"]),
+            (["scripts/current-totp.py"], [], suites.ONLINE),
             (["museum/fixtures/manifest.json"], [], suites.ONLINE),
             (["scripts/fixtures/restore-auth-fixture.sh"], [], suites.ONLINE),
             (["tools/auth-fixture-generator/Cargo.lock"], [], suites.ONLINE),
-            (["README.md", "museum/fixtures/README.md", "tools/auth-fixture-generator/README.md", *suites.LOCAL_ONLY], [], []),
+            (["notes.md", *suites.LOCAL_ONLY], [], []),
         ]
         for path in (".github/workflows/auth-android.yml", "scripts/apk.sh", "scripts/install-maestro.sh", "scripts/run-maestro.sh", "scripts/suites.py", "scripts/tests/test_suites.py"):
             cases.append(([path], suites.OFFLINE, suites.ONLINE))
         for paths, offline, online in cases:
             with self.subTest(paths=paths):
                 self.assertEqual(suites.affected(paths), suites.selection(offline, online))
-                self.assertEqual(suites.affected(paths, full_groups=True), suites.selection(suites.OFFLINE if offline else (), suites.ONLINE if online else ()))
 
     def test_event_selection(self):
         self.assertEqual(suites.for_event("schedule"), suites.requested("all"))
         self.assertEqual(suites.for_event("push", base="0" * 40), suites.requested("all"))
-        self.assertEqual(suites.for_event("workflow_dispatch", suite="startup"), suites.requested("startup"))
+        self.assertEqual(suites.for_event("workflow_dispatch", suite="account-auth"), suites.requested("account-auth"))
         with patch.object(suites.subprocess, "check_output", return_value="maestro/auth/online/prepared-logout.yaml\n") as diff:
-            self.assertEqual(suites.for_event("pull_request", base="before", head="after"), suites.requested("data-sync"))
+            self.assertEqual(suites.for_event("pull_request", base="before", head="after"), suites.requested("online"))
             diff.assert_called_with(["git", "diff", "--name-only", "before", "after"], text=True)
             self.assertEqual(suites.for_event("push", base="before", head="after"), suites.requested("online"))
         with patch.object(suites.subprocess, "check_output", side_effect=subprocess.CalledProcessError(128, "git")):
@@ -114,6 +103,3 @@ class RegistrationTests(unittest.TestCase):
         entrypoints = {ROOT / flow for flow in re.findall(r'maestro/auth/online/[\w./-]+\.yaml', runner)}
         self.assertTrue(entrypoints)
         self.assertEqual(self.reachable(entrypoints, ["maestro/auth/online"]), set((ROOT / "maestro/auth/online").rglob("*.yaml")))
-        for flows in suites.ONLINE.values():
-            for flow in flows:
-                self.assertTrue((ROOT / "maestro/auth/online" / flow).is_file(), f"Stale selector: {flow}")

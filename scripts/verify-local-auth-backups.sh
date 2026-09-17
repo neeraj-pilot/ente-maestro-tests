@@ -2,45 +2,7 @@
 
 set -euo pipefail
 
-usage() {
-    cat <<'EOF'
-Usage: scripts/verify-local-auth-backups.sh --serial <serial>
-
-Verify the automatic and manual backup files produced by the Auth Android app.
-EOF
-}
-
-serial=""
-while [[ $# -gt 0 ]]; do
-    case "$1" in
-        --serial)
-            serial="${2:?--serial requires a device serial}"
-            shift 2
-            ;;
-        -h|--help)
-            usage
-            exit 0
-            ;;
-        *)
-            echo "Unknown option: $1" >&2
-            usage >&2
-            exit 2
-            ;;
-    esac
-done
-
-if [[ -z "$serial" ]]; then
-    echo "--serial is required" >&2
-    usage >&2
-    exit 2
-fi
-
-for command in adb jq; do
-    if ! command -v "$command" > /dev/null; then
-        echo "Required command is not available: $command" >&2
-        exit 2
-    fi
-done
+serial=${ANDROID_SERIAL:?Set ANDROID_SERIAL}
 
 readonly backup_dir="/sdcard/Download/EnteAuthBackups"
 readonly temporary_dir="$(mktemp -d)"

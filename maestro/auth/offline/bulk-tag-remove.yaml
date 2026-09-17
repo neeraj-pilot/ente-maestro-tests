@@ -20,19 +20,8 @@ tags: [auth, android, offline, tags]
       SECRET: "KRUGS4ZANFZSAYJA"
       ACCOUNT: "billing@stripe.test"
       NOTE: ""
-- runFlow:
-    when:
-      notVisible:
-        id: "auth_code_item"
-    commands:
-      - longPressOn: "GitHub"
-- runFlow:
-    when:
-      visible:
-        id: "auth_code_item"
-    commands:
-      - longPressOn:
-          id: "auth_code_item"
+- longPressOn:
+    id: "auth_code_item"
 - longPressOn: "Stripe"
 - assertVisible: "(?s)^2 selected.*"
 - tapOn: "(?s)^Add tag.*"
@@ -41,19 +30,8 @@ tags: [auth, android, offline, tags]
 - inputText: "Finance"
 - tapOn: "Create"
 - tapOn: "Done"
-- runFlow:
-    when:
-      notVisible:
-        id: "auth_code_item"
-    commands:
-      - longPressOn: "GitHub"
-- runFlow:
-    when:
-      visible:
-        id: "auth_code_item"
-    commands:
-      - longPressOn:
-          id: "auth_code_item"
+- longPressOn:
+    id: "auth_code_item"
 - longPressOn: "Stripe"
 - assertVisible: "(?s)^2 selected.*"
 - tapOn: "(?s)^Add tag.*"

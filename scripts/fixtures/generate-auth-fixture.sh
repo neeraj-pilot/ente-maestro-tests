@@ -5,8 +5,6 @@ set -euo pipefail
 repo_root=$(cd "$(dirname "$0")/../.." && pwd)
 compose_file="$repo_root/museum/compose.yaml"
 fixtures_dir="$repo_root/museum/fixtures"
-credentials="$fixtures_dir/public-test-credentials.json"
-dump="$fixtures_dir/auth-fixture-v2.dump"
 manifest="$fixtures_dir/manifest.json"
 project="ente-auth-fixture-generator"
 verification_project="ente-auth-fixture-generation-verify"
@@ -18,14 +16,22 @@ postgres_image=$(jq -r '.postgresImage' "$manifest")
 compose=(docker compose --project-name "$project" --file "$compose_file")
 verification_compose=(docker compose --project-name "$verification_project" --file "$compose_file")
 
-cleanup() {
+stop_backends() {
     "${compose[@]}" down --volumes --remove-orphans >/dev/null 2>&1 || true
     "${verification_compose[@]}" down --volumes --remove-orphans >/dev/null 2>&1 || true
 }
+staging_dir=$(mktemp -d)
+export AUTH_FIXTURE_DIR="$staging_dir"
+credentials="$staging_dir/public-test-credentials.json"
+dump="$staging_dir/auth-fixture-v2.dump"
+manifest="$staging_dir/manifest.json"
+cleanup() {
+    stop_backends
+    rm -rf "$staging_dir"
+}
 trap cleanup EXIT
 
-cleanup
-mkdir -p "$fixtures_dir"
+stop_backends
 "${compose[@]}" up --detach
 
 for _ in {1..60}; do
@@ -47,18 +53,11 @@ fi
 )
 
 "${compose[@]}" stop museum
-temporary_dump="$dump.tmp"
 "${compose[@]}" exec -T postgres \
     pg_dump --format=custom --no-owner --no-privileges \
-    --username=ente_auth --dbname=ente_auth_test > "$temporary_dump"
-mv "$temporary_dump" "$dump"
+    --username=ente_auth --dbname=ente_auth_test > "$dump"
 
-if command -v sha256sum >/dev/null; then
-    dump_sha256=$(sha256sum "$dump" | awk '{print $1}')
-else
-    dump_sha256=$(shasum -a 256 "$dump" | awk '{print $1}')
-fi
-printf '%s  %s\n' "$dump_sha256" "$(basename "$dump")" > "$fixtures_dir/auth-fixture-v2.sha256"
+dump_sha256=$(shasum -a 256 "$dump" | awk '{print $1}')
 
 jq --null-input \
     --arg generatedAt "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
@@ -67,7 +66,6 @@ jq --null-input \
     --arg museumServerRevision "$museum_server_revision" \
     --arg postgresImage "$postgres_image" \
     --arg enteRevision "$ente_revision" \
-    --slurpfile credentials "$credentials" \
     '{
         classification: "PUBLIC_LOCAL_TEST_FIXTURE",
         fixtureVersion: 2,
@@ -78,15 +76,11 @@ jq --null-input \
         museumServerRevision: $museumServerRevision,
         postgresImage: $postgresImage,
         enteSourceRevision: $enteRevision,
-        generator: "tools/auth-fixture-generator",
-        accountEmails: ($credentials[0].accounts | to_entries | map(.value.email) | sort),
-        accountCodeCounts: ($credentials[0].accounts | with_entries(.value = (.value.codes | length))),
-        codeCount: ([$credentials[0].accounts[].codes[]] | length)
-    }' > "$manifest.tmp"
-mv "$manifest.tmp" "$manifest"
+        generator: "tools/auth-fixture-generator"
+    }' > "$manifest"
 
 "$repo_root/scripts/fixtures/verify-auth-fixture.sh"
-cleanup
+stop_backends
 ALLOW_AUTH_FIXTURE_RESTORE=1 AUTH_FIXTURE_COMPOSE_PROJECT="$verification_project" \
     "$repo_root/scripts/fixtures/restore-auth-fixture.sh"
 (
@@ -94,4 +88,5 @@ ALLOW_AUTH_FIXTURE_RESTORE=1 AUTH_FIXTURE_COMPOSE_PROJECT="$verification_project
     AUTH_FIXTURE_ENDPOINT=http://127.0.0.1:8080 \
         cargo run --locked --release -- verify "$credentials"
 )
+mv "$credentials" "$dump" "$manifest" "$fixtures_dir/"
 echo "Generated Auth fixture v2 in $fixtures_dir"

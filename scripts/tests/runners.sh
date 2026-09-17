@@ -9,8 +9,6 @@ mkdir -p "$temp_dir/bin"
 export PATH="$temp_dir/bin:$PATH"
 export MOCK_CALLS="$temp_dir/calls"
 export MAESTRO_ARTIFACTS_DIR="$temp_dir/runs"
-# Mock suite results must not appear in the preparation job's real test summary.
-unset GITHUB_STEP_SUMMARY
 
 touch "$temp_dir/auth.apk"
 
@@ -53,20 +51,22 @@ else
 fi
 SH
 chmod +x "$temp_dir/bin/adb" "$temp_dir/bin/maestro"
-for suite in basics organization tags trash required basics; do
+for suite in basics organization tags trash all; do
     : > "$MOCK_CALLS"
-    "$root/scripts/run-auth-android-local.sh" --serial fixture-device \
-        --apk "$temp_dir/auth.apk" --skip-install --suite "$suite"
-    if [[ "$suite" == required ]]; then
+    if [[ "$suite" == all ]]; then
+        ANDROID_SERIAL=fixture-device AUTH_APK_PATH="$temp_dir/auth.apk" \
+            "$root/scripts/run-auth-offline.sh"
         matrix=$(python3 "$root/scripts/suites.py" --suite offline)
     else
+        ANDROID_SERIAL=fixture-device AUTH_APK_PATH="$temp_dir/auth.apk" \
+            "$root/scripts/run-auth-offline.sh" "$suite"
         matrix=$(python3 "$root/scripts/suites.py" --suite "$suite")
     fi
-    expected=$(jq -r '.offline.include[].flows[]' <<< "$matrix")
+    expected=$(jq -r '.offline[].flows[]' <<< "$matrix")
     [[ $(< "$MOCK_CALLS") == "$expected" ]]
 done
 
-[[ $(find "$temp_dir/runs" -mindepth 1 -maxdepth 1 -type d | wc -l) -eq 6 ]]
+[[ $(find "$temp_dir/runs" -mindepth 1 -maxdepth 1 -type d | wc -l) -eq 5 ]]
 
 # A failed suite must not hide the next suite or trigger another APK installation.
 : > "$MOCK_CALLS"
@@ -74,21 +74,18 @@ status=0
 MOCK_DEVICE_CALLS="$temp_dir/device-calls" \
     MOCK_FAIL_FLOW=maestro/auth/smoke/onboarding.yaml \
     MAESTRO_ARTIFACTS_DIR="$temp_dir/combined" \
-    GITHUB_STEP_SUMMARY="$temp_dir/summary" \
-    "$root/scripts/run-auth-android-local.sh" --serial fixture-device \
-    --apk "$temp_dir/auth.apk" --suite 'basics trash' || status=$?
+    ANDROID_SERIAL=fixture-device AUTH_APK_PATH="$temp_dir/auth.apk" \
+    "$root/scripts/run-auth-offline.sh" basics trash || status=$?
 [[ $status -eq 42 ]]
 [[ $(grep -c '^install ' "$temp_dir/device-calls") -eq 1 ]]
 selection=$(python3 "$root/scripts/suites.py" --suite offline)
-[[ $(< "$MOCK_CALLS") == "$(jq -r '.offline.include[] | select(.suite == "basics" or .suite == "trash") | .flows[]' <<< "$selection")" ]]
-grep -Fxq '| basics | failure |' "$temp_dir/summary"
-grep -Fxq '| trash | success |' "$temp_dir/summary"
+[[ $(< "$MOCK_CALLS") == "$(jq -r '.offline[] | select(.suite == "basics" or .suite == "trash") | .flows[]' <<< "$selection")" ]]
 grep -Fq '<testcase' "$temp_dir"/combined/*/trash/results.xml
 
 : > "$MOCK_CALLS"
 status=0
-MOCK_INSTALL_STATUS=17 "$root/scripts/run-auth-android-local.sh" --serial fixture-device \
-    --apk "$temp_dir/auth.apk" --suite 'basics trash' || status=$?
+MOCK_INSTALL_STATUS=17 ANDROID_SERIAL=fixture-device AUTH_APK_PATH="$temp_dir/auth.apk" \
+    "$root/scripts/run-auth-offline.sh" basics trash || status=$?
 [[ $status -eq 17 && ! -s "$MOCK_CALLS" ]]
 
 for mode in fail missing empty disconnected; do
@@ -100,8 +97,8 @@ for mode in fail missing empty disconnected; do
         disconnected) device_status=23; expected=23 ;;
     esac
     MOCK_MAESTRO_MODE="$mode" MOCK_DEVICE_STATUS="$device_status" \
-        "$root/scripts/run-auth-android-local.sh" --serial fixture-device \
-        --apk "$temp_dir/auth.apk" --skip-install --suite basics \
+        ANDROID_SERIAL=fixture-device AUTH_APK_PATH="$temp_dir/auth.apk" \
+        "$root/scripts/run-auth-offline.sh" basics \
         > /dev/null 2> "$temp_dir/error" || status=$?
     [[ $status -eq $expected ]]
     if [[ "$mode" == missing || "$mode" == empty ]]; then
@@ -109,31 +106,11 @@ for mode in fail missing empty disconnected; do
     fi
 done
 
-# A failing device command retains its status and captures health before teardown.
-cat > "$temp_dir/bin/adb" <<'SH'
-#!/usr/bin/env bash
-[[ "$1" != -s ]] || shift 2
-case "$*" in
-    install*) exit 37 ;;
-    get-state) echo device ;;
-    'shell pidof '*) echo 123 ;;
-    'shell dumpsys meminfo '*) echo fixture-memory-info ;;
-esac
-SH
-status=0
-(
-    cd "$root"
-    GITHUB_ACTIONS=false APP_ID=io.ente.auth.independent AUTH_APK_PATH="$temp_dir/auth.apk" \
-        MAESTRO_ARTIFACTS_DIR="$temp_dir/diagnostics" \
-        scripts/run-auth-online.sh data-sync
-) || status=$?
-[[ $status -eq 37 ]]
-grep -Fx 'fixture-memory-info' "$temp_dir"/diagnostics/data-sync-*/runtime-health/data-sync-device.txt
-
 # Exercise the actual online runner under the host's system Bash (3.2 on macOS).
 cat > "$temp_dir/bin/adb" <<'SH'
 #!/usr/bin/env bash
 [[ "$1" != -s ]] || shift 2
+if [[ -n ${MOCK_DEVICE_CALLS:-} ]]; then printf '%s\\n' "$*" >> "$MOCK_DEVICE_CALLS"; fi
 case "$*" in
     'shell true') exit "${MOCK_DEVICE_STATUS:-0}" ;;
     'shell dumpsys connectivity')
@@ -154,8 +131,6 @@ case "$*" in
     'shell stat '*) echo 1000:1000 ;;
     'shell pidof '*) echo 123 ;;
     'shell dumpsys meminfo '*) echo fixture-memory-info ;;
-    'exec-out uiautomator dump /dev/tty') echo '<hierarchy/>' ;;
-    'logcat -d') echo fixture-startup-logcat ;;
 esac
 SH
 cat > "$temp_dir/bin/sleep" <<'SH'
@@ -163,15 +138,43 @@ cat > "$temp_dir/bin/sleep" <<'SH'
 exit 0
 SH
 chmod +x "$temp_dir/bin/sleep"
+cat > "$temp_dir/bin/curl" <<'SH'
+#!/usr/bin/env bash
+echo '{"id":"0137a0c754ac0fe4f2c4c7421727c349327eb990"}'
+SH
+chmod +x "$temp_dir/bin/curl"
 cat > "$temp_dir/bin/docker" <<'SH'
 #!/usr/bin/env bash
-echo fixture-backend-log
+case "$*" in
+    *pg_restore*)
+        echo restore >> "$MOCK_BACKEND_CALLS"
+        exit "${MOCK_RESTORE_STATUS:-0}"
+        ;;
+    *"source = 'authMaestroFixture'"*) echo '3|3|1|3|5|0' ;;
+    *'SELECT 1'*) echo 1 ;;
+    *'SELECT COUNT(*), MAX(updated_at)'*) echo '4|11' ;;
+    *'SELECT MAX(user_id)'*) echo 3 ;;
+    *'SELECT MAX(updated_at)'*) echo 10 ;;
+    *'SELECT COUNT(*)'*|*'SELECT (SELECT COUNT(*)'*)
+        echo check >> "$MOCK_DATABASE_CALLS"
+        if [[ ${MOCK_DATABASE_MODE:-} == absent ]] ||
+            [[ ${MOCK_DATABASE_MODE:-} == delayed && $(wc -l < "$MOCK_DATABASE_CALLS") -lt 3 ]]; then
+            echo f
+        else
+            echo t
+        fi
+        ;;
+    *logs*) echo fixture-backend-log ;;
+esac
 SH
 chmod +x "$temp_dir/bin/docker"
 cat > "$temp_dir/bin/maestro" <<'SH'
 #!/usr/bin/env bash
 printf '%s\n' "$@" >> "$MOCK_CALLS"
 if [[ ${MOCK_MAESTRO_MODE:-} == fail ]]; then exit 42; fi
+for argument in "$@"; do
+    if [[ "$argument" == "${MOCK_FAIL_FLOW:-}" ]]; then exit 42; fi
+done
 while [[ $# -gt 0 ]]; do
     if [[ "$1" == --output ]]; then report=$2; break; fi
     shift
@@ -190,12 +193,21 @@ run_online() (
     : > "$MOCK_CALLS"
     export MOCK_NETWORK_CALLS="$temp_dir/network-calls"
     : > "$MOCK_NETWORK_CALLS"
-    env -u MAESTRO_DEVICE -u ONLINE_ENDPOINT \
-        GITHUB_ACTIONS=true APP_ID=io.ente.auth.independent ONLINE_OTT=123456 \
+    export MOCK_DATABASE_CALLS="$temp_dir/database-calls"
+    : > "$MOCK_DATABASE_CALLS"
+    export MOCK_BACKEND_CALLS="$temp_dir/backend-calls"
+    : > "$MOCK_BACKEND_CALLS"
+    export MOCK_DEVICE_CALLS="$temp_dir/online-device-calls"
+    : > "$MOCK_DEVICE_CALLS"
+    read -r -a suites <<< "${MOCK_ONLINE_SUITES:-recovery-password}"
+    set -- "$@" /bin/bash scripts/run-auth-online.sh
+    if [[ ${MOCK_ONLINE_SUITES:-} != all ]]; then set -- "$@" "${suites[@]}"; fi
+    env -u ANDROID_SERIAL -u MAESTRO_DEVICE -u ONLINE_ENDPOINT -u APP_ID \
+        GITHUB_ACTIONS=true AUTH_APP_PREPARATION=root-prefs \
         AUTH_APK_PATH="$temp_dir/auth.apk" \
         AUTH_FIXTURE_COMPOSE_PROJECT=mock-backend \
         MAESTRO_ARTIFACTS_DIR="$temp_dir/online-$name" \
-        "$@" /bin/bash scripts/run-auth-online.sh "${MOCK_ONLINE_PHASE:-recovery-reset}"
+        "$@"
 )
 
 run_online automatic ONLINE_ENDPOINT=http://10.0.2.2:8080
@@ -204,11 +216,42 @@ if grep -Fxq -- '--device' "$MOCK_CALLS"; then
     echo "Automatic device selection must not pass --device" >&2
     exit 1
 fi
-run_online selected ONLINE_ENDPOINT=http://10.0.2.2:8080 MAESTRO_DEVICE=fixture-device
-[[ $(sed -n '/^--device$/{n;p;}' "$MOCK_CALLS") == fixture-device ]]
+run_online selected ONLINE_ENDPOINT=http://10.0.2.2:8080 ANDROID_SERIAL=fixture-device
+[[ $(sed -n '/^--device$/{n;p;}' "$MOCK_CALLS" | sort -u) == fixture-device ]]
+
+# Local runs use UI preparation and loopback Museum without CI environment values.
+run_online local AUTH_APP_PREPARATION=ui
+[[ $(grep -c '^maestro/auth/online/subflows/configure-online-test-endpoint-ui.yaml$' "$MOCK_CALLS") -eq 3 ]]
+[[ $(grep -E '^maestro/.*\.yaml$' "$MOCK_CALLS" | grep -v '/subflows/') == $'maestro/auth/online/prepared-recovery-password-reset.yaml\nmaestro/auth/online/prepared-recovery-old-password.yaml\nmaestro/auth/online/prepared-recovery-login.yaml' ]]
+grep -Fxq 'APP_ID=io.ente.auth.independent' "$MOCK_CALLS"
+grep -Fxq 'ONLINE_ENDPOINT=http://127.0.0.1:8080' "$MOCK_CALLS"
+grep -Fxq 'ONLINE_OTT=123456' "$MOCK_CALLS"
+
+MOCK_ONLINE_SUITES=recovery-password run_online recovery
+[[ $(grep -E '^maestro/.*\.yaml$' "$MOCK_CALLS") == $'maestro/auth/online/prepared-recovery-password-reset.yaml\nmaestro/auth/online/prepared-recovery-old-password.yaml\nmaestro/auth/online/prepared-recovery-login.yaml' ]]
+
+MOCK_ONLINE_SUITES=account-auth run_online signup TOTP_TIME=60 > "$temp_dir/signup-log"
+[[ $(grep -c '^ONLINE_EMAIL=auth-maestro-signup-fixture-[a-f0-9]*@example.org$' "$MOCK_CALLS") -eq 2 ]]
+[[ $(grep '^ONLINE_EMAIL=' "$MOCK_CALLS" | sort -u | wc -l) -eq 1 ]]
+[[ $(grep -c '^ONLINE_PASSWORD=AuthCi-[a-f0-9]*!$' "$MOCK_CALLS") -eq 2 ]]
+[[ $(grep '^ONLINE_PASSWORD=' "$MOCK_CALLS" | sort -u | wc -l) -eq 1 ]]
+grep -Fxq "::add-mask::$(sed -n 's/^ONLINE_PASSWORD=//p' "$MOCK_CALLS" | head -1)" "$temp_dir/signup-log"
+
+MOCK_ONLINE_SUITES=data-sync run_online sync-delayed MOCK_DATABASE_MODE=delayed
+[[ $(wc -l < "$temp_dir/database-calls") -eq 3 ]]
+grep -Fxq 'maestro/auth/online/prepared-bulk-mutation-complete.yaml' "$MOCK_CALLS"
+status=0
+MOCK_ONLINE_SUITES=data-sync run_online sync-absent MOCK_DATABASE_MODE=absent \
+    2> "$temp_dir/error" || status=$?
+[[ $status -eq 1 && $(wc -l < "$temp_dir/database-calls") -eq 60 ]]
+grep -Fq 'Timed out waiting for database condition:' "$temp_dir/error"
+if grep -Fxq 'maestro/auth/online/prepared-bulk-mutation-complete.yaml' "$MOCK_CALLS"; then
+    echo "Fresh login must wait for the app's mutation to reach Museum" >&2
+    exit 1
+fi
 
 run_online network-delayed ONLINE_ENDPOINT=http://10.0.2.2:8080 MOCK_NETWORK_MODE=delayed
-[[ $(wc -l < "$temp_dir/network-calls") -eq 3 ]]
+[[ $(wc -l < "$temp_dir/network-calls") -eq 5 ]]
 grep -Fxq 'maestro/auth/online/prepared-recovery-password-reset.yaml' "$MOCK_CALLS"
 for mode in absent failed-command; do
     status=0
@@ -216,27 +259,14 @@ for mode in absent failed-command; do
         2> "$temp_dir/error" || status=$?
     [[ $status -eq 1 && ! -s "$MOCK_CALLS" ]]
     grep -Fq 'Android has no active default network' "$temp_dir/error"
-    grep -Fq 'Active default network:' "$temp_dir/online-network-$mode/runtime-health/recovery-reset-device.txt"
+    grep -Fq 'Active default network:' "$temp_dir/online-network-$mode/runtime-health/recovery-password-device.txt"
 done
 
 status=0
 run_online disconnected ONLINE_ENDPOINT=http://10.0.2.2:8080 MOCK_DEVICE_STATUS=23 || status=$?
 [[ $status -eq 23 ]]
-grep -Fxq 'fixture-memory-info' "$temp_dir/online-disconnected/runtime-health/recovery-reset-device.txt"
-grep -Fxq 'fixture-backend-log' "$temp_dir/online-disconnected/runtime-health/recovery-reset-backend.log"
-
-MOCK_ONLINE_PHASE=startup run_online startup ONLINE_ENDPOINT=http://10.0.2.2:8080
-[[ $(grep -E '^maestro/.*\.yaml$' "$MOCK_CALLS") == maestro/auth/online/startup.yaml ]]
-if grep -Eq 'FIXTURE_.*(PASSWORD|EMAIL|CODE|KEY)=' "$MOCK_CALLS"; then
-    echo "Startup diagnostics must not receive account credentials" >&2
-    exit 1
-fi
-grep -Fxq '<hierarchy/>' "$temp_dir/online-startup/online-debug/startup/ui-hierarchy.txt"
-grep -Fxq 'fixture-startup-logcat' "$temp_dir/online-startup/online-debug/startup/startup-logcat.txt"
-status=0
-MOCK_ONLINE_PHASE=startup run_online startup-failed ONLINE_ENDPOINT=http://10.0.2.2:8080 MOCK_MAESTRO_MODE=fail || status=$?
-[[ $status -eq 42 ]]
-grep -Fxq '<hierarchy/>' "$temp_dir/online-startup-failed/online-debug/startup/ui-hierarchy.txt"
+grep -Fxq 'fixture-memory-info' "$temp_dir/online-disconnected/runtime-health/recovery-password-device.txt"
+grep -Fxq 'fixture-backend-log' "$temp_dir/online-disconnected/runtime-health/recovery-password-backend.log"
 
 for mode in fail missing empty; do
     status=0
@@ -246,27 +276,37 @@ for mode in fail missing empty; do
     if [[ "$mode" == fail ]]; then expected=42; fi
     [[ $status -eq $expected ]]
     if [[ "$mode" != fail ]]; then grep -Fq 'nonempty JUnit report' "$temp_dir/error"; fi
-    grep -Fxq 'fixture-memory-info' "$temp_dir/online-$mode/runtime-health/recovery-reset-device.txt"
+    grep -Fxq 'fixture-memory-info' "$temp_dir/online-$mode/runtime-health/recovery-password-device.txt"
 done
 
-# A shell expansion error must fail even when Bash 3.2 supplies status 0 to EXIT.
-status=0
-run_online unbound 2> "$temp_dir/error" || status=$?
-[[ $status -ne 0 ]]
-grep -Fq 'ONLINE_ENDPOINT: unbound variable' "$temp_dir/error"
-[[ ! -s "$MOCK_CALLS" ]]
-grep -Fxq 'fixture-memory-info' "$temp_dir/online-unbound/runtime-health/recovery-reset-device.txt"
+# Suites share one installation, but each gets a clean backend. A failed phase
+# stops its dependent steps without suppressing the next independent suite.
+MOCK_ONLINE_SUITES=all run_online all TOTP_TIME=60
+[[ $(grep -c '^install ' "$temp_dir/online-device-calls") -eq 1 ]]
+[[ $(wc -l < "$temp_dir/backend-calls") -eq 4 ]]
+[[ $(find "$temp_dir/online-all/online-results" -name '*.xml' | wc -l) -eq 17 ]]
 
-cat > "$temp_dir/bin/psql" <<'SH'
-#!/usr/bin/env bash
-echo "$MOCK_DATABASE_STATE"
-SH
-chmod +x "$temp_dir/bin/psql"
-MOCK_DATABASE_STATE='3|3|1|3|5|0' "$root/scripts/fixtures/verify-restored-auth-fixture.sh" psql
-if MOCK_DATABASE_STATE='3|3|1|3|4|0' "$root/scripts/fixtures/verify-restored-auth-fixture.sh" psql 2> "$temp_dir/error"; then
-    echo "A missing restored code must fail validation" >&2
+status=0
+MOCK_ONLINE_SUITES="recovery-password data-sync" run_online combined \
+    MOCK_FAIL_FLOW=maestro/auth/online/prepared-recovery-password-reset.yaml || status=$?
+[[ $status -eq 42 ]]
+[[ $(grep -c '^install ' "$temp_dir/online-device-calls") -eq 1 ]]
+[[ $(wc -l < "$temp_dir/backend-calls") -eq 2 ]]
+grep -Fxq 'maestro/auth/online/prepared-logout.yaml' "$MOCK_CALLS"
+if grep -Fxq 'maestro/auth/online/prepared-recovery-old-password.yaml' "$MOCK_CALLS"; then
+    echo "Recovery verification must not run after a failed reset" >&2
     exit 1
 fi
-grep -q 'expected 3|3|1|3|5|0, got 3|3|1|3|4|0' "$temp_dir/error"
+
+status=0
+run_online restore-failure MOCK_RESTORE_STATUS=31 || status=$?
+[[ $status -eq 31 && ! -s "$MOCK_CALLS" ]]
+
+# Missing required input must fail before touching Maestro.
+status=0
+run_online missing-apk AUTH_APK_PATH= 2> "$temp_dir/error" || status=$?
+[[ $status -ne 0 ]]
+grep -Fq 'Set AUTH_APK_PATH to the Auth nightly APK' "$temp_dir/error"
+[[ ! -s "$MOCK_CALLS" ]]
 
 echo "CI helper, local suite parity and failure diagnostics tests passed"

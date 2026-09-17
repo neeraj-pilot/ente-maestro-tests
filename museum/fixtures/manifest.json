@@ -8,16 +8,5 @@
   "museumServerRevision": "0137a0c754ac0fe4f2c4c7421727c349327eb990",
   "postgresImage": "postgres:15-alpine@sha256:3d0f7584ed7d04e27fa050d6683a74746608faf21f202be78460d679cc56461f",
   "enteSourceRevision": "d4873f6ca147aaf02ff82549f6c575e29790cff0",
-  "generator": "tools/auth-fixture-generator",
-  "accountEmails": [
-    "auth-maestro-fixture-basic-v2@example.org",
-    "auth-maestro-fixture-recovery-v2@example.org",
-    "auth-maestro-fixture-totp-v2@example.org"
-  ],
-  "accountCodeCounts": {
-    "basic": 3,
-    "totp": 1,
-    "recovery": 1
-  },
-  "codeCount": 5
+  "generator": "tools/auth-fixture-generator"
 }

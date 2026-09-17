@@ -33,7 +33,6 @@ on:
                     - recovery-password
                     - data-sync
                     - entity-lifecycle
-                    - startup
 
 permissions:
     contents: read
@@ -92,6 +91,7 @@ jobs:
                   GH_TOKEN: ${{ github.token }}
               run: |
                   build=$(scripts/apk.sh resolve)
+                  echo "$build"
                   echo "build=$build" >> "$GITHUB_OUTPUT"
 
             - name: Check scheduled build freshness
@@ -110,29 +110,6 @@ jobs:
                       fi
                   fi
                   echo "should_run=$should_run" >> "$GITHUB_OUTPUT"
-
-            - name: Summarize build and selection
-              env:
-                  OFFLINE: ${{ steps.select.outputs.offline }}
-                  ONLINE: ${{ steps.select.outputs.online }}
-                  SHOULD_RUN: ${{ steps.freshness.outputs.should_run }}
-                  BUILD: ${{ steps.apk.outputs.build }}
-              run: |
-                  {
-                      echo "### Auth Android test plan"
-                      echo
-                      if [[ -z "$BUILD" ]]; then
-                          echo "No hosted suites selected for these changes."
-                      else
-                          jq -r '"- Build: `\(.apk_name)`\n- Asset created: `\(.apk_created_at)`\n- Source: `\(.source_repository)`, release `\(.release_tag)` (\(.channel))\n- Asset ID: `\(.apk_asset_id)`\n- SHA-256: `\(.apk_sha256)`"' <<< "$BUILD"
-                          echo "- Offline: $(jq -r '.include | map(.suite) | join(", ")' <<< "$OFFLINE")"
-                          echo "- Online: $(jq -r 'join(", ")' <<< "$ONLINE")"
-                          if [[ "$SHOULD_RUN" != true ]]; then
-                              echo
-                              echo "**Skipped:** no compatible Auth APK was published in the previous 24 hours. This is not a passing test run."
-                          fi
-                      fi
-                  } >> "$GITHUB_STEP_SUMMARY"
 
     offline:
         name: Offline
@@ -184,18 +161,19 @@ jobs:
               id: tests
               uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
               env:
-                  AUTH_TEST_SUITES: ${{ join(fromJSON(needs.prepare.outputs.offline).include.*.suite, ' ') }}
+                  AUTH_TEST_GROUP: offline
+                  AUTH_TEST_SUITES: ${{ join(fromJSON(needs.prepare.outputs.offline).*.suite, ' ') }}
                   MAESTRO_ARTIFACTS_DIR: artifacts/maestro/offline
-              with:
+              with: &android_emulator
                   api-level: 34
                   emulator-build: 15917651
                   target: default
                   arch: x86_64
                   profile: pixel_5
                   cores: 2
-                  emulator-options: &emulator_options -no-window -gpu host -feature -Vulkan -accel on -no-metrics -no-snapshot -noaudio -no-boot-anim -memory 4096
+                  emulator-options: -no-window -gpu host -feature -Vulkan -accel on -no-metrics -no-snapshot -noaudio -no-boot-anim -memory 4096
                   disable-animations: true
-                  script: scripts/run-auth-android-local.sh --apk "$AUTH_APK_PATH" --app-id "$APP_ID" --suite "$AUTH_TEST_SUITES"
+                  script: scripts/run-auth-$AUTH_TEST_GROUP.sh $AUTH_TEST_SUITES
 
             - name: Upload offline results
               if: always() && steps.tests.outcome != 'skipped'
@@ -221,13 +199,9 @@ jobs:
         runs-on: ubuntu-24.04
         timeout-minutes: 120
         env:
-            ONLINE_SUITES: ${{ needs.prepare.outputs.online }}
             ONLINE_ENDPOINT: http://10.0.2.2:8080
-            ONLINE_OTT: 123456
+            AUTH_APP_PREPARATION: root-prefs
             AUTH_FIXTURE_COMPOSE_PROJECT: auth-online-${{ github.run_id }}-${{ github.run_attempt }}
-            MISSING_EMAIL: missing-${{ github.run_id }}-${{ github.run_attempt }}@example.org
-            ONLINE_CODE_ACCOUNT: first-key-${{ github.run_id }}-${{ github.run_attempt }}@example.org
-            ONLINE_EMAIL: auth-ci-${{ github.run_id }}-${{ github.run_attempt }}@example.org
         steps:
             - *checkout
             - *java
@@ -236,121 +210,13 @@ jobs:
             - *kvm
             - *display
 
-            - name: Prepare online test environment
-              id: ready
-              run: |
-                  if jq -e 'index("account-auth")' <<< "$ONLINE_SUITES" > /dev/null; then
-                      password="AuthCi-$(openssl rand -hex 10)!"
-                      echo "::add-mask::$password"
-                      echo "ONLINE_PASSWORD=$password" >> "$GITHUB_ENV"
-                  fi
-
-            - name: Restore account-auth fixture
-              id: account_backend
-              if: ${{ !cancelled() && steps.ready.outcome == 'success' && contains(fromJSON(env.ONLINE_SUITES), 'account-auth') }}
-              run: ALLOW_AUTH_FIXTURE_RESTORE=1 scripts/fixtures/restore-auth-fixture.sh
-
-            - name: Run account-auth session
-              id: account_auth
-              if: ${{ !cancelled() && steps.account_backend.outcome == 'success' }}
+            - name: Run online suites
+              id: tests
               uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
               env:
-                  AUTH_TEST_PHASE: account-auth
-              with: &online_emulator
-                  api-level: 34
-                  emulator-build: 15917651
-                  target: default
-                  arch: x86_64
-                  profile: pixel_5
-                  cores: 2
-                  emulator-options: *emulator_options
-                  disable-animations: true
-                  script: scripts/run-auth-online.sh "$AUTH_TEST_PHASE"
-
-            - name: Restore recovery fixture
-              id: recovery_backend
-              if: ${{ !cancelled() && steps.ready.outcome == 'success' && contains(fromJSON(env.ONLINE_SUITES), 'recovery-password') }}
-              run: ALLOW_AUTH_FIXTURE_RESTORE=1 scripts/fixtures/restore-auth-fixture.sh
-
-            - name: Run recovery reset session
-              id: recovery_reset
-              if: ${{ !cancelled() && steps.recovery_backend.outcome == 'success' }}
-              uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
-              env:
-                  AUTH_TEST_PHASE: recovery-reset
-              with: *online_emulator
-
-            - name: Run recovery verification session
-              id: recovery_verification
-              if: ${{ !cancelled() && steps.recovery_reset.outcome == 'success' }}
-              uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
-              env:
-                  AUTH_TEST_PHASE: recovery-verification
-              with: *online_emulator
-
-            - name: Restore data-sync fixture
-              id: sync_backend
-              if: ${{ !cancelled() && steps.ready.outcome == 'success' && contains(fromJSON(env.ONLINE_SUITES), 'data-sync') }}
-              run: ALLOW_AUTH_FIXTURE_RESTORE=1 scripts/fixtures/restore-auth-fixture.sh
-
-            - name: Run data-sync session
-              id: data_sync
-              if: ${{ !cancelled() && steps.sync_backend.outcome == 'success' }}
-              uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
-              env:
-                  AUTH_TEST_PHASE: data-sync
-              with: *online_emulator
-
-            - name: Restore entity-lifecycle fixture
-              id: lifecycle_backend
-              if: ${{ !cancelled() && steps.ready.outcome == 'success' && contains(fromJSON(env.ONLINE_SUITES), 'entity-lifecycle') }}
-              run: ALLOW_AUTH_FIXTURE_RESTORE=1 scripts/fixtures/restore-auth-fixture.sh
-
-            - name: Run lifecycle create session
-              id: lifecycle_create
-              if: ${{ !cancelled() && steps.lifecycle_backend.outcome == 'success' }}
-              uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
-              env:
-                  AUTH_TEST_PHASE: entity-lifecycle-create
-              with: *online_emulator
-
-            - name: Run lifecycle mutation session
-              id: lifecycle_mutate
-              if: ${{ !cancelled() && steps.lifecycle_create.outcome == 'success' }}
-              uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
-              env:
-                  AUTH_TEST_PHASE: entity-lifecycle-mutate
-              with: *online_emulator
-
-            - name: Run lifecycle restore and delete session
-              id: lifecycle_finish
-              if: ${{ !cancelled() && steps.lifecycle_mutate.outcome == 'success' }}
-              uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
-              env:
-                  AUTH_TEST_PHASE: entity-lifecycle-finish
-              with: *online_emulator
-
-            - name: Restore startup fixture
-              id: startup_backend
-              if: ${{ !cancelled() && steps.ready.outcome == 'success' && contains(fromJSON(env.ONLINE_SUITES), 'startup') }}
-              run: ALLOW_AUTH_FIXTURE_RESTORE=1 scripts/fixtures/restore-auth-fixture.sh
-
-            - name: Run startup session
-              id: startup
-              if: ${{ !cancelled() && steps.startup_backend.outcome == 'success' }}
-              uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
-              env:
-                  AUTH_TEST_PHASE: startup
-              with: *online_emulator
-
-            # Startup stops at the empty email screen; no credentials are entered.
-            - name: Upload startup diagnostics
-              if: always() && steps.startup.outcome != 'skipped'
-              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-              with:
-                  name: auth-online-startup-diagnostics
-                  path: artifacts/maestro/online-debug/startup
-                  retention-days: 3
+                  AUTH_TEST_GROUP: online
+                  AUTH_TEST_SUITES: ${{ join(fromJSON(needs.prepare.outputs.online), ' ') }}
+              with: *android_emulator
 
             # Never upload the private signup/login traces from account-auth.
             - name: Upload public-fixture failure diagnostics
@@ -363,7 +229,7 @@ jobs:
                       artifacts/maestro/online-debug/account-auth/prepared-totp-complete
                       artifacts/maestro/online-debug/recovery-*
                       artifacts/maestro/online-debug/data-sync
-                      artifacts/maestro/online-debug/entity-lifecycle-*
+                      artifacts/maestro/online-debug/entity-lifecycle
                   retention-days: 3
 
             - name: Upload online results
@@ -401,70 +267,3 @@ jobs:
             - name: Stop Auth backend
               if: always()
               run: docker compose --project-name "$AUTH_FIXTURE_COMPOSE_PROJECT" --file museum/compose.yaml down --volumes --remove-orphans
-
-            - name: Summarize online suites
-              if: always()
-              env:
-                  RESULT: ${{ job.status }}
-                  ACCOUNT_AUTH: ${{ steps.account_auth.outcome }}
-                  RECOVERY_RESET: ${{ steps.recovery_reset.outcome }}
-                  RECOVERY_VERIFICATION: ${{ steps.recovery_verification.outcome }}
-                  DATA_SYNC: ${{ steps.data_sync.outcome }}
-                  LIFECYCLE_CREATE: ${{ steps.lifecycle_create.outcome }}
-                  LIFECYCLE_MUTATE: ${{ steps.lifecycle_mutate.outcome }}
-                  LIFECYCLE_FINISH: ${{ steps.lifecycle_finish.outcome }}
-                  STARTUP: ${{ steps.startup.outcome }}
-              run: |
-                  {
-                      echo "### Online: $RESULT"
-                      echo
-                      echo "Android API 34, emulator build 15917651 (Mesa), Maestro $MAESTRO_VERSION."
-                      echo
-                      echo "| Suite / phase | Result |"
-                      echo "| --- | --- |"
-                      echo "| Account auth | $ACCOUNT_AUTH |"
-                      echo "| Recovery: reset | $RECOVERY_RESET |"
-                      echo "| Recovery: verification | $RECOVERY_VERIFICATION |"
-                      echo "| Data sync | $DATA_SYNC |"
-                      echo "| Lifecycle: create | $LIFECYCLE_CREATE |"
-                      echo "| Lifecycle: mutate | $LIFECYCLE_MUTATE |"
-                      echo "| Lifecycle: restore/delete | $LIFECYCLE_FINISH |"
-                      echo "| Startup diagnostic | $STARTUP |"
-                      echo
-                      echo "Skipped phases were not selected or had an unsuccessful prerequisite. See fixture-restore steps for setup failures."
-                      echo "Executed tests are in the JUnit artifact, grouped by phase."
-                  } >> "$GITHUB_STEP_SUMMARY"
-
-    result:
-        name: Auth test result
-        permissions: {}
-        if: always()
-        needs: [prepare, offline, online]
-        runs-on: ubuntu-24.04
-        timeout-minutes: 5
-        steps:
-            - name: Verify selected suites
-              env:
-                  PREPARE_RESULT: ${{ needs.prepare.result }}
-                  SHOULD_RUN: ${{ needs.prepare.outputs.should_run }}
-                  HAS_OFFLINE: ${{ needs.prepare.outputs.has_offline }}
-                  HAS_ONLINE: ${{ needs.prepare.outputs.has_online }}
-                  OFFLINE_RESULT: ${{ needs.offline.result }}
-                  ONLINE_RESULT: ${{ needs.online.result }}
-              run: |
-                  {
-                      echo "### Auth test result"
-                      echo
-                      echo "| Group | Result |"
-                      echo "| --- | --- |"
-                      echo "| Preparation | $PREPARE_RESULT |"
-                      echo "| Offline | $OFFLINE_RESULT |"
-                      echo "| Online | $ONLINE_RESULT |"
-                  } >> "$GITHUB_STEP_SUMMARY"
-                  test "$PREPARE_RESULT" = success
-                  if [[ "$SHOULD_RUN" != true ]]; then
-                      echo "No device tests ran. See preparation for the selection or build-age skip reason." >> "$GITHUB_STEP_SUMMARY"
-                      exit 0
-                  fi
-                  if [[ "$HAS_OFFLINE" == true ]]; then test "$OFFLINE_RESULT" = success; fi
-                  if [[ "$HAS_ONLINE" == true ]]; then test "$ONLINE_RESULT" = success; fi

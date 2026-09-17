@@ -7,42 +7,27 @@ usage() {
     exit 2
 }
 
-resolve_release() {
-    local repository=$1 tag_pattern=$2 channel=$3
-    gh api "repos/$repository/releases?per_page=100" --paginate | jq -sc \
-        --arg repository "$repository" --arg tag_pattern "$tag_pattern" --arg channel "$channel" '
+resolve() {
+    gh api 'repos/ente/nightly/releases?per_page=100' --paginate | jq -esc '
         [add[]
-            | select(.draft == false and (.tag_name | test($tag_pattern)))
+            | select(.draft == false and (.tag_name | test("^auth-v[0-9]+\\.[0-9]+\\.[0-9]+-(beta|rc)$")))
             | . as $release | .assets[]?
             | select(.state == "uploaded" and (.name | test("^ente-auth-[^/]+\\.apk$")))
             | {
-                channel: (if $channel == "prerelease" then ($release.tag_name | capture("-(?<channel>beta|rc)$").channel) else $channel end),
+                channel: ($release.tag_name | capture("-(?<channel>beta|rc)$").channel),
                 release_tag: $release.tag_name,
                 apk_asset_id: .id,
                 apk_name: .name,
                 apk_created_at: .created_at,
                 apk_sha256: .digest,
-                source_repository: $repository
+                source_repository: "ente/nightly"
             }
-        ] | if length == 0 then empty else max_by(.apk_created_at) end'
-}
-
-resolve() {
-    local metadata
-    metadata=$(resolve_release ente/nightly '^auth-v[0-9]+\.[0-9]+\.[0-9]+-(beta|rc)$' prerelease) || return
-    if [[ -z "$metadata" ]]; then
-        metadata=$(resolve_release ente/ente '^auth-v[0-9]+\.[0-9]+\.[0-9]+$' stable) || return
-    fi
-    if [[ -z "$metadata" ]]; then
-        echo "No compatible published Auth APK was found" >&2
-        return 1
-    fi
-    jq -ec '
-        if (.apk_asset_id | type == "number") and
+        ] | if length == 0 then error("No compatible Auth nightly APK was found") else max_by(.apk_created_at) end
+        | if (.apk_asset_id | type == "number") and
            (.apk_created_at | type == "string" and length > 0) and
            (.apk_sha256 | type == "string" and test("^sha256:[a-fA-F0-9]{64}$"))
         then . else error("Auth APK is missing immutable provenance or a valid SHA-256 digest") end
-    ' <<< "$metadata"
+    '
 }
 
 download() {

@@ -2,26 +2,36 @@
 
 set -euo pipefail
 
-export MAESTRO_CLI_NO_ANALYTICS=1
-export MAESTRO_API_URL=http://127.0.0.1:9
-
-if [[ $# -ne 1 ]]; then
-    echo "Usage: $0 <phase>" >&2
-    exit 2
+cd "$(dirname "$0")/.."
+: "${AUTH_APK_PATH:?Set AUTH_APK_PATH to the Auth nightly APK}"
+export APP_ID=${APP_ID:-io.ente.auth.independent}
+export MAESTRO_DEVICE=${ANDROID_SERIAL:-}
+export AUTH_FIXTURE_COMPOSE_PROJECT=${AUTH_FIXTURE_COMPOSE_PROJECT:-ente-auth-fixture}
+ONLINE_ENDPOINT=${ONLINE_ENDPOINT:-http://127.0.0.1:8080}
+ONLINE_OTT=${ONLINE_OTT:-123456}
+if [[ $# -eq 0 ]]; then
+    suite_names=$(python3 scripts/suites.py --suite online | jq -r '.online | join(" ")')
+    read -r -a suites <<< "$suite_names"
+else
+    suites=("$@")
 fi
-phase=$1
+for suite in "${suites[@]}"; do
+    case "$suite" in
+        account-auth|recovery-password|data-sync|entity-lifecycle) ;;
+        *) echo "Unknown Auth online suite: $suite" >&2; exit 2 ;;
+    esac
+done
 artifacts_dir=${MAESTRO_ARTIFACTS_DIR:-artifacts/maestro}
+mkdir -p "$artifacts_dir"
 if [[ ${GITHUB_ACTIONS:-} != true ]]; then
-    mkdir -p "$artifacts_dir"
-    artifacts_dir=$(mktemp -d "$artifacts_dir/$phase-XXXXXX")
-    echo "Results: $artifacts_dir"
+    artifacts_dir=$(mktemp -d "$artifacts_dir/online-XXXXXX")
 fi
-# Keep tag chips on one row; see the tag-sheet limitation in docs/auth-test-rollout.md.
+echo "Results: $artifacts_dir"
+# Wrapped tag chips currently have incorrect accessibility bounds in Auth.
 : "${FIXTURE_MUTATION_TAG:=CI}"
 : "${FIXTURE_LIFECYCLE_ACCOUNT:=lifecycle.fixture@example.org}"
 : "${FIXTURE_LIFECYCLE_EDITED_ACCOUNT:=automation.fixture@example.org}"
 : "${FIXTURE_LIFECYCLE_TAG:=Flow}"
-: "${ONLINE_CODE_ACCOUNT:=first-key-${GITHUB_RUN_ID:-local}-${GITHUB_RUN_ATTEMPT:-1}@example.org}"
 credentials=museum/fixtures/public-test-credentials.json
 fixture_basic_email=$(jq --raw-output '.accounts.basic.email' "$credentials")
 fixture_basic_password=$(jq --raw-output '.accounts.basic.password' "$credentials")
@@ -33,14 +43,6 @@ fixture_recovery_email=$(jq --raw-output '.accounts.recovery.email' "$credential
 fixture_recovery_password=$(jq --raw-output '.accounts.recovery.password' "$credentials")
 fixture_recovery_key=$(jq --raw-output '.accounts.recovery.recoveryKey' "$credentials")
 fixture_recovered_password=$(jq --raw-output '.accounts.recovery.recoveredPassword' "$credentials")
-debug_dir="$artifacts_dir/online-debug/$phase"
-results_dir="$artifacts_dir/online-results/$phase"
-runtime_dir="$artifacts_dir/runtime-health"
-preparation_count=0
-tests_completed=false
-startup_started=false
-
-mkdir -p "$debug_dir" "$results_dir" "$runtime_dir"
 
 record_runtime_health() {
     local status=$1
@@ -48,10 +50,6 @@ record_runtime_health() {
     # Bash 3.2 can report status 0 after an unbound-variable error in a function.
     if [[ "$tests_completed" == false && $status -eq 0 ]]; then
         status=1
-    fi
-    if [[ "$startup_started" == true ]]; then
-        adb exec-out uiautomator dump /dev/tty > "$debug_dir/ui-hierarchy.txt" 2>&1 || true
-        adb logcat -d > "$debug_dir/startup-logcat.txt" 2>&1 || true
     fi
     if [[ $status -ne 0 ]]; then
         # Capture while the emulator still exists, before the action tears it down.
@@ -69,17 +67,11 @@ record_runtime_health() {
             adb shell dumpsys connectivity || true
         } > "$runtime_dir/$phase-device.txt" 2>&1
         # The next independent suite restores the fixture and removes these containers.
-        if [[ ${AUTH_FIXTURE_DB_MODE:-compose} == compose && -n ${AUTH_FIXTURE_COMPOSE_PROJECT:-} ]]; then
-            docker compose --project-name "$AUTH_FIXTURE_COMPOSE_PROJECT" --file museum/compose.yaml \
-                logs --no-color > "$runtime_dir/$phase-backend.log" 2>&1 || true
-        fi
+        docker compose --project-name "$AUTH_FIXTURE_COMPOSE_PROJECT" --file museum/compose.yaml \
+            logs --no-color > "$runtime_dir/$phase-backend.log" 2>&1 || true
     fi
     exit "$status"
 }
-trap 'record_runtime_health "$?"' EXIT
-
-adb shell settings put system screen_off_timeout 2147483647
-adb install -r "$AUTH_APK_PATH"
 
 run_maestro() {
     local result_name=$1
@@ -107,7 +99,7 @@ prepare_fixture_app() {
     local app_data_dir app_owner current_user preferences_dir preferences_file
 
     adb shell pm clear "$APP_ID" >/dev/null
-    if [[ ${AUTH_APP_PREPARATION:-root-prefs} == "ui" ]]; then
+    if [[ ${AUTH_APP_PREPARATION:-ui} == "ui" ]]; then
         preparation_count=$((preparation_count + 1))
         run_maestro "prepare-endpoint-$preparation_count" \
             maestro/auth/online/subflows/configure-online-test-endpoint-ui.yaml
@@ -148,18 +140,6 @@ prepare_fixture_app() {
 
 query_fixture_db() {
     local query=$1
-    if [[ ${AUTH_FIXTURE_DB_MODE:-compose} == native ]]; then
-        "$AUTH_POSTGRES_BIN/psql" \
-            --host=127.0.0.1 \
-            --port="$AUTH_POSTGRES_PORT" \
-            --tuples-only \
-            --no-align \
-            --field-separator='|' \
-            --username=ente_auth \
-            --dbname=ente_auth_test \
-            --command="$query"
-        return
-    fi
     docker compose \
         --project-name "$AUTH_FIXTURE_COMPOSE_PROJECT" \
         --file museum/compose.yaml \
@@ -169,34 +149,16 @@ query_fixture_db() {
         --command="$query"
 }
 
-wait_for_first_auth_entity() {
-    local previous_max_user_id=$1
-    local state
+wait_for_database() {
+    local query=$1 state
     for _ in {1..60}; do
-        state=$(query_fixture_db \
-            "SELECT (SELECT COUNT(*) FROM authenticator_key WHERE user_id > $previous_max_user_id), (SELECT COUNT(*) FROM authenticator_entity WHERE user_id > $previous_max_user_id);")
-        if [[ "$state" == "1|1" ]]; then
+        state=$(query_fixture_db "$query")
+        if [[ "$state" == t ]]; then
             return
         fi
         sleep 1
     done
-    echo "Timed out waiting for the new account's first Auth key and entity; last state: $state" >&2
-    return 1
-}
-
-wait_for_bulk_mutation() {
-    local user_id=$1
-    local previous_marker=$2
-    local updated_count
-    for _ in {1..60}; do
-        updated_count=$(query_fixture_db \
-            "SELECT COUNT(*) FROM authenticator_entity WHERE user_id = $user_id AND updated_at > $previous_marker;")
-        if [[ "$updated_count" -ge 2 ]]; then
-            return
-        fi
-        sleep 1
-    done
-    echo "Timed out waiting for two persisted Auth mutations for fixture user $user_id; observed: $updated_count" >&2
+    echo "Timed out waiting for database condition: $query (last result: $state)" >&2
     return 1
 }
 
@@ -229,25 +191,14 @@ wait_for_entity_count_and_quiet() {
     return 1
 }
 
-wait_for_deleted_entity_count() {
-    local user_id=$1
-    local expected_count=$2
-    local deleted_count
-
-    for _ in {1..60}; do
-        deleted_count=$(query_fixture_db \
-            "SELECT COUNT(*) FROM authenticator_entity WHERE user_id = $user_id AND is_deleted;")
-        if [[ "$deleted_count" == "$expected_count" ]]; then
-            return
-        fi
-        sleep 1
-    done
-    echo "Timed out waiting for $expected_count deleted Auth entity for fixture user $user_id; observed: $deleted_count" >&2
-    return 1
-}
-
 run_account_auth() {
-    local fixture_totp_code previous_max_user_id
+    local fixture_totp_code previous_max_user_id signup_email signup_password
+    signup_email="auth-maestro-signup-fixture-$(openssl rand -hex 6)@example.org"
+    signup_password="AuthCi-$(openssl rand -hex 10)!"
+    local code_account=first-key.fixture@example.org
+    if [[ ${GITHUB_ACTIONS:-} == true ]]; then
+        echo "::add-mask::$signup_password"
+    fi
 
     prepare_fixture_app
     run_maestro prepared-totp-start \
@@ -264,22 +215,22 @@ run_account_auth() {
         maestro/auth/online/prepared-totp-login-complete.yaml
     prepare_fixture_app
     run_maestro unknown-login \
-        -e MISSING_EMAIL="$MISSING_EMAIL" \
+        -e MISSING_EMAIL=missing.fixture@example.org \
         maestro/auth/online/unknown-login.yaml
     previous_max_user_id=$(query_fixture_db "SELECT MAX(user_id) FROM users;")
     prepare_fixture_app
     run_maestro signup-first-key \
         -e ONLINE_OTT="$ONLINE_OTT" \
-        -e ONLINE_EMAIL="$ONLINE_EMAIL" \
-        -e ONLINE_PASSWORD="$ONLINE_PASSWORD" \
-        -e ONLINE_CODE_ACCOUNT="$ONLINE_CODE_ACCOUNT" \
+        -e ONLINE_EMAIL="$signup_email" \
+        -e ONLINE_PASSWORD="$signup_password" \
+        -e ONLINE_CODE_ACCOUNT="$code_account" \
         maestro/auth/online/signup-recovery-login.yaml
-    wait_for_first_auth_entity "$previous_max_user_id"
+    wait_for_database "SELECT (SELECT COUNT(*) = 1 FROM authenticator_key WHERE user_id > $previous_max_user_id) AND (SELECT COUNT(*) = 1 FROM authenticator_entity WHERE user_id > $previous_max_user_id);"
     prepare_fixture_app
     run_maestro signup-cold-login \
-        -e ONLINE_EMAIL="$ONLINE_EMAIL" \
-        -e ONLINE_PASSWORD="$ONLINE_PASSWORD" \
-        -e ONLINE_CODE_ACCOUNT="$ONLINE_CODE_ACCOUNT" \
+        -e ONLINE_EMAIL="$signup_email" \
+        -e ONLINE_PASSWORD="$signup_password" \
+        -e ONLINE_CODE_ACCOUNT="$code_account" \
         maestro/auth/online/password-login.yaml
 }
 
@@ -320,7 +271,7 @@ run_data_sync() {
     run_maestro prepared-bulk-mutation-start \
         -e FIXTURE_MUTATION_TAG="$FIXTURE_MUTATION_TAG" \
         maestro/auth/online/prepared-bulk-mutation-start.yaml
-    wait_for_bulk_mutation "$fixture_basic_user_id" "$mutation_marker"
+    wait_for_database "SELECT COUNT(*) >= 2 FROM authenticator_entity WHERE user_id = $fixture_basic_user_id AND updated_at > $mutation_marker;"
 
     prepare_fixture_app
     run_maestro prepared-bulk-mutation-complete \
@@ -384,31 +335,51 @@ run_entity_lifecycle_finish() {
     run_maestro prepared-entity-lifecycle-delete \
         -e FIXTURE_LIFECYCLE_EDITED_ACCOUNT="$FIXTURE_LIFECYCLE_EDITED_ACCOUNT" \
         maestro/auth/online/prepared-entity-lifecycle-delete.yaml
-    wait_for_deleted_entity_count "$fixture_basic_user_id" 1
+    wait_for_database "SELECT COUNT(*) = 1 FROM authenticator_entity WHERE user_id = $fixture_basic_user_id AND is_deleted;"
 }
 
-case "$phase" in
-    startup)
-        prepare_fixture_app
-        adb logcat -c
-        startup_started=true
-        run_maestro startup maestro/auth/online/startup.yaml
-        ;;
-    account-auth) run_account_auth ;;
-    recovery-reset) run_recovery_reset ;;
-    recovery-verification) run_recovery_verification ;;
-    data-sync) run_data_sync ;;
-    entity-lifecycle)
-        run_entity_lifecycle_create
-        run_entity_lifecycle_mutate
-        run_entity_lifecycle_finish
-        ;;
-    entity-lifecycle-create) run_entity_lifecycle_create ;;
-    entity-lifecycle-mutate) run_entity_lifecycle_mutate ;;
-    entity-lifecycle-finish) run_entity_lifecycle_finish ;;
-    *)
-        echo "Unknown Auth online test phase: $phase" >&2
-        exit 2
-        ;;
-esac
-tests_completed=true
+run_suite() (
+    set -e
+    phase=$1
+    debug_dir="$artifacts_dir/online-debug/$phase"
+    results_dir="$artifacts_dir/online-results/$phase"
+    runtime_dir="$artifacts_dir/runtime-health"
+    preparation_count=0
+    tests_completed=false
+
+    mkdir -p "$debug_dir" "$results_dir" "$runtime_dir"
+    trap 'record_runtime_health "$?"' EXIT
+    ALLOW_AUTH_FIXTURE_RESTORE=1 scripts/fixtures/restore-auth-fixture.sh
+    case "$phase" in
+        account-auth) run_account_auth ;;
+        recovery-password)
+            run_recovery_reset
+            run_recovery_verification
+            ;;
+        data-sync) run_data_sync ;;
+        entity-lifecycle)
+            run_entity_lifecycle_create
+            run_entity_lifecycle_mutate
+            run_entity_lifecycle_finish
+            ;;
+    esac
+    tests_completed=true
+)
+
+adb shell settings put system screen_off_timeout 2147483647
+adb install -r "$AUTH_APK_PATH"
+trap 'docker compose --project-name "$AUTH_FIXTURE_COMPOSE_PROJECT" --file museum/compose.yaml down --volumes --remove-orphans' EXIT
+
+status=0
+for suite in "${suites[@]}"; do
+    # Do not call run_suite in an if/||: that disables errexit inside its functions.
+    set +e
+    run_suite "$suite"
+    suite_status=$?
+    set -e
+    echo "$suite: exit $suite_status"
+    if [[ $suite_status -ne 0 ]]; then
+        status=$suite_status
+    fi
+done
+exit "$status"

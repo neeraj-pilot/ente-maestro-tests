@@ -14,35 +14,18 @@ appId: ${APP_ID}
 - extendedWaitUntil:
     visible: "Enter account details"
     timeout: 10000
-- runFlow:
-    when:
-      notVisible:
-        id: auth_manual_secret
-    commands:
-      - inputText: ${ISSUER}
-      - tapOn:
-          point: "65%,25%"
-      - inputText: ${SECRET}
-      - tapOn:
-          point: "65%,30%"
-      - inputText: ${ACCOUNT}
-- runFlow:
-    when:
-      visible:
-        id: auth_manual_secret
-    commands:
-      - tapOn:
-          id: auth_manual_issuer
-          point: "50%,70%"
-      - inputText: ${ISSUER}
-      - tapOn:
-          id: auth_manual_secret
-          point: "50%,70%"
-      - inputText: ${SECRET}
-      - tapOn:
-          id: auth_manual_account
-          point: "50%,70%"
-      - inputText: ${ACCOUNT}
+- tapOn:
+    id: auth_manual_issuer
+    point: "50%,70%"
+- inputText: ${ISSUER}
+- tapOn:
+    id: auth_manual_secret
+    point: "50%,70%"
+- inputText: ${SECRET}
+- tapOn:
+    id: auth_manual_account
+    point: "50%,70%"
+- inputText: ${ACCOUNT}
 - runFlow:
     when:
       notVisible: "Save"

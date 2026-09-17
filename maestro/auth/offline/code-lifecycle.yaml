@@ -17,19 +17,8 @@ tags:
       SECRET: "JBSWY3DPEHPK3PXP"
       ACCOUNT: "security@github.test"
       NOTE: "Primary admin account. Keep recovery contacts current."
-- runFlow:
-    when:
-      notVisible:
-        id: "auth_code_item"
-    commands:
-      - longPressOn: "GitHub"
-- runFlow:
-    when:
-      visible:
-        id: "auth_code_item"
-    commands:
-      - longPressOn:
-          id: "auth_code_item"
+- longPressOn:
+    id: "auth_code_item"
 - runFlow:
     when:
       visible:
@@ -46,53 +35,20 @@ tags:
           id: "auth_notes_sheet"
       - assertVisible: "Copy"
       - tapOn: "Close"
-      - runFlow:
-          when:
-            notVisible:
-              id: "auth_code_item"
-          commands:
-            - longPressOn: "GitHub"
-      - runFlow:
-          when:
-            visible:
-              id: "auth_code_item"
-          commands:
-            - longPressOn:
-                id: "auth_code_item"
+      - longPressOn:
+          id: "auth_code_item"
 - assertVisible: "(?s)^Pin.*"
 - assertVisible: "(?s)^Add tag.*"
 - assertVisible: "(?s)^Trash.*"
 - tapOn: "(?s)^Pin.*"
 - waitForAnimationToEnd
-- runFlow:
-    when:
-      notVisible:
-        id: "auth_code_item"
-    commands:
-      - longPressOn: "GitHub"
-- runFlow:
-    when:
-      visible:
-        id: "auth_code_item"
-    commands:
-      - longPressOn:
-          id: "auth_code_item"
+- longPressOn:
+    id: "auth_code_item"
 - assertVisible: "(?s)^Unpin.*"
 - tapOn: "(?s)^Unpin.*"
 - assertVisible: ".*security@github.test.*"
-- runFlow:
-    when:
-      notVisible:
-        id: "auth_code_item"
-    commands:
-      - longPressOn: "GitHub"
-- runFlow:
-    when:
-      visible:
-        id: "auth_code_item"
-    commands:
-      - longPressOn:
-          id: "auth_code_item"
+- longPressOn:
+    id: "auth_code_item"
 - assertVisible: "(?s)^Edit\nEdit$"
 - tapOn: "(?s)^Edit\nEdit$"
 - extendedWaitUntil:

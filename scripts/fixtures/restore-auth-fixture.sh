@@ -9,7 +9,7 @@ fi
 
 repo_root=$(cd "$(dirname "$0")/../.." && pwd)
 compose_file="$repo_root/museum/compose.yaml"
-dump="$repo_root/museum/fixtures/auth-fixture-v2.dump"
+dump="${AUTH_FIXTURE_DIR:-$repo_root/museum/fixtures}/auth-fixture-v2.dump"
 project=${AUTH_FIXTURE_COMPOSE_PROJECT:-ente-auth-fixture}
 compose=(docker compose --project-name "$project" --file "$compose_file")
 
@@ -47,8 +47,20 @@ fi
     pg_restore --exit-on-error --no-owner --no-privileges \
     --username=ente_auth --dbname=ente_auth_test < "$dump"
 
-"$repo_root/scripts/fixtures/verify-restored-auth-fixture.sh" \
-    "${compose[@]}" exec -T postgres psql
+expected=$(jq -r '
+    (.accounts | length) as $users |
+    [.accounts[].codes[]] as $codes |
+    [.accounts[] | select(.totpSecret != null)] as $totp |
+    [$users, $users, ($totp | length), $users, ($codes | length), 0] | join("|")
+' "${AUTH_FIXTURE_DIR:-$repo_root/museum/fixtures}/public-test-credentials.json")
+
+actual=$("${compose[@]}" exec -T postgres psql --tuples-only --no-align --field-separator='|' \
+    --username=ente_auth --dbname=ente_auth_test \
+    --command="SELECT (SELECT COUNT(*) FROM users), (SELECT COUNT(*) FROM users WHERE source = 'authMaestroFixture'), (SELECT COUNT(*) FROM users WHERE is_two_factor_enabled), (SELECT COUNT(*) FROM authenticator_key), (SELECT COUNT(*) FROM authenticator_entity), (SELECT COUNT(*) FROM authenticator_entity WHERE is_deleted);")
+if [[ "$actual" != "$expected" ]]; then
+    echo "Restored Auth fixture state: expected $expected, got $actual" >&2
+    exit 1
+fi
 
 "${compose[@]}" up --detach museum
 for _ in {1..60}; do

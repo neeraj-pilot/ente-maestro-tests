@@ -8,7 +8,7 @@ trap 'rm -rf "$temp_dir"' EXIT
 mkdir -p "$temp_dir/bin"
 export PATH="$temp_dir/bin:$PATH"
 export MOCK_CALLS="$temp_dir/calls"
-export NIGHTLY_RELEASES="$temp_dir/nightly.json" STABLE_RELEASES="$temp_dir/stable.json"
+export NIGHTLY_RELEASES="$temp_dir/nightly.json"
 digest=$(printf 'fixture APK' | shasum -a 256 | awk '{print $1}')
 
 jq -n --arg digest "sha256:$digest" '
@@ -24,7 +24,6 @@ jq -n --arg digest "sha256:$digest" '
      (release(202; "auth-v4.4.26-beta"; "2026-08-02T10:00:00Z") | .assets[0].state = "new"),
      (release(203; "auth-v4.4.26-beta"; "2026-08-02T11:00:00Z") | .assets[0].name = "ente-locker.apk")]
 ' > "$NIGHTLY_RELEASES"
-jq '[.[] | select(.tag_name == "auth-v4.4.26")]' "$NIGHTLY_RELEASES" > "$STABLE_RELEASES"
 cp "$NIGHTLY_RELEASES" "$temp_dir/releases.json"
 
 cat > "$temp_dir/bin/gh" <<'SH'
@@ -36,7 +35,6 @@ case "$*" in
         [[ ${API_MODE:-} != fail ]] || exit 22
         cat "$NIGHTLY_RELEASES"
         ;;
-    'api repos/ente/ente/releases?per_page=100 --paginate') cat "$STABLE_RELEASES" ;;
     'api -H Accept: application/octet-stream repos/ente/'*'/releases/assets/'*)
         case ${DOWNLOAD_MODE:-} in
             fail) exit 1 ;;
@@ -61,9 +59,6 @@ metadata=$("$root/scripts/apk.sh" resolve)
 jq -c '.[0:1], .[1:]' "$temp_dir/releases.json" > "$NIGHTLY_RELEASES"
 [[ $("$root/scripts/apk.sh" resolve) == "$metadata" ]]
 
-printf '[]' > "$NIGHTLY_RELEASES"
-[[ $("$root/scripts/apk.sh" resolve | jq -r '[.channel, .source_repository, .apk_asset_id] | @tsv') == $'stable\tente/ente\t104' ]]
-
 expect_failure() {
     if "$@" > "$temp_dir/output" 2> "$temp_dir/error"; then
         echo "Expected failure: $*" >&2
@@ -74,9 +69,9 @@ expect_failure() {
 : > "$MOCK_CALLS"
 expect_failure env API_MODE=fail "$root/scripts/apk.sh" resolve
 [[ $(wc -l < "$MOCK_CALLS") -eq 1 ]]
-printf '[]' > "$STABLE_RELEASES"
+printf '[]' > "$NIGHTLY_RELEASES"
 expect_failure "$root/scripts/apk.sh" resolve
-grep -Fq 'No compatible published Auth APK' "$temp_dir/error"
+grep -Fq 'No compatible Auth nightly APK' "$temp_dir/error"
 for change in '.assets[0].digest = null' '.assets[0].digest = "sha256:bad"' '.assets[0].created_at = null' '.assets[0].id = null'; do
     jq "[.[] | select(.tag_name == \"auth-v4.4.25-rc\") | $change]" "$temp_dir/releases.json" > "$NIGHTLY_RELEASES"
     expect_failure "$root/scripts/apk.sh" resolve
