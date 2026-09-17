@@ -5,14 +5,19 @@ set -euo pipefail
 repo_root=$(cd "$(dirname "$0")/.." && pwd)
 compose_file="$repo_root/museum/compose.yaml"
 fixtures_dir="$repo_root/museum/fixtures"
-manifest="$fixtures_dir/manifest.json"
 project="ente-auth-fixture-generator"
-ente_revision=$(jq -r '.enteSourceRevision' "$manifest")
-museum_image=$(jq -r '.museumImage' "$manifest")
-museum_server_revision=$(jq -r '.museumServerRevision' "$manifest")
-postgres_image=$(jq -r '.postgresImage' "$manifest")
 
 compose=(docker compose --project-name "$project" --file "$compose_file")
+config=$("${compose[@]}" config --format json)
+museum_image=$(jq -er '.services.museum.image' <<< "$config")
+postgres_image=$(jq -er '.services.postgres.image' <<< "$config")
+ente_revision=$(cargo metadata --locked --format-version 1 \
+    --manifest-path "$repo_root/tools/auth-fixture-generator/Cargo.toml" | jq -er '
+        [.packages[] | select(.name == "ente-accounts" or .name == "ente-core")
+            | .source | split("#")[1]] | unique |
+        if length == 1 and (.[0] | test("^[0-9a-f]{40}$"))
+        then .[0] else error("Expected one pinned Ente revision") end
+    ')
 staging_dir=$(mktemp -d)
 export AUTH_FIXTURE_DIR="$staging_dir"
 credentials="$staging_dir/public-test-credentials.json"
@@ -26,11 +31,7 @@ trap cleanup EXIT
 
 "${compose[@]}" down --volumes --remove-orphans >/dev/null 2>&1 || true
 "${compose[@]}" up --wait --wait-timeout 60
-observed_museum_revision=$(curl --fail --silent http://127.0.0.1:8080/ping | jq --raw-output '.id')
-if [[ "$observed_museum_revision" != "$museum_server_revision" ]]; then
-    echo "Museum image does not match the pinned server revision" >&2
-    exit 1
-fi
+museum_server_revision=$(curl --fail --silent http://127.0.0.1:8080/ping | jq -er '.id')
 
 (
     cd "$repo_root/tools/auth-fixture-generator"

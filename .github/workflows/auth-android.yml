@@ -171,8 +171,6 @@ jobs:
                   emulator-options: -no-window -gpu host -feature -Vulkan -accel on -no-metrics -no-snapshot -noaudio -no-boot-anim -memory 4096
                   disable-animations: true
                   script: case "$AUTH_TEST_SUITE" in all|offline|online) scripts/run-auth-$AUTH_TEST_GROUP.sh ;; *) scripts/run-auth-$AUTH_TEST_GROUP.sh "$AUTH_TEST_SUITE" ;; esac
-
-
             - name: Upload results
               if: always() && steps.tests.outcome != 'skipped'
               uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -204,10 +202,10 @@ jobs:
                   path: |
                       artifacts/runtime-health
                       artifacts/maestro/offline
-                      artifacts/maestro/online/runtime-health
-                      artifacts/maestro/online/debug/account-auth/prepared-totp-start
-                      artifacts/maestro/online/debug/account-auth/prepared-totp-complete
-                      artifacts/maestro/online/debug/recovery-password
-                      artifacts/maestro/online/debug/data-sync
-                      artifacts/maestro/online/debug/entity-lifecycle
+                      artifacts/maestro/online/*/runtime-health
+                      artifacts/maestro/online/*/debug/account-auth/totp-start
+                      artifacts/maestro/online/*/debug/account-auth/totp-complete
+                      artifacts/maestro/online/*/debug/recovery-password
+                      artifacts/maestro/online/*/debug/data-sync
+                      artifacts/maestro/online/*/debug/entity-lifecycle
                   retention-days: 3

@@ -47,6 +47,9 @@ class FixtureGenerationTests(unittest.TestCase):
                 shutil.copytree(ROOT / "museum", root / "museum")
                 (root / "tools/auth-fixture-generator").mkdir(parents=True)
                 fixtures = root / "museum/fixtures"
+                source_manifest = json.loads((fixtures / "manifest.json").read_text())
+                stale_manifest = {**source_manifest, "enteSourceRevision": "0" * 40}
+                (fixtures / "manifest.json").write_text(json.dumps(stale_manifest))
                 before = {path.name: path.read_bytes() for path in fixtures.iterdir() if path.is_file()}
                 bin_dir = root / "bin"
                 bin_dir.mkdir()
@@ -55,6 +58,10 @@ class FixtureGenerationTests(unittest.TestCase):
                 mocks = {
                     "cargo": '''#!/usr/bin/env bash
 set -eu
+if [[ "$1" == metadata ]]; then
+    printf '%s\\n' "$SOURCE_METADATA"
+    exit
+fi
 output=${@: -1}
 [[ "$output" == "$AUTH_FIXTURE_DIR/public-test-credentials.json" ]]
 if [[ "$*" == *" generate "* ]]; then
@@ -67,6 +74,7 @@ fi
                     "docker": '''#!/usr/bin/env bash
 set -eu
 case "$*" in
+    *'config --format json'*) printf '%s\\n' "$SOURCE_COMPOSE" ;;
     *pg_dump*) printf 'generated snapshot' ;;
     *pg_restore*) [[ "$FAILURE" != restore ]] || exit 42 ;;
     *"source = 'authMaestroFixture'"*)
@@ -90,6 +98,14 @@ echo '{"id":"0137a0c754ac0fe4f2c4c7421727c349327eb990"}'
                         "TMPDIR": str(staging),
                         "FAILURE": failure,
                         "SOURCE_CREDENTIALS": str(ROOT / "museum/fixtures/public-test-credentials.json"),
+                        "SOURCE_METADATA": json.dumps({"packages": [
+                            {"name": name, "source": "git+https://github.com/ente-io/ente.git#" + source_manifest["enteSourceRevision"]}
+                            for name in ("ente-accounts", "ente-core")
+                        ]}),
+                        "SOURCE_COMPOSE": json.dumps({"services": {
+                            name: {"image": source_manifest[key]}
+                            for name, key in (("museum", "museumImage"), ("postgres", "postgresImage"))
+                        }}),
                     },
                     capture_output=True, text=True,
                 )
@@ -101,6 +117,9 @@ echo '{"id":"0137a0c754ac0fe4f2c4c7421727c349327eb990"}'
                     self.assertEqual(dump, b"generated snapshot")
                     manifest = json.loads(after["manifest.json"])
                     self.assertEqual(manifest["dumpSha256"], hashlib.sha256(dump).hexdigest())
+                    self.assertEqual(manifest["enteSourceRevision"], source_manifest["enteSourceRevision"])
+                    self.assertEqual(manifest["museumImage"], source_manifest["museumImage"])
+                    self.assertEqual(manifest["postgresImage"], source_manifest["postgresImage"])
                 else:
                     self.assertEqual(result.returncode, {"generate": 41, "restore": 42, "counts": 1, "verify": 43}[failure], result.stderr)
                     self.assertEqual(after, before, "Failed generation changed the checked-in fixture")

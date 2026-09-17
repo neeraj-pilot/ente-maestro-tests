@@ -217,14 +217,14 @@ for mode in absent failed-command; do
         2> "$temp_dir/error" || status=$?
     [[ $status -eq 1 && ! -s "$MOCK_CALLS" ]]
     grep -Fq 'Android has no active default network' "$temp_dir/error"
-    grep -Fq 'Active default network:' "$temp_dir/online-network-$mode/runtime-health/recovery-password-device.txt"
+    grep -Fq 'Active default network:' "$temp_dir/online-network-$mode"/*/runtime-health/recovery-password-device.txt
 done
 
 status=0
 run_online disconnected ONLINE_ENDPOINT=http://10.0.2.2:8080 MOCK_DEVICE_STATUS=23 || status=$?
 [[ $status -eq 23 ]]
-grep -Fxq 'fixture-memory-info' "$temp_dir/online-disconnected/runtime-health/recovery-password-device.txt"
-grep -Fxq 'fixture-backend-log' "$temp_dir/online-disconnected/runtime-health/recovery-password-backend.log"
+grep -Fxq 'fixture-memory-info' "$temp_dir/online-disconnected"/*/runtime-health/recovery-password-device.txt
+grep -Fxq 'fixture-backend-log' "$temp_dir/online-disconnected"/*/runtime-health/recovery-password-backend.log
 
 for mode in fail missing empty; do
     status=0
@@ -234,7 +234,7 @@ for mode in fail missing empty; do
     if [[ "$mode" == fail ]]; then expected=42; fi
     [[ $status -eq $expected ]]
     if [[ "$mode" != fail ]]; then grep -Fq 'nonempty JUnit report' "$temp_dir/error"; fi
-    grep -Fxq 'fixture-memory-info' "$temp_dir/online-$mode/runtime-health/recovery-password-device.txt"
+    grep -Fxq 'fixture-memory-info' "$temp_dir/online-$mode"/*/runtime-health/recovery-password-device.txt
 done
 
 # Suites share one installation, but each gets a clean backend. A failed phase
@@ -242,7 +242,7 @@ done
 MOCK_ONLINE_SUITES=all run_online all TOTP_TIME=60
 [[ $(grep -c '^install ' "$temp_dir/online-device-calls") -eq 1 ]]
 [[ $(wc -l < "$temp_dir/backend-calls") -eq 4 ]]
-[[ $(find "$temp_dir/online-all/results" -name '*.xml' | wc -l) -eq 17 ]]
+[[ $(find "$temp_dir/online-all" -path '*/results/*' -name '*.xml' | wc -l) -eq 17 ]]
 
 status=0
 MOCK_ONLINE_SUITES="recovery-password data-sync" run_online combined \
