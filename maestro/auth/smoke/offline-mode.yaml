@@ -5,6 +5,7 @@ tags:
   - android
   - offline
   - smoke
+  - basics
 ---
 - launchApp:
     clearState: true

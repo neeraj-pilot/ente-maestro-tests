@@ -13,7 +13,7 @@ export MAESTRO_ARTIFACTS_DIR="$temp_dir/runs"
 touch "$temp_dir/auth.apk"
 
 # Local and hosted runs must resolve the same flow lists. No device is touched.
-if grep -RL '^appId: ${APP_ID}$' "$root/maestro/auth" --include='*.yaml' | grep -q .; then
+if grep -RL '^appId: ${APP_ID}$' "$root/maestro/auth" --include='*.yaml' --exclude='config.yaml' | grep -q .; then
     echo "Every Auth flow must honor the runner's APP_ID" >&2
     exit 1
 fi
@@ -34,7 +34,7 @@ cat > "$temp_dir/bin/maestro" <<'SH'
 if [[ "$1" == --version ]]; then
     echo 2.10.0
 else
-    printf '%s\n' "$@" | sed -n '/^maestro\/.*\.yaml$/p' >> "$MOCK_CALLS"
+    printf '%s\n' "$@" >> "$MOCK_CALLS"
     [[ ${MOCK_MAESTRO_MODE:-} != fail ]] || exit 42
     for argument in "$@"; do
         if [[ "$argument" == "${MOCK_FAIL_FLOW:-}" ]]; then exit 42; fi
@@ -51,36 +51,19 @@ else
 fi
 SH
 chmod +x "$temp_dir/bin/adb" "$temp_dir/bin/maestro"
-for suite in basics organization tags trash all; do
-    : > "$MOCK_CALLS"
-    if [[ "$suite" == all ]]; then
-        ANDROID_SERIAL=fixture-device AUTH_APK_PATH="$temp_dir/auth.apk" \
-            "$root/scripts/run-auth-offline.sh"
-        matrix=$(python3 "$root/scripts/suites.py" --suite offline)
-    else
-        ANDROID_SERIAL=fixture-device AUTH_APK_PATH="$temp_dir/auth.apk" \
-            "$root/scripts/run-auth-offline.sh" "$suite"
-        matrix=$(python3 "$root/scripts/suites.py" --suite "$suite")
-    fi
-    expected=$(jq -r '.offline[].flows[]' <<< "$matrix")
-    [[ $(< "$MOCK_CALLS") == "$expected" ]]
-done
+# Selection is delegated to Maestro; this runner installs once and invokes it once.
+ANDROID_SERIAL=fixture-device AUTH_APK_PATH="$temp_dir/auth.apk" \
+    "$root/scripts/run-auth-offline.sh"
+grep -Fxq 'maestro/auth' "$MOCK_CALLS"
+grep -Fxq 'basics,organization,tags,trash' "$MOCK_CALLS"
 
-[[ $(find "$temp_dir/runs" -mindepth 1 -maxdepth 1 -type d | wc -l) -eq 5 ]]
-
-# A failed suite must not hide the next suite or trigger another APK installation.
 : > "$MOCK_CALLS"
-status=0
 MOCK_DEVICE_CALLS="$temp_dir/device-calls" \
-    MOCK_FAIL_FLOW=maestro/auth/smoke/onboarding.yaml \
-    MAESTRO_ARTIFACTS_DIR="$temp_dir/combined" \
     ANDROID_SERIAL=fixture-device AUTH_APK_PATH="$temp_dir/auth.apk" \
-    "$root/scripts/run-auth-offline.sh" basics trash || status=$?
-[[ $status -eq 42 ]]
+    "$root/scripts/run-auth-offline.sh" basics trash
+grep -Fxq 'basics,trash' "$MOCK_CALLS"
 [[ $(grep -c '^install ' "$temp_dir/device-calls") -eq 1 ]]
-selection=$(python3 "$root/scripts/suites.py" --suite offline)
-[[ $(< "$MOCK_CALLS") == "$(jq -r '.offline[] | select(.suite == "basics" or .suite == "trash") | .flows[]' <<< "$selection")" ]]
-grep -Fq '<testcase' "$temp_dir"/combined/*/trash/results.xml
+[[ $(grep -c '^maestro/auth$' "$MOCK_CALLS") -eq 1 ]]
 
 : > "$MOCK_CALLS"
 status=0

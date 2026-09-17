@@ -4,7 +4,7 @@ tags:
   - auth
   - android
   - offline
-  - core
+  - basics
 ---
 - launchApp:
     clearState: true

@@ -56,17 +56,12 @@ jobs:
         runs-on: ubuntu-24.04
         timeout-minutes: 10
         outputs:
-            offline: ${{ steps.select.outputs.offline }}
-            online: ${{ steps.select.outputs.online }}
-            has_offline: ${{ steps.select.outputs.has_offline }}
-            has_online: ${{ steps.select.outputs.has_online }}
             should_run: ${{ steps.freshness.outputs.should_run }}
             build: ${{ steps.apk.outputs.build }}
         steps:
             - name: Checkout tests
               uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
               with:
-                  fetch-depth: 0
                   persist-credentials: false
 
             - name: Validate hosted test configuration
@@ -75,18 +70,8 @@ jobs:
                   scripts/tests/apk.sh
                   scripts/tests/runners.sh
 
-            - name: Select suites
-              id: select
-              env:
-                  EVENT_NAME: ${{ github.event_name }}
-                  BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
-                  HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-                  REQUESTED_SUITE: ${{ inputs.suite || 'all' }}
-              run: python3 scripts/suites.py --suite "$REQUESTED_SUITE" --github-output "$GITHUB_OUTPUT"
-
             - name: Resolve published Auth build
               id: apk
-              if: steps.select.outputs.has_offline == 'true' || steps.select.outputs.has_online == 'true'
               env:
                   GH_TOKEN: ${{ github.token }}
               run: |
@@ -115,7 +100,7 @@ jobs:
     offline:
         name: Offline
         needs: prepare
-        if: needs.prepare.outputs.should_run == 'true' && needs.prepare.outputs.has_offline == 'true'
+        if: needs.prepare.outputs.should_run == 'true' && contains(fromJSON('["all", "offline", "basics", "organization", "tags", "trash"]'), inputs.suite || 'all')
         runs-on: ubuntu-24.04
         timeout-minutes: 90
         steps:
@@ -163,7 +148,7 @@ jobs:
               uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
               env:
                   AUTH_TEST_GROUP: offline
-                  AUTH_TEST_SUITES: ${{ join(fromJSON(needs.prepare.outputs.offline).*.suite, ' ') }}
+                  AUTH_TEST_SUITE: ${{ inputs.suite || 'all' }}
                   MAESTRO_ARTIFACTS_DIR: artifacts/maestro/offline
               with: &android_emulator
                   api-level: 34
@@ -174,7 +159,7 @@ jobs:
                   cores: 2
                   emulator-options: -no-window -gpu host -feature -Vulkan -accel on -no-metrics -no-snapshot -noaudio -no-boot-anim -memory 4096
                   disable-animations: true
-                  script: scripts/run-auth-$AUTH_TEST_GROUP.sh $AUTH_TEST_SUITES
+                  script: case "$AUTH_TEST_SUITE" in all|offline|online) scripts/run-auth-$AUTH_TEST_GROUP.sh ;; *) scripts/run-auth-$AUTH_TEST_GROUP.sh "$AUTH_TEST_SUITE" ;; esac
 
             - name: Upload offline results
               if: always() && steps.tests.outcome != 'skipped'
@@ -196,7 +181,7 @@ jobs:
     online:
         name: Online
         needs: prepare
-        if: needs.prepare.outputs.should_run == 'true' && needs.prepare.outputs.has_online == 'true'
+        if: needs.prepare.outputs.should_run == 'true' && contains(fromJSON('["all", "online", "account-auth", "recovery-password", "data-sync", "entity-lifecycle"]'), inputs.suite || 'all')
         runs-on: ubuntu-24.04
         timeout-minutes: 120
         env:
@@ -216,7 +201,7 @@ jobs:
               uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
               env:
                   AUTH_TEST_GROUP: online
-                  AUTH_TEST_SUITES: ${{ join(fromJSON(needs.prepare.outputs.online), ' ') }}
+                  AUTH_TEST_SUITE: ${{ inputs.suite || 'all' }}
               with: *android_emulator
 
             # Never upload the private signup/login traces from account-auth.

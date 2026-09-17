@@ -1,6 +1,6 @@
 appId: ${APP_ID}
 name: Import Auth fixtures offline
-tags: [auth, android, offline, import]
+tags: [auth, android, offline, imports]
 ---
 - launchApp:
     clearState: true

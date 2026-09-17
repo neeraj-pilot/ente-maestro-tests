@@ -10,12 +10,9 @@ export AUTH_FIXTURE_COMPOSE_PROJECT=${AUTH_FIXTURE_COMPOSE_PROJECT:-ente-auth-fi
 ONLINE_ENDPOINT=${ONLINE_ENDPOINT:-http://127.0.0.1:8080}
 ONLINE_OTT=${ONLINE_OTT:-123456}
 if [[ $# -eq 0 ]]; then
-    suite_names=$(python3 scripts/suites.py --suite online | jq -r '.online | join(" ")')
-    read -r -a suites <<< "$suite_names"
-else
-    suites=("$@")
+    set -- account-auth recovery-password data-sync entity-lifecycle
 fi
-for suite in "${suites[@]}"; do
+for suite in "$@"; do
     case "$suite" in
         account-auth|recovery-password|data-sync|entity-lifecycle) ;;
         *) echo "Unknown Auth online suite: $suite" >&2; exit 2 ;;
@@ -33,16 +30,19 @@ echo "Results: $artifacts_dir"
 : "${FIXTURE_LIFECYCLE_EDITED_ACCOUNT:=automation.fixture@example.org}"
 : "${FIXTURE_LIFECYCLE_TAG:=Flow}"
 credentials=museum/fixtures/public-test-credentials.json
-fixture_basic_email=$(jq --raw-output '.accounts.basic.email' "$credentials")
-fixture_basic_password=$(jq --raw-output '.accounts.basic.password' "$credentials")
 fixture_basic_user_id=$(jq --raw-output '.accounts.basic.userId' "$credentials")
-fixture_totp_email=$(jq --raw-output '.accounts.totp.email' "$credentials")
-fixture_totp_password=$(jq --raw-output '.accounts.totp.password' "$credentials")
 fixture_totp_secret=$(jq --raw-output '.accounts.totp.totpSecret' "$credentials")
-fixture_recovery_email=$(jq --raw-output '.accounts.recovery.email' "$credentials")
-fixture_recovery_password=$(jq --raw-output '.accounts.recovery.password' "$credentials")
-fixture_recovery_key=$(jq --raw-output '.accounts.recovery.recoveryKey' "$credentials")
-fixture_recovered_password=$(jq --raw-output '.accounts.recovery.recoveredPassword' "$credentials")
+
+fixture_env=(
+    -e FIXTURE_BASIC_EMAIL="$(jq -r '.accounts.basic.email' "$credentials")"
+    -e FIXTURE_BASIC_PASSWORD="$(jq -r '.accounts.basic.password' "$credentials")"
+    -e FIXTURE_TOTP_EMAIL="$(jq -r '.accounts.totp.email' "$credentials")"
+    -e FIXTURE_TOTP_PASSWORD="$(jq -r '.accounts.totp.password' "$credentials")"
+    -e FIXTURE_RECOVERY_EMAIL="$(jq -r '.accounts.recovery.email' "$credentials")"
+    -e FIXTURE_RECOVERY_PASSWORD="$(jq -r '.accounts.recovery.password' "$credentials")"
+    -e FIXTURE_RECOVERY_KEY="$(jq -r '.accounts.recovery.recoveryKey' "$credentials")"
+    -e FIXTURE_RECOVERED_PASSWORD="$(jq -r '.accounts.recovery.recoveredPassword' "$credentials")"
+)
 
 record_runtime_health() {
     local status=$1
@@ -78,7 +78,7 @@ run_maestro() {
     shift
     wait_for_android_network
     scripts/run-maestro.sh "$results_dir/$result_name.xml" "$debug_dir/$result_name" \
-        -e ONLINE_ENDPOINT="$ONLINE_ENDPOINT" \
+        -e ONLINE_ENDPOINT="$ONLINE_ENDPOINT" "${fixture_env[@]}" \
         "$@"
 }
 
@@ -202,8 +202,6 @@ run_account_auth() {
 
     prepare_fixture_app
     run_maestro prepared-totp-start \
-        -e FIXTURE_TOTP_EMAIL="$fixture_totp_email" \
-        -e FIXTURE_TOTP_PASSWORD="$fixture_totp_password" \
         maestro/auth/online/prepared-totp-login-start.yaml
     fixture_totp_code=$(
         TOTP_SECRET="$fixture_totp_secret" \
@@ -234,26 +232,17 @@ run_account_auth() {
         maestro/auth/online/password-login.yaml
 }
 
-run_recovery_reset() {
+run_recovery() {
     prepare_fixture_app
     run_maestro prepared-recovery-reset \
         -e ONLINE_OTT="$ONLINE_OTT" \
-        -e FIXTURE_RECOVERY_EMAIL="$fixture_recovery_email" \
-        -e FIXTURE_RECOVERY_KEY="$fixture_recovery_key" \
-        -e FIXTURE_RECOVERED_PASSWORD="$fixture_recovered_password" \
         maestro/auth/online/prepared-recovery-password-reset.yaml
-}
 
-run_recovery_verification() {
     prepare_fixture_app
     run_maestro prepared-recovery-old-password \
-        -e FIXTURE_RECOVERY_EMAIL="$fixture_recovery_email" \
-        -e FIXTURE_RECOVERY_PASSWORD="$fixture_recovery_password" \
         maestro/auth/online/prepared-recovery-old-password.yaml
     prepare_fixture_app
     run_maestro prepared-recovery-login \
-        -e FIXTURE_RECOVERY_EMAIL="$fixture_recovery_email" \
-        -e FIXTURE_RECOVERED_PASSWORD="$fixture_recovered_password" \
         maestro/auth/online/prepared-recovery-login.yaml
 }
 
@@ -262,8 +251,6 @@ run_data_sync() {
 
     prepare_fixture_app
     run_maestro prepared-password \
-        -e FIXTURE_BASIC_EMAIL="$fixture_basic_email" \
-        -e FIXTURE_BASIC_PASSWORD="$fixture_basic_password" \
         maestro/auth/online/prepared-password-login.yaml
 
     mutation_marker=$(query_fixture_db \
@@ -275,15 +262,13 @@ run_data_sync() {
 
     prepare_fixture_app
     run_maestro prepared-bulk-mutation-complete \
-        -e FIXTURE_BASIC_EMAIL="$fixture_basic_email" \
-        -e FIXTURE_BASIC_PASSWORD="$fixture_basic_password" \
         -e FIXTURE_MUTATION_TAG="$FIXTURE_MUTATION_TAG" \
         maestro/auth/online/prepared-bulk-mutation-complete.yaml
     run_maestro prepared-logout maestro/auth/online/prepared-logout.yaml
 }
 
-run_entity_lifecycle_create() {
-    local lifecycle_marker
+run_entity_lifecycle() {
+    local lifecycle_marker restore_marker
 
     prepare_fixture_app
     lifecycle_marker=$(query_fixture_db \
@@ -293,35 +278,21 @@ run_entity_lifecycle_create() {
         maestro/auth/online/fixtures/lifecycle-import.txt \
         /sdcard/Download/auth_lifecycle_import.txt
     run_maestro prepared-entity-lifecycle-create \
-        -e FIXTURE_BASIC_EMAIL="$fixture_basic_email" \
-        -e FIXTURE_BASIC_PASSWORD="$fixture_basic_password" \
         maestro/auth/online/prepared-entity-lifecycle-create.yaml
     wait_for_entity_count_and_quiet "$fixture_basic_user_id" "$lifecycle_marker" 4
-}
-
-run_entity_lifecycle_mutate() {
-    local lifecycle_marker
 
     prepare_fixture_app
     lifecycle_marker=$(query_fixture_db \
         "SELECT MAX(updated_at) FROM authenticator_entity WHERE user_id = $fixture_basic_user_id;")
     run_maestro prepared-entity-lifecycle-mutate \
-        -e FIXTURE_BASIC_EMAIL="$fixture_basic_email" \
-        -e FIXTURE_BASIC_PASSWORD="$fixture_basic_password" \
         -e FIXTURE_LIFECYCLE_ACCOUNT="$FIXTURE_LIFECYCLE_ACCOUNT" \
         -e FIXTURE_LIFECYCLE_EDITED_ACCOUNT="$FIXTURE_LIFECYCLE_EDITED_ACCOUNT" \
         -e FIXTURE_LIFECYCLE_TAG="$FIXTURE_LIFECYCLE_TAG" \
         maestro/auth/online/prepared-entity-lifecycle-mutate.yaml
     wait_for_entity_count_and_quiet "$fixture_basic_user_id" "$lifecycle_marker" 4
-}
-
-run_entity_lifecycle_finish() {
-    local restore_marker
 
     prepare_fixture_app
     run_maestro prepared-entity-lifecycle-login \
-        -e FIXTURE_BASIC_EMAIL="$fixture_basic_email" \
-        -e FIXTURE_BASIC_PASSWORD="$fixture_basic_password" \
         maestro/auth/online/prepared-basic-login.yaml
 
     restore_marker=$(query_fixture_db \
@@ -352,16 +323,9 @@ run_suite() (
     ALLOW_AUTH_FIXTURE_RESTORE=1 scripts/fixtures/restore-auth-fixture.sh
     case "$phase" in
         account-auth) run_account_auth ;;
-        recovery-password)
-            run_recovery_reset
-            run_recovery_verification
-            ;;
+        recovery-password) run_recovery ;;
         data-sync) run_data_sync ;;
-        entity-lifecycle)
-            run_entity_lifecycle_create
-            run_entity_lifecycle_mutate
-            run_entity_lifecycle_finish
-            ;;
+        entity-lifecycle) run_entity_lifecycle ;;
     esac
     tests_completed=true
 )
@@ -371,7 +335,7 @@ adb install -r "$AUTH_APK_PATH"
 trap 'docker compose --project-name "$AUTH_FIXTURE_COMPOSE_PROJECT" --file museum/compose.yaml down --volumes --remove-orphans' EXIT
 
 status=0
-for suite in "${suites[@]}"; do
+for suite in "$@"; do
     # Do not call run_suite in an if/||: that disables errexit inside its functions.
     set +e
     run_suite "$suite"

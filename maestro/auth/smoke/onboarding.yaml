@@ -4,6 +4,7 @@ tags:
   - auth
   - android
   - smoke
+  - basics
 ---
 - launchApp:
     clearState: true

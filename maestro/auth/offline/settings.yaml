@@ -1,6 +1,6 @@
 appId: ${APP_ID}
 name: Inspect offline Auth settings
-tags: [auth, android, offline, settings]
+tags: [auth, android, offline, basics]
 ---
 - launchApp:
     clearState: true

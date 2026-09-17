@@ -9,13 +9,8 @@ if [[ ! -f "$AUTH_APK_PATH" ]]; then
     exit 2
 fi
 export APP_ID=${APP_ID:-io.ente.auth.independent}
-if [[ $# -eq 0 ]]; then
-    suite_names=$(python3 scripts/suites.py --suite offline | jq -r '[.offline[].suite] | join(" ")')
-    read -r -a suites <<< "$suite_names"
-else
-    suites=("$@")
-fi
-for suite in "${suites[@]}"; do
+if [[ $# -eq 0 ]]; then set -- basics organization tags trash; fi
+for suite in "$@"; do
     case "$suite" in
         smoke|basics|organization|tags|trash|imports|backup) ;;
         *) echo "Unknown Auth offline suite: $suite" >&2; exit 2 ;;
@@ -51,44 +46,24 @@ adb -s "$serial" uninstall "$APP_ID" > /dev/null 2>&1 || true
 adb -s "$serial" install -r "$AUTH_APK_PATH"
 
 adb -s "$serial" shell settings put system screen_off_timeout 2147483647
-status=0
-for suite in "${suites[@]}"; do
+for suite in "$@"; do
     case "$suite" in
-        smoke)
-            flows=(maestro/auth/smoke/onboarding.yaml maestro/auth/smoke/offline-mode.yaml)
-            ;;
-        basics|organization|tags|trash)
-            selection=$(python3 "scripts/suites.py" --suite "$suite")
-            flows=()
-            while IFS= read -r flow; do
-                flows+=("$flow")
-            done < <(jq -r '.offline[].flows[]' <<< "$selection")
-            ;;
         imports)
-            flows=(maestro/auth/offline/imports.yaml)
             wait_for_downloads
             adb -s "$serial" push maestro/fixtures/plain_text_import.txt /sdcard/Download/plain_text_import.txt
             adb -s "$serial" push maestro/fixtures/google_auth_migration.png /sdcard/Download/google_auth_migration.png
             ;;
         backup)
-            flows=(maestro/auth/offline/local-backup.yaml)
             wait_for_downloads
             adb -s "$serial" shell "mkdir -p /sdcard/Download/EnteAuthBackups"
             adb -s "$serial" shell "rm -f /sdcard/Download/EnteAuthBackups/ente-auth-daily-backup-*.json /sdcard/Download/EnteAuthBackups/ente-auth-manual-backup-*.json"
             ;;
     esac
-
-    suite_status=0
-    scripts/run-maestro.sh "$run_dir/$suite/results.xml" "$run_dir/$suite/debug" \
-        "${flows[@]}" || suite_status=$?
-    if [[ $suite_status -eq 0 && "$suite" == backup ]]; then
-        ANDROID_SERIAL="$serial" scripts/verify-local-auth-backups.sh || suite_status=$?
-    fi
-    result=success
-    if [[ $suite_status -ne 0 ]]; then
-        result=failure
-        status=$suite_status
-    fi
-    echo "$suite: $result"
 done
-exit "$status"
+
+tags=$(IFS=,; echo "$*")
+scripts/run-maestro.sh "$run_dir/results.xml" "$run_dir/debug" \
+    --include-tags "$tags" maestro/auth
+if [[ ",$tags," == *,backup,* ]]; then
+    ANDROID_SERIAL="$serial" scripts/verify-local-auth-backups.sh
+fi

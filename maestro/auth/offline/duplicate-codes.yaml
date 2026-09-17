@@ -1,6 +1,6 @@
 appId: ${APP_ID}
 name: Inspect offline duplicate codes
-tags: [auth, android, offline, data]
+tags: [auth, android, offline, basics]
 ---
 - launchApp:
     clearState: true
