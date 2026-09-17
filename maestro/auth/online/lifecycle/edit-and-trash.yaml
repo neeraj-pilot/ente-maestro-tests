@@ -2,9 +2,8 @@ appId: ${APP_ID}
 name: Auth edits and trashes a synchronized lifecycle code
 tags: [auth, android, online, fixture, sync, lifecycle]
 ---
-- launchApp
 - runFlow:
-    file: subflows/open-prepared-basic-account.yaml
+    file: ../subflows/login-basic.yaml
     env:
       FIXTURE_BASIC_EMAIL: ${FIXTURE_BASIC_EMAIL}
       FIXTURE_BASIC_PASSWORD: ${FIXTURE_BASIC_PASSWORD}

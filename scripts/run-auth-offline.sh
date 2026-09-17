@@ -62,7 +62,7 @@ for suite in "$@"; do
 done
 
 tags=$(IFS=,; echo "$*")
-scripts/run-maestro.sh "$run_dir/results.xml" "$run_dir/debug" \
+scripts/run-maestro.sh "$run_dir/results/offline.xml" "$run_dir/debug" \
     --include-tags "$tags" maestro/auth
 if [[ ",$tags," == *,backup,* ]]; then
     ANDROID_SERIAL="$serial" scripts/verify-local-auth-backups.sh

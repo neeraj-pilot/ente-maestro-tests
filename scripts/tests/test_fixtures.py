@@ -15,7 +15,6 @@ class FixtureGenerationTests(unittest.TestCase):
     def test_reject_nonfixture_credentials(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            shutil.copytree(ROOT / "scripts/fixtures", root / "scripts/fixtures")
             shutil.copytree(ROOT / "museum", root / "museum")
             credentials = root / "museum/fixtures/public-test-credentials.json"
             original = credentials.read_text()
@@ -34,7 +33,8 @@ class FixtureGenerationTests(unittest.TestCase):
                         data["accounts"]["basic"]["codes"].pop()
                     credentials.write_text(json.dumps(data))
                     result = subprocess.run(
-                        ["/bin/bash", str(root / "scripts/fixtures/verify-auth-fixture.sh")],
+                        ["/bin/bash", str(root / "museum/restore-fixture.sh")],
+                        env={**os.environ, "ALLOW_AUTH_FIXTURE_RESTORE": "1"},
                         capture_output=True, text=True,
                     )
                     self.assertNotEqual(result.returncode, 0)
@@ -44,7 +44,6 @@ class FixtureGenerationTests(unittest.TestCase):
         for failure in ("generate", "restore", "counts", "verify", "none"):
             with self.subTest(failure=failure), tempfile.TemporaryDirectory() as directory:
                 root = Path(directory)
-                shutil.copytree(ROOT / "scripts/fixtures", root / "scripts/fixtures")
                 shutil.copytree(ROOT / "museum", root / "museum")
                 (root / "tools/auth-fixture-generator").mkdir(parents=True)
                 fixtures = root / "museum/fixtures"
@@ -73,7 +72,6 @@ case "$*" in
     *"source = 'authMaestroFixture'"*)
         if [[ "$FAILURE" == counts ]]; then echo '3|3|1|3|4|0'; else echo '3|3|1|3|5|0'; fi
         ;;
-    *'SELECT 1'*) echo 1 ;;
 esac
 ''',
                     "curl": '''#!/usr/bin/env bash
@@ -85,7 +83,7 @@ echo '{"id":"0137a0c754ac0fe4f2c4c7421727c349327eb990"}'
                     path.write_text(content)
                     path.chmod(0o755)
                 result = subprocess.run(
-                    ["/bin/bash", str(root / "scripts/fixtures/generate-auth-fixture.sh")],
+                    ["/bin/bash", str(root / "museum/generate-fixture.sh")],
                     env={
                         **os.environ,
                         "PATH": f"{bin_dir}:{os.environ['PATH']}",

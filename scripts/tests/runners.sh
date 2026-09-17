@@ -12,7 +12,7 @@ export MAESTRO_ARTIFACTS_DIR="$temp_dir/runs"
 
 touch "$temp_dir/auth.apk"
 
-# Local and hosted runs must resolve the same flow lists. No device is touched.
+# No device is touched by these host-runner checks.
 if grep -RL '^appId: ${APP_ID}$' "$root/maestro/auth" --include='*.yaml' --exclude='config.yaml' | grep -q .; then
     echo "Every Auth flow must honor the runner's APP_ID" >&2
     exit 1
@@ -25,8 +25,25 @@ case "$*" in
     install*) exit "${MOCK_INSTALL_STATUS:-0}" ;;
     get-state) echo device ;;
     'shell true') exit "${MOCK_DEVICE_STATUS:-0}" ;;
+    'shell dumpsys connectivity')
+        echo check >> "$MOCK_NETWORK_CALLS"
+        case ${MOCK_NETWORK_MODE:-} in
+            absent) echo 'Active default network: none'; exit ;;
+            delayed)
+                if [[ $(wc -l < "$MOCK_NETWORK_CALLS") -lt 3 ]]; then
+                    echo 'Active default network: none'
+                    exit
+                fi
+                ;;
+        esac
+        echo 'Active default network: 101'
+        [[ ${MOCK_NETWORK_MODE:-} != failed-command ]] || exit 29
+        ;;
+    'shell id -u'|'shell am get-current-user') echo 0 ;;
+    'shell stat '*) echo 1000:1000 ;;
+    'shell pidof '*) echo 123 ;;
+    'shell dumpsys meminfo '*) echo fixture-memory-info ;;
 esac
-exit 0
 SH
 cat > "$temp_dir/bin/maestro" <<'SH'
 #!/usr/bin/env bash
@@ -90,32 +107,7 @@ for mode in fail missing empty disconnected; do
 done
 
 # Exercise the actual online runner under the host's system Bash (3.2 on macOS).
-cat > "$temp_dir/bin/adb" <<'SH'
-#!/usr/bin/env bash
-[[ "$1" != -s ]] || shift 2
-if [[ -n ${MOCK_DEVICE_CALLS:-} ]]; then printf '%s\n' "$*" >> "$MOCK_DEVICE_CALLS"; fi
-case "$*" in
-    'shell true') exit "${MOCK_DEVICE_STATUS:-0}" ;;
-    'shell dumpsys connectivity')
-        echo check >> "$MOCK_NETWORK_CALLS"
-        case ${MOCK_NETWORK_MODE:-} in
-            absent) echo 'Active default network: none'; exit ;;
-            delayed)
-                if [[ $(wc -l < "$MOCK_NETWORK_CALLS") -lt 3 ]]; then
-                    echo 'Active default network: none'
-                    exit
-                fi
-                ;;
-        esac
-        echo 'Active default network: 101'
-        [[ ${MOCK_NETWORK_MODE:-} != failed-command ]] || exit 29
-        ;;
-    'shell id -u'|'shell am get-current-user') echo 0 ;;
-    'shell stat '*) echo 1000:1000 ;;
-    'shell pidof '*) echo 123 ;;
-    'shell dumpsys meminfo '*) echo fixture-memory-info ;;
-esac
-SH
+
 cat > "$temp_dir/bin/sleep" <<'SH'
 #!/usr/bin/env bash
 exit 0
@@ -129,12 +121,12 @@ chmod +x "$temp_dir/bin/curl"
 cat > "$temp_dir/bin/docker" <<'SH'
 #!/usr/bin/env bash
 case "$*" in
+    *'up --wait'*) exit "${MOCK_START_STATUS:-0}" ;;
     *pg_restore*)
         echo restore >> "$MOCK_BACKEND_CALLS"
         exit "${MOCK_RESTORE_STATUS:-0}"
         ;;
     *"source = 'authMaestroFixture'"*) echo '3|3|1|3|5|0' ;;
-    *'SELECT 1'*) echo 1 ;;
     *'SELECT COUNT(*), MAX(updated_at)'*) echo '4|11' ;;
     *'SELECT MAX(user_id)'*) echo 3 ;;
     *'SELECT MAX(updated_at)'*) echo 10 ;;
@@ -151,23 +143,6 @@ case "$*" in
 esac
 SH
 chmod +x "$temp_dir/bin/docker"
-cat > "$temp_dir/bin/maestro" <<'SH'
-#!/usr/bin/env bash
-printf '%s\n' "$@" >> "$MOCK_CALLS"
-if [[ ${MOCK_MAESTRO_MODE:-} == fail ]]; then exit 42; fi
-for argument in "$@"; do
-    if [[ "$argument" == "${MOCK_FAIL_FLOW:-}" ]]; then exit 42; fi
-done
-while [[ $# -gt 0 ]]; do
-    if [[ "$1" == --output ]]; then report=$2; break; fi
-    shift
-done
-case ${MOCK_MAESTRO_MODE:-} in
-    missing) ;;
-    empty) : > "$report" ;;
-    *) printf '<testsuite tests="1" failures="0"><testcase name="fixture"/></testsuite>\n' > "$report" ;;
-esac
-SH
 
 run_online() (
     name=$1
@@ -194,7 +169,7 @@ run_online() (
 )
 
 run_online automatic ONLINE_ENDPOINT=http://10.0.2.2:8080
-grep -Fxq 'maestro/auth/online/prepared-recovery-password-reset.yaml' "$MOCK_CALLS"
+grep -Fxq 'maestro/auth/online/recovery/reset-password.yaml' "$MOCK_CALLS"
 if grep -Fxq -- '--device' "$MOCK_CALLS"; then
     echo "Automatic device selection must not pass --device" >&2
     exit 1
@@ -205,13 +180,13 @@ run_online selected ONLINE_ENDPOINT=http://10.0.2.2:8080 ANDROID_SERIAL=fixture-
 # Local runs use UI preparation and loopback Museum without CI environment values.
 run_online local AUTH_APP_PREPARATION=ui
 [[ $(grep -c '^maestro/auth/online/subflows/configure-online-test-endpoint-ui.yaml$' "$MOCK_CALLS") -eq 3 ]]
-[[ $(grep -E '^maestro/.*\.yaml$' "$MOCK_CALLS" | grep -v '/subflows/') == $'maestro/auth/online/prepared-recovery-password-reset.yaml\nmaestro/auth/online/prepared-recovery-old-password.yaml\nmaestro/auth/online/prepared-recovery-login.yaml' ]]
+[[ $(grep -E '^maestro/.*\.yaml$' "$MOCK_CALLS" | grep -v '/subflows/') == $'maestro/auth/online/recovery/reset-password.yaml\nmaestro/auth/online/recovery/old-password.yaml\nmaestro/auth/online/recovery/login.yaml' ]]
 grep -Fxq 'APP_ID=io.ente.auth.independent' "$MOCK_CALLS"
 grep -Fxq 'ONLINE_ENDPOINT=http://127.0.0.1:8080' "$MOCK_CALLS"
 grep -Fxq 'ONLINE_OTT=123456' "$MOCK_CALLS"
 
 MOCK_ONLINE_SUITES=recovery-password run_online recovery
-[[ $(grep -E '^maestro/.*\.yaml$' "$MOCK_CALLS") == $'maestro/auth/online/prepared-recovery-password-reset.yaml\nmaestro/auth/online/prepared-recovery-old-password.yaml\nmaestro/auth/online/prepared-recovery-login.yaml' ]]
+[[ $(grep -E '^maestro/.*\.yaml$' "$MOCK_CALLS") == $'maestro/auth/online/recovery/reset-password.yaml\nmaestro/auth/online/recovery/old-password.yaml\nmaestro/auth/online/recovery/login.yaml' ]]
 
 MOCK_ONLINE_SUITES=account-auth run_online signup TOTP_TIME=60 > "$temp_dir/signup-log"
 [[ $(grep -c '^ONLINE_EMAIL=auth-maestro-signup-fixture-[a-f0-9]*@example.org$' "$MOCK_CALLS") -eq 2 ]]
@@ -222,20 +197,20 @@ grep -Fxq "::add-mask::$(sed -n 's/^ONLINE_PASSWORD=//p' "$MOCK_CALLS" | head -1
 
 MOCK_ONLINE_SUITES=data-sync run_online sync-delayed MOCK_DATABASE_MODE=delayed
 [[ $(wc -l < "$temp_dir/database-calls") -eq 3 ]]
-grep -Fxq 'maestro/auth/online/prepared-bulk-mutation-complete.yaml' "$MOCK_CALLS"
+grep -Fxq 'maestro/auth/online/sync/relogin.yaml' "$MOCK_CALLS"
 status=0
 MOCK_ONLINE_SUITES=data-sync run_online sync-absent MOCK_DATABASE_MODE=absent \
     2> "$temp_dir/error" || status=$?
 [[ $status -eq 1 && $(wc -l < "$temp_dir/database-calls") -eq 60 ]]
 grep -Fq 'Timed out waiting for database condition:' "$temp_dir/error"
-if grep -Fxq 'maestro/auth/online/prepared-bulk-mutation-complete.yaml' "$MOCK_CALLS"; then
+if grep -Fxq 'maestro/auth/online/sync/relogin.yaml' "$MOCK_CALLS"; then
     echo "Fresh login must wait for the app's mutation to reach Museum" >&2
     exit 1
 fi
 
 run_online network-delayed ONLINE_ENDPOINT=http://10.0.2.2:8080 MOCK_NETWORK_MODE=delayed
 [[ $(wc -l < "$temp_dir/network-calls") -eq 5 ]]
-grep -Fxq 'maestro/auth/online/prepared-recovery-password-reset.yaml' "$MOCK_CALLS"
+grep -Fxq 'maestro/auth/online/recovery/reset-password.yaml' "$MOCK_CALLS"
 for mode in absent failed-command; do
     status=0
     run_online "network-$mode" ONLINE_ENDPOINT=http://10.0.2.2:8080 MOCK_NETWORK_MODE="$mode" \
@@ -267,19 +242,23 @@ done
 MOCK_ONLINE_SUITES=all run_online all TOTP_TIME=60
 [[ $(grep -c '^install ' "$temp_dir/online-device-calls") -eq 1 ]]
 [[ $(wc -l < "$temp_dir/backend-calls") -eq 4 ]]
-[[ $(find "$temp_dir/online-all/online-results" -name '*.xml' | wc -l) -eq 17 ]]
+[[ $(find "$temp_dir/online-all/results" -name '*.xml' | wc -l) -eq 17 ]]
 
 status=0
 MOCK_ONLINE_SUITES="recovery-password data-sync" run_online combined \
-    MOCK_FAIL_FLOW=maestro/auth/online/prepared-recovery-password-reset.yaml || status=$?
+    MOCK_FAIL_FLOW=maestro/auth/online/recovery/reset-password.yaml || status=$?
 [[ $status -eq 42 ]]
 [[ $(grep -c '^install ' "$temp_dir/online-device-calls") -eq 1 ]]
 [[ $(wc -l < "$temp_dir/backend-calls") -eq 2 ]]
-grep -Fxq 'maestro/auth/online/prepared-logout.yaml' "$MOCK_CALLS"
-if grep -Fxq 'maestro/auth/online/prepared-recovery-old-password.yaml' "$MOCK_CALLS"; then
+grep -Fxq 'maestro/auth/online/sync/logout.yaml' "$MOCK_CALLS"
+if grep -Fxq 'maestro/auth/online/recovery/old-password.yaml' "$MOCK_CALLS"; then
     echo "Recovery verification must not run after a failed reset" >&2
     exit 1
 fi
+
+status=0
+run_online backend-unhealthy MOCK_START_STATUS=27 || status=$?
+[[ $status -eq 27 && ! -s "$MOCK_CALLS" && ! -s "$temp_dir/backend-calls" ]]
 
 status=0
 run_online restore-failure MOCK_RESTORE_STATUS=31 || status=$?

@@ -8,6 +8,11 @@ services:
             - "127.0.0.1:8080:8080"
         volumes:
             - ./museum.yaml:/museum.yaml:ro
+        healthcheck:
+            test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/ping"]
+            interval: 1s
+            timeout: 5s
+            retries: 60
 
     postgres:
         image: postgres:15-alpine@sha256:3d0f7584ed7d04e27fa050d6683a74746608faf21f202be78460d679cc56461f
@@ -16,7 +21,7 @@ services:
             POSTGRES_PASSWORD: ente_auth
             POSTGRES_USER: ente_auth
         healthcheck:
-            test: ["CMD-SHELL", "pg_isready -q -d ente_auth_test -U ente_auth"]
+            test: ["CMD", "pg_isready", "-q", "-h", "127.0.0.1", "-d", "ente_auth_test", "-U", "ente_auth"]
             interval: 1s
             timeout: 5s
             retries: 30

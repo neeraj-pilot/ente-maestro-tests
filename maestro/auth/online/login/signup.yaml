@@ -34,7 +34,7 @@ tags: [auth, android, online, signup, recovery]
     visible: "Settings"
     timeout: 120000
 - runFlow:
-    file: subflows/add-online-code.yaml
+    file: ../subflows/add-online-code.yaml
     env:
       ISSUER: GitHub
       SECRET: JBSWY3DPEHPK3PXP

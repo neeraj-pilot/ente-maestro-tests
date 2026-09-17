@@ -202,7 +202,7 @@ run_account_auth() {
 
     prepare_fixture_app
     run_maestro prepared-totp-start \
-        maestro/auth/online/prepared-totp-login-start.yaml
+        maestro/auth/online/login/totp-start.yaml
     fixture_totp_code=$(
         TOTP_SECRET="$fixture_totp_secret" \
             TOTP_MIN_VALIDITY_SECONDS=20 \
@@ -210,11 +210,11 @@ run_account_auth() {
     )
     run_maestro prepared-totp-complete \
         -e FIXTURE_TOTP_CODE="$fixture_totp_code" \
-        maestro/auth/online/prepared-totp-login-complete.yaml
+        maestro/auth/online/login/totp-complete.yaml
     prepare_fixture_app
     run_maestro unknown-login \
         -e MISSING_EMAIL=missing.fixture@example.org \
-        maestro/auth/online/unknown-login.yaml
+        maestro/auth/online/login/unknown-account.yaml
     previous_max_user_id=$(query_fixture_db "SELECT MAX(user_id) FROM users;")
     prepare_fixture_app
     run_maestro signup-first-key \
@@ -222,28 +222,28 @@ run_account_auth() {
         -e ONLINE_EMAIL="$signup_email" \
         -e ONLINE_PASSWORD="$signup_password" \
         -e ONLINE_CODE_ACCOUNT="$code_account" \
-        maestro/auth/online/signup-recovery-login.yaml
+        maestro/auth/online/login/signup.yaml
     wait_for_database "SELECT (SELECT COUNT(*) = 1 FROM authenticator_key WHERE user_id > $previous_max_user_id) AND (SELECT COUNT(*) = 1 FROM authenticator_entity WHERE user_id > $previous_max_user_id);"
     prepare_fixture_app
     run_maestro signup-cold-login \
         -e ONLINE_EMAIL="$signup_email" \
         -e ONLINE_PASSWORD="$signup_password" \
         -e ONLINE_CODE_ACCOUNT="$code_account" \
-        maestro/auth/online/password-login.yaml
+        maestro/auth/online/login/password.yaml
 }
 
 run_recovery() {
     prepare_fixture_app
     run_maestro prepared-recovery-reset \
         -e ONLINE_OTT="$ONLINE_OTT" \
-        maestro/auth/online/prepared-recovery-password-reset.yaml
+        maestro/auth/online/recovery/reset-password.yaml
 
     prepare_fixture_app
     run_maestro prepared-recovery-old-password \
-        maestro/auth/online/prepared-recovery-old-password.yaml
+        maestro/auth/online/recovery/old-password.yaml
     prepare_fixture_app
     run_maestro prepared-recovery-login \
-        maestro/auth/online/prepared-recovery-login.yaml
+        maestro/auth/online/recovery/login.yaml
 }
 
 run_data_sync() {
@@ -251,20 +251,20 @@ run_data_sync() {
 
     prepare_fixture_app
     run_maestro prepared-password \
-        maestro/auth/online/prepared-password-login.yaml
+        maestro/auth/online/sync/account-state.yaml
 
     mutation_marker=$(query_fixture_db \
         "SELECT MAX(updated_at) FROM authenticator_entity WHERE user_id = $fixture_basic_user_id;")
     run_maestro prepared-bulk-mutation-start \
         -e FIXTURE_MUTATION_TAG="$FIXTURE_MUTATION_TAG" \
-        maestro/auth/online/prepared-bulk-mutation-start.yaml
+        maestro/auth/online/sync/bulk-edit.yaml
     wait_for_database "SELECT COUNT(*) >= 2 FROM authenticator_entity WHERE user_id = $fixture_basic_user_id AND updated_at > $mutation_marker;"
 
     prepare_fixture_app
     run_maestro prepared-bulk-mutation-complete \
         -e FIXTURE_MUTATION_TAG="$FIXTURE_MUTATION_TAG" \
-        maestro/auth/online/prepared-bulk-mutation-complete.yaml
-    run_maestro prepared-logout maestro/auth/online/prepared-logout.yaml
+        maestro/auth/online/sync/relogin.yaml
+    run_maestro prepared-logout maestro/auth/online/sync/logout.yaml
 }
 
 run_entity_lifecycle() {
@@ -275,10 +275,10 @@ run_entity_lifecycle() {
         "SELECT MAX(updated_at) FROM authenticator_entity WHERE user_id = $fixture_basic_user_id;")
     adb shell mkdir -p /sdcard/Download
     adb push \
-        maestro/auth/online/fixtures/lifecycle-import.txt \
+        maestro/fixtures/lifecycle-import.txt \
         /sdcard/Download/auth_lifecycle_import.txt
     run_maestro prepared-entity-lifecycle-create \
-        maestro/auth/online/prepared-entity-lifecycle-create.yaml
+        maestro/auth/online/lifecycle/create.yaml
     wait_for_entity_count_and_quiet "$fixture_basic_user_id" "$lifecycle_marker" 4
 
     prepare_fixture_app
@@ -288,39 +288,39 @@ run_entity_lifecycle() {
         -e FIXTURE_LIFECYCLE_ACCOUNT="$FIXTURE_LIFECYCLE_ACCOUNT" \
         -e FIXTURE_LIFECYCLE_EDITED_ACCOUNT="$FIXTURE_LIFECYCLE_EDITED_ACCOUNT" \
         -e FIXTURE_LIFECYCLE_TAG="$FIXTURE_LIFECYCLE_TAG" \
-        maestro/auth/online/prepared-entity-lifecycle-mutate.yaml
+        maestro/auth/online/lifecycle/edit-and-trash.yaml
     wait_for_entity_count_and_quiet "$fixture_basic_user_id" "$lifecycle_marker" 4
 
     prepare_fixture_app
     run_maestro prepared-entity-lifecycle-login \
-        maestro/auth/online/prepared-basic-login.yaml
+        maestro/auth/online/subflows/login-basic.yaml
 
     restore_marker=$(query_fixture_db \
         "SELECT MAX(updated_at) FROM authenticator_entity WHERE user_id = $fixture_basic_user_id;")
     run_maestro prepared-entity-lifecycle-restore \
         -e FIXTURE_LIFECYCLE_EDITED_ACCOUNT="$FIXTURE_LIFECYCLE_EDITED_ACCOUNT" \
         -e FIXTURE_LIFECYCLE_TAG="$FIXTURE_LIFECYCLE_TAG" \
-        maestro/auth/online/prepared-entity-lifecycle-restore.yaml
+        maestro/auth/online/lifecycle/restore.yaml
     wait_for_entity_count_and_quiet "$fixture_basic_user_id" "$restore_marker" 4
 
     run_maestro prepared-entity-lifecycle-delete \
         -e FIXTURE_LIFECYCLE_EDITED_ACCOUNT="$FIXTURE_LIFECYCLE_EDITED_ACCOUNT" \
-        maestro/auth/online/prepared-entity-lifecycle-delete.yaml
+        maestro/auth/online/lifecycle/delete.yaml
     wait_for_database "SELECT COUNT(*) = 1 FROM authenticator_entity WHERE user_id = $fixture_basic_user_id AND is_deleted;"
 }
 
 run_suite() (
     set -e
     phase=$1
-    debug_dir="$artifacts_dir/online-debug/$phase"
-    results_dir="$artifacts_dir/online-results/$phase"
+    debug_dir="$artifacts_dir/debug/$phase"
+    results_dir="$artifacts_dir/results/$phase"
     runtime_dir="$artifacts_dir/runtime-health"
     preparation_count=0
     tests_completed=false
 
     mkdir -p "$debug_dir" "$results_dir" "$runtime_dir"
     trap 'record_runtime_health "$?"' EXIT
-    ALLOW_AUTH_FIXTURE_RESTORE=1 scripts/fixtures/restore-auth-fixture.sh
+    ALLOW_AUTH_FIXTURE_RESTORE=1 museum/restore-fixture.sh
     case "$phase" in
         account-auth) run_account_auth ;;
         recovery-password) run_recovery ;;

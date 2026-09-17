@@ -4,12 +4,12 @@ tags: [auth, android, online, fixture, recovery]
 ---
 - launchApp
 - runFlow:
-    file: subflows/login-online-account.yaml
+    file: ../subflows/login-online-account.yaml
     env:
       LOGIN_EMAIL: ${FIXTURE_RECOVERY_EMAIL}
       LOGIN_PASSWORD: ${FIXTURE_RECOVERED_PASSWORD}
 - runFlow:
-    file: subflows/assert-synced-code.yaml
+    file: ../subflows/assert-synced-code.yaml
     env:
       ISSUER: Google
       ACCOUNT: recovery.fixture@example.org

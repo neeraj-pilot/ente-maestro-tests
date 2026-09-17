@@ -58,6 +58,7 @@ jobs:
         outputs:
             should_run: ${{ steps.freshness.outputs.should_run }}
             build: ${{ steps.apk.outputs.build }}
+            groups: ${{ steps.apk.outputs.groups }}
         steps:
             - name: Checkout tests
               uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -74,10 +75,18 @@ jobs:
               id: apk
               env:
                   GH_TOKEN: ${{ github.token }}
+                  SUITE: ${{ inputs.suite || 'all' }}
               run: |
                   build=$(scripts/apk.sh resolve)
                   echo "$build"
                   echo "build=$build" >> "$GITHUB_OUTPUT"
+                  case "$SUITE" in
+                      all) groups='["offline","online"]' ;;
+                      offline|basics|organization|tags|trash) groups='["offline"]' ;;
+                      online|account-auth|recovery-password|data-sync|entity-lifecycle) groups='["online"]' ;;
+                      *) exit 1 ;;
+                  esac
+                  echo "groups=$groups" >> "$GITHUB_OUTPUT"
 
             - name: Check scheduled build freshness
               id: freshness
@@ -97,60 +106,62 @@ jobs:
                   fi
                   echo "should_run=$should_run" >> "$GITHUB_OUTPUT"
 
-    offline:
-        name: Offline
+    test:
+        name: Auth ${{ matrix.group }}
         needs: prepare
-        if: needs.prepare.outputs.should_run == 'true' && contains(fromJSON('["all", "offline", "basics", "organization", "tags", "trash"]'), inputs.suite || 'all')
+        if: needs.prepare.outputs.should_run == 'true'
         runs-on: ubuntu-24.04
-        timeout-minutes: 90
+        timeout-minutes: 120
+        strategy:
+            fail-fast: false
+            matrix:
+                group: ${{ fromJSON(needs.prepare.outputs.groups) }}
+        env:
+            ONLINE_ENDPOINT: http://10.0.2.2:8080
+            AUTH_APP_PREPARATION: root-prefs
+            AUTH_FIXTURE_COMPOSE_PROJECT: auth-online-${{ github.run_id }}-${{ github.run_attempt }}
         steps:
-            - &checkout
-              name: Checkout tests
+            - name: Checkout tests
               uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
               with:
                   persist-credentials: false
 
-            - &java
-              name: Set up Java
+            - name: Set up Java
               uses: actions/setup-java@ad2b38190b15e4d6bdf0c97fb4fca8412226d287 # v5.3.0
               with:
                   distribution: temurin
                   java-version: 17
 
-            - &download_apk
-              name: Download resolved Auth build
+            - name: Download resolved Auth build
               env:
                   GH_TOKEN: ${{ github.token }}
                   BUILD: ${{ needs.prepare.outputs.build }}
               run: scripts/apk.sh download "$BUILD" "$AUTH_APK_PATH"
 
-            - &maestro
-              name: Install pinned Maestro
+            - name: Install pinned Maestro
               run: scripts/install-maestro.sh
 
-            - &kvm
-              name: Enable KVM
+            - name: Enable KVM
               run: |
                   echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
                   sudo udevadm control --reload-rules
                   sudo udevadm trigger --name-match=kvm --settle
                   test -r /dev/kvm && test -w /dev/kvm
 
-            - &display
-              name: Start virtual display for Mesa
+            - name: Start virtual display for Mesa
               timeout-minutes: 1
               run: |
                   read -r display < <(Xvfb -displayfd 1 -screen 0 1280x1024x24 -nolisten tcp 2> /tmp/auth-xvfb.log)
                   echo "DISPLAY=:$display" >> "$GITHUB_ENV"
 
-            - name: Run offline tests
+            - name: Run Auth tests
               id: tests
               uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
               env:
-                  AUTH_TEST_GROUP: offline
+                  AUTH_TEST_GROUP: ${{ matrix.group }}
                   AUTH_TEST_SUITE: ${{ inputs.suite || 'all' }}
-                  MAESTRO_ARTIFACTS_DIR: artifacts/maestro/offline
-              with: &android_emulator
+                  MAESTRO_ARTIFACTS_DIR: artifacts/maestro/${{ matrix.group }}
+              with:
                   api-level: 34
                   emulator-build: 15917651
                   target: default
@@ -161,95 +172,42 @@ jobs:
                   disable-animations: true
                   script: case "$AUTH_TEST_SUITE" in all|offline|online) scripts/run-auth-$AUTH_TEST_GROUP.sh ;; *) scripts/run-auth-$AUTH_TEST_GROUP.sh "$AUTH_TEST_SUITE" ;; esac
 
-            - name: Upload offline results
+
+            - name: Upload results
               if: always() && steps.tests.outcome != 'skipped'
               uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
               with:
-                  name: auth-offline-results
-                  path: artifacts/maestro/offline/**/results.xml
-                  if-no-files-found: error
-                  retention-days: 7
-
-            - name: Upload offline diagnostics
-              if: failure() && steps.tests.outcome == 'failure'
-              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-              with:
-                  name: auth-offline-diagnostics
-                  path: artifacts/maestro/offline
-                  retention-days: 7
-
-    online:
-        name: Online
-        needs: prepare
-        if: needs.prepare.outputs.should_run == 'true' && contains(fromJSON('["all", "online", "account-auth", "recovery-password", "data-sync", "entity-lifecycle"]'), inputs.suite || 'all')
-        runs-on: ubuntu-24.04
-        timeout-minutes: 120
-        env:
-            ONLINE_ENDPOINT: http://10.0.2.2:8080
-            AUTH_APP_PREPARATION: root-prefs
-            AUTH_FIXTURE_COMPOSE_PROJECT: auth-online-${{ github.run_id }}-${{ github.run_attempt }}
-        steps:
-            - *checkout
-            - *java
-            - *download_apk
-            - *maestro
-            - *kvm
-            - *display
-
-            - name: Run online suites
-              id: tests
-              uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
-              env:
-                  AUTH_TEST_GROUP: online
-                  AUTH_TEST_SUITE: ${{ inputs.suite || 'all' }}
-              with: *android_emulator
-
-            # Never upload the private signup/login traces from account-auth.
-            - name: Upload public-fixture failure diagnostics
-              if: failure()
-              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-              with:
-                  name: auth-online-public-diagnostics
-                  path: |
-                      artifacts/maestro/online-debug/account-auth/prepared-totp-start
-                      artifacts/maestro/online-debug/account-auth/prepared-totp-complete
-                      artifacts/maestro/online-debug/recovery-*
-                      artifacts/maestro/online-debug/data-sync
-                      artifacts/maestro/online-debug/entity-lifecycle
-                  retention-days: 3
-
-            - name: Upload online results
-              if: always()
-              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-              with:
-                  name: auth-online-results
-                  path: artifacts/maestro/online-results/**/*.xml
+                  name: auth-${{ matrix.group }}-results
+                  path: artifacts/maestro/**/results/**/*.xml
                   if-no-files-found: error
                   retention-days: 7
 
             - name: Capture host runtime health
               if: failure()
               run: |
-                  mkdir -p artifacts/maestro/runtime-health
+                  mkdir -p artifacts/runtime-health
                   {
                       date -u '+%Y-%m-%dT%H:%M:%SZ'
                       uname -a
-                      lscpu
                       free -h
-                      df -h || true
-                  } > artifacts/maestro/runtime-health/host.txt
-                  sudo dmesg --ctime > artifacts/maestro/runtime-health/kernel.txt
-                  sudo journalctl -b --no-pager -u systemd-oomd > artifacts/maestro/runtime-health/oomd.txt
+                      df -h
+                  } > artifacts/runtime-health/host.txt
+                  sudo dmesg --ctime > artifacts/runtime-health/kernel.txt
+                  sudo journalctl -b --no-pager -u systemd-oomd > artifacts/runtime-health/oomd.txt
 
-            - name: Upload runtime health
+            # Explicit paths keep generated signup credentials out of uploaded traces.
+            - name: Upload failure diagnostics
               if: failure()
               uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
               with:
-                  name: auth-online-runtime-health
-                  path: artifacts/maestro/runtime-health
-                  if-no-files-found: error
+                  name: auth-${{ matrix.group }}-diagnostics
+                  path: |
+                      artifacts/runtime-health
+                      artifacts/maestro/offline
+                      artifacts/maestro/online/runtime-health
+                      artifacts/maestro/online/debug/account-auth/prepared-totp-start
+                      artifacts/maestro/online/debug/account-auth/prepared-totp-complete
+                      artifacts/maestro/online/debug/recovery-password
+                      artifacts/maestro/online/debug/data-sync
+                      artifacts/maestro/online/debug/entity-lifecycle
                   retention-days: 3
-
-            - name: Stop Auth backend
-              if: always()
-              run: docker compose --project-name "$AUTH_FIXTURE_COMPOSE_PROJECT" --file museum/compose.yaml down --volumes --remove-orphans
