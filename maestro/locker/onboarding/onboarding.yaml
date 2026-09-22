@@ -1,0 +1,23 @@
+appId: ${APP_ID}
+name: Locker signed-out entry points
+tags:
+  - locker
+  - android
+  - onboarding
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible: "Login to existing account"
+    timeout: 60000
+- assertVisible: "Create an Ente account"
+- tapOn: "Login to existing account"
+- assertVisible: "terms of service"
+- inputText: "locker-maestro@example.org"
+- assertVisible: "locker-maestro@example.org"
+- hideKeyboard
+- back
+- assertVisible: "Create an Ente account"
+- tapOn: "Create an Ente account"
+- assertVisible: "(?s)Email.*Password.*Confirm password.*"
+- assertVisible: "Create account"

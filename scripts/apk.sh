@@ -3,16 +3,18 @@
 set -euo pipefail
 
 usage() {
-    echo "Usage: $0 resolve | fetch [output-directory] | download <metadata-json> <output-path>" >&2
+    echo "Usage: $0 resolve <auth|locker> | fetch <auth|locker> [output-directory] | download <metadata-json> <output-path>" >&2
     exit 2
 }
 
 resolve() {
-    gh api 'repos/ente/nightly/releases?per_page=100' --paginate | jq -esc '
+    local app=$1
+    case "$app" in auth|locker) ;; *) usage ;; esac
+    gh api 'repos/ente/nightly/releases?per_page=100' --paginate | jq -esc --arg app "$app" '
         [add[]
-            | select(.draft == false and (.tag_name | test("^auth-v[0-9]+\\.[0-9]+\\.[0-9]+-(beta|rc)$")))
+            | select(.draft == false and (.tag_name | test("^" + $app + "-v[0-9]+\\.[0-9]+\\.[0-9]+-(beta|rc)$")))
             | . as $release | .assets[]?
-            | select(.state == "uploaded" and (.name | test("^ente-auth-[^/]+\\.apk$")))
+            | select(.state == "uploaded" and (.name | test("^ente-" + $app + "-[^/]+\\.apk$")))
             | {
                 release_tag: $release.tag_name,
                 apk_asset_id: .id,
@@ -20,11 +22,11 @@ resolve() {
                 apk_created_at: .created_at,
                 apk_sha256: .digest
             }
-        ] | if length == 0 then error("No compatible Auth nightly APK was found") else max_by(.apk_created_at) end
+        ] | if length == 0 then error("No compatible " + $app + " nightly APK was found") else max_by(.apk_created_at) end
         | if (.apk_asset_id | type == "number") and
            (.apk_created_at | type == "string" and length > 0) and
            (.apk_sha256 | type == "string" and test("^sha256:[a-fA-F0-9]{64}$"))
-        then . else error("Auth APK is missing immutable provenance or a valid SHA-256 digest") end
+        then . else error("APK is missing immutable provenance or a valid SHA-256 digest") end
     '
 }
 
@@ -42,24 +44,24 @@ download() {
     done
     actual=$(shasum -a 256 "$output" | awk '{print $1}')
     if [[ "$actual" != "$expected" ]]; then
-        echo "Downloaded Auth APK does not match the resolved release asset" >&2
+        echo "Downloaded APK does not match the resolved release asset" >&2
         return 1
     fi
 }
 
 case "${1:-}" in
     resolve)
-        [[ $# -eq 1 ]] || usage
-        resolve
+        [[ $# -eq 2 ]] || usage
+        resolve "$2"
         ;;
     download)
         [[ $# -eq 3 ]] || usage
         download "$2" "$3"
         ;;
     fetch)
-        [[ $# -le 2 ]] || usage
-        metadata=$(resolve)
-        output="${2:-artifacts/auth}/$(jq -r '.apk_name' <<< "$metadata")"
+        [[ $# -ge 2 && $# -le 3 ]] || usage
+        metadata=$(resolve "$2")
+        output="${3:-artifacts/$2}/$(jq -r '.apk_name' <<< "$metadata")"
         download "$metadata" "$output"
         jq -r '"Verified \(.release_tag) asset \(.apk_asset_id), created \(.apk_created_at)"' <<< "$metadata" >&2
         printf '%s\n' "$output"

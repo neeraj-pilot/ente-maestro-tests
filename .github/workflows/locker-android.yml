@@ -1,0 +1,118 @@
+name: Locker Android
+
+on:
+    push:
+        branches: [main]
+        paths: &test_paths
+            - ".github/workflows/locker-android.yml"
+            - "maestro/locker/**"
+            - "museum/**"
+            - "scripts/apk.sh"
+            - "scripts/install-maestro.sh"
+            - "scripts/run-maestro.sh"
+    pull_request:
+        paths: *test_paths
+    workflow_dispatch:
+
+permissions:
+    contents: read
+
+concurrency:
+    group: locker-android-${{ github.ref }}
+    cancel-in-progress: true
+
+env:
+    APP_ID: io.ente.locker.independent
+    LOCKER_APK_PATH: ${{ github.workspace }}/artifacts/locker.apk
+    AUTH_FIXTURE_COMPOSE_PROJECT: locker-${{ github.run_id }}-${{ github.run_attempt }}
+    MAESTRO_CLI_NO_ANALYTICS: 1
+    MAESTRO_API_URL: http://127.0.0.1:9
+    LIBGL_ALWAYS_SOFTWARE: 1
+
+jobs:
+    smoke:
+        name: Locker smoke
+        runs-on: ubuntu-24.04
+        timeout-minutes: 45
+        steps:
+            - name: Checkout tests
+              uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+              with:
+                  persist-credentials: false
+
+            - name: Set up Java
+              uses: actions/setup-java@ad2b38190b15e4d6bdf0c97fb4fca8412226d287 # v5.3.0
+              with:
+                  distribution: temurin
+                  java-version: 17
+
+            - name: Download published Locker build
+              env:
+                  GH_TOKEN: ${{ github.token }}
+              run: |
+                  build=$(scripts/apk.sh resolve locker)
+                  echo "$build"
+                  scripts/apk.sh download "$build" "$LOCKER_APK_PATH"
+
+            - name: Install pinned Maestro
+              run: scripts/install-maestro.sh
+
+            - name: Start local Museum with public fixture
+              run: museum/restore-fixture.sh
+
+            - name: Enable KVM
+              run: |
+                  echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+                  sudo udevadm control --reload-rules
+                  sudo udevadm trigger --name-match=kvm --settle
+                  test -r /dev/kvm && test -w /dev/kvm
+
+            - name: Start virtual display for Mesa
+              timeout-minutes: 1
+              run: |
+                  read -r display < <(Xvfb -displayfd 1 -screen 0 1280x1024x24 -nolisten tcp 2> /tmp/locker-xvfb.log)
+                  echo "DISPLAY=:$display" >> "$GITHUB_ENV"
+
+            - name: Run Locker tests
+              id: test
+              uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+              with:
+                  api-level: 34
+                  emulator-build: 15917651
+                  target: default
+                  arch: x86_64
+                  profile: pixel_5
+                  cores: 2
+                  emulator-options: -no-window -gpu host -feature -Vulkan -accel on -no-metrics -no-snapshot -noaudio -no-boot-anim -memory 4096
+                  disable-animations: true
+                  script: |
+                      adb install -r "$LOCKER_APK_PATH"
+                      scripts/run-maestro.sh artifacts/maestro/locker/results/onboarding.xml artifacts/maestro/locker/debug maestro/locker/onboarding/onboarding.yaml
+
+                      credentials=museum/fixtures/public-test-credentials.json
+                      scripts/run-maestro.sh artifacts/maestro/locker/results/empty-account.xml artifacts/maestro/locker/debug \
+                          -e ONLINE_ENDPOINT=http://10.0.2.2:8080 \
+                          -e USER_EMAIL="$(jq -r '.accounts.basic.email' "$credentials")" \
+                          -e USER_PASSWORD="$(jq -r '.accounts.basic.password' "$credentials")" \
+                          maestro/locker/online/empty-account.yaml
+
+            - name: Stop local Museum
+              if: always()
+              run: docker compose --project-name "$AUTH_FIXTURE_COMPOSE_PROJECT" --file museum/compose.yaml down --volumes --remove-orphans
+
+            - name: Upload result
+              if: always() && steps.test.outcome != 'skipped'
+              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+              with:
+                  name: locker-results
+                  path: artifacts/maestro/locker/results/*.xml
+                  if-no-files-found: warn
+                  retention-days: 7
+
+            - name: Upload failure diagnostics
+              if: failure()
+              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+              with:
+                  name: locker-diagnostics
+                  path: artifacts/maestro/locker/debug
+                  retention-days: 3

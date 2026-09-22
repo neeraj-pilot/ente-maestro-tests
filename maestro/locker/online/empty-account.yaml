@@ -1,0 +1,92 @@
+appId: ${APP_ID}
+name: Locker empty account
+tags: [locker, android, online]
+---
+- runFlow: subflows/login-local-account.yaml
+- assertVisible: Setup your Legacy
+- tapOn: Save to Locker
+- assertVisible: "Document\nScan important docs."
+- assertVisible: "File\nUpload important files."
+- assertVisible: "Note\nWrite down thoughts and instructions."
+- assertVisible: "Thing\nSave locations of real-world items."
+- assertVisible: "Secret\nPreserve account credentials."
+- launchApp
+- extendedWaitUntil:
+    visible: Save to Locker
+    timeout: 30000
+# The current nightly build does not expose a semantic label on this button.
+- tapOn:
+    point: 9%,8%
+- assertVisible: General
+- tapOn: Trash
+- assertVisible: Your trash is empty
+- launchApp
+- extendedWaitUntil:
+    visible: Save to Locker
+    timeout: 30000
+- tapOn:
+    point: 9%,8%
+- tapOn: Collections
+- assertVisible: "Important\n0 items"
+- assertVisible: "Documents\n0 items"
+- assertVisible: "Uncategorized\n0 items"
+- tapOn: "Important\n0 items"
+- assertVisible: There are no items in this collection
+- launchApp
+- extendedWaitUntil:
+    visible: Save to Locker
+    timeout: 30000
+- tapOn:
+    point: 9%,8%
+- tapOn: Account
+- assertVisible: Recovery key
+- assertVisible: Change email
+- assertVisible: Change password
+- assertVisible: Delete account
+- back
+- tapOn: Security
+- assertVisible: Email verification
+- assertVisible: Passkey
+- assertVisible: App lock
+- assertVisible: View active sessions
+- back
+- tapOn: Appearance
+- assertVisible: Theme
+- assertVisible: System
+- assertVisible: Light
+- assertVisible: Dark
+- back
+- tapOn: General
+- assertVisible: Select language
+- back
+- scrollUntilVisible:
+    element: About
+- tapOn: About
+- assertVisible: We are open source!
+- assertVisible: Blog
+- assertVisible: Privacy
+- assertVisible: Terms
+- back
+- scrollUntilVisible:
+    element: Help & Support
+- tapOn: "Help & Support"
+- assertVisible: Ask a question
+- assertVisible: Request a feature
+- assertVisible: Report an issue
+- back
+- tapOn:
+    point: 93%,9%
+- assertVisible: Search settings
+- inputText: recovery
+- tapOn: ".*Recovery key.*"
+- assertVisible: Change email
+- back
+- back
+- scrollUntilVisible:
+    element: Logout
+- tapOn: Logout
+- assertVisible: Are you sure you want to logout?
+- tapOn: Yes, logout
+- extendedWaitUntil:
+    visible: Login to existing account
+    timeout: 30000

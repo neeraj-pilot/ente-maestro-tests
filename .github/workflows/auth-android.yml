@@ -73,7 +73,7 @@ jobs:
                   GH_TOKEN: ${{ github.token }}
                   SUITE: ${{ inputs.suite || 'all' }}
               run: |
-                  build=$(scripts/auth/apk.sh resolve)
+                  build=$(scripts/apk.sh resolve auth)
                   echo "$build"
                   echo "build=$build" >> "$GITHUB_OUTPUT"
                   case "$SUITE" in
@@ -132,7 +132,7 @@ jobs:
               env:
                   GH_TOKEN: ${{ github.token }}
                   BUILD: ${{ needs.prepare.outputs.build }}
-              run: scripts/auth/apk.sh download "$BUILD" "$AUTH_APK_PATH"
+              run: scripts/apk.sh download "$BUILD" "$AUTH_APK_PATH"
 
             - name: Install pinned Maestro
               run: scripts/install-maestro.sh

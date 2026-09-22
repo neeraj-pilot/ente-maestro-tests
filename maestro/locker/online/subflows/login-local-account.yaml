@@ -1,0 +1,34 @@
+appId: ${APP_ID}
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible: Login to existing account
+    timeout: 60000
+- repeat:
+    times: 7
+    commands:
+      - tapOn:
+          point: 50%,70%
+- assertVisible: Developer settings
+- tapOn: "Yes"
+- assertVisible: Save
+- inputText: ${ONLINE_ENDPOINT}
+- hideKeyboard
+- tapOn: Save
+- launchApp
+- assertVisible: Login to existing account
+- tapOn: Login to existing account
+- waitForAnimationToEnd
+- inputText: ${USER_EMAIL}
+- assertVisible: ${USER_EMAIL}
+- tapOn: done
+- extendedWaitUntil:
+    visible: ".*Enter the password for.*"
+    timeout: 30000
+- inputText: ${USER_PASSWORD}
+- tapOn: done
+- extendedWaitUntil:
+    visible: Save to Locker
+    timeout: 90000
+- assertNotVisible: Something went wrong
