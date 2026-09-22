@@ -1,0 +1,50 @@
+appId: ${APP_ID}
+name: Locker note lifecycle
+tags: [locker, android, online]
+---
+- runFlow: subflows/login-local-account.yaml
+- tapOn: Save to Locker
+- tapOn: "Note\nWrite down thoughts and instructions."
+- assertVisible: "(?s)Content.*"
+- inputText: Maestro test note
+- hideKeyboard
+- tapOn: Save
+- extendedWaitUntil:
+    visible: Maestro test note
+    timeout: 30000
+- launchApp
+- assertVisible: Maestro test note
+- tapOn: Search your documents
+- inputText: Maestro test note
+- assertVisible: Maestro test note
+- assertNotVisible: No matches found
+- eraseText
+- inputText: no-such-locker-item-unique
+- assertVisible: No matches found
+- launchApp
+- assertVisible: Maestro test note
+- tapOn: Maestro test note
+- assertVisible: Edit
+- assertVisible: Maestro test note
+- back
+- longPressOn: Maestro test note
+- assertVisible: Delete
+- tapOn: Delete
+- assertVisible: Move to Trash?
+- tapOn: Delete 1 item
+- extendedWaitUntil:
+    visible: Item deleted successfully
+    timeout: 30000
+- assertNotVisible: Maestro test note
+- tapOn:
+    point: 9%,8%
+- tapOn: Trash
+- assertVisible: Maestro test note
+- longPressOn: Maestro test note
+- tapOn: Delete
+- assertVisible: Permanently delete
+- tapOn: Yes, delete
+- extendedWaitUntil:
+    visible: 1 item deleted permanently
+    timeout: 30000
+- assertNotVisible: Maestro test note

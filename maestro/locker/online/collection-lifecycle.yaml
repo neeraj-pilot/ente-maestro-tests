@@ -1,0 +1,36 @@
+appId: ${APP_ID}
+name: Locker collection lifecycle
+tags: [locker, android, online]
+---
+- runFlow: subflows/login-local-account.yaml
+- tapOn:
+    point: 9%,8%
+- tapOn: Collections
+- assertVisible: "Important\n0 items"
+- tapOn:
+    point: 93%,16%
+- assertVisible: New collection
+- inputText: Maestro collection
+- hideKeyboard
+- tapOn: Create collection
+- extendedWaitUntil:
+    visible: "Maestro collection\n0 items"
+    timeout: 30000
+- longPressOn: "Maestro collection\n0 items"
+- assertVisible: Edit
+- tapOn: Edit
+- assertVisible: Rename collection
+- eraseText
+- inputText: Maestro renamed
+- hideKeyboard
+- tapOn: Save
+- extendedWaitUntil:
+    visible: "Maestro renamed\n0 items"
+    timeout: 30000
+- longPressOn: "Maestro renamed\n0 items"
+- assertVisible: Delete
+- tapOn: Delete
+- extendedWaitUntil:
+    visible: Collection deleted successfully
+    timeout: 30000
+- assertNotVisible: "Maestro renamed\n0 items"

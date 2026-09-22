@@ -1,0 +1,67 @@
+appId: ${APP_ID}
+name: Locker structured items and bulk delete
+tags: [locker, android, online]
+---
+- runFlow: subflows/login-local-account.yaml
+- tapOn: Save to Locker
+- tapOn: "Thing\nSave locations of real-world items."
+- assertVisible: "(?s)Name.*"
+- inputText: Maestro field kit
+- tapOn: "(?s)Location.*"
+- inputText: Shelf A
+- hideKeyboard
+- tapOn: Save
+- extendedWaitUntil:
+    visible: Maestro field kit
+    timeout: 30000
+- tapOn: Maestro field kit
+- assertVisible: Shelf A
+- launchApp
+- tapOn: Add item
+- tapOn: "Secret\nPreserve account credentials."
+- assertVisible: "(?s)Name.*"
+- inputText: Maestro example account
+- tapOn: "(?s)Username.*"
+- inputText: tester@example.org
+- tapOn: "(?s)Password.*"
+- inputText: test-only-passphrase
+- hideKeyboard
+- tapOn: Save
+- extendedWaitUntil:
+    visible: Maestro example account
+    timeout: 30000
+- tapOn: Maestro example account
+- assertVisible: tester@example.org
+- launchApp
+- assertVisible: Maestro field kit
+- assertVisible: Maestro example account
+- longPressOn: Maestro field kit
+- assertVisible: Select all
+- tapOn: Maestro example account
+- assertVisible: Deselect all
+- tapOn: Delete
+- assertVisible: Move to Trash?
+- assertVisible: Delete 2 items
+- tapOn: Delete 2 items
+- extendedWaitUntil:
+    visible: Item deleted successfully
+    timeout: 30000
+- assertNotVisible: Maestro field kit
+- assertNotVisible: Maestro example account
+- tapOn:
+    point: 9%,8%
+- tapOn: Trash
+- assertVisible: Maestro field kit
+- assertVisible: Maestro example account
+- longPressOn: Maestro field kit
+- assertVisible: Select all
+- tapOn: Maestro example account
+- assertVisible: Deselect all
+- tapOn: Delete
+- assertVisible: Permanently delete
+- tapOn: Yes, delete
+- extendedWaitUntil:
+    visible: 2 items deleted permanently
+    timeout: 30000
+- assertNotVisible: Maestro field kit
+- assertNotVisible: Maestro example account

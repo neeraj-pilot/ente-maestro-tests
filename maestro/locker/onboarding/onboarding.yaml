@@ -13,11 +13,18 @@ tags:
 - assertVisible: "Create an Ente account"
 - tapOn: "Login to existing account"
 - assertVisible: "terms of service"
-- inputText: "locker-maestro@example.org"
-- assertVisible: "locker-maestro@example.org"
+- inputText: invalid-email
+- assertVisible: invalid-email
 - hideKeyboard
 - back
 - assertVisible: "Create an Ente account"
 - tapOn: "Create an Ente account"
 - assertVisible: "(?s)Email.*Password.*Confirm password.*"
 - assertVisible: "Create account"
+- tapOn:
+    point: 50%,21%
+- inputText: invalid-email
+- tapOn:
+    point: 50%,32%
+- inputText: abc
+- assertVisible: "(?s).*Password strength: Weak.*"

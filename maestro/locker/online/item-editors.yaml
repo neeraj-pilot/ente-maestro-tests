@@ -1,0 +1,38 @@
+appId: ${APP_ID}
+name: Locker item editors and discard
+tags: [locker, android, online]
+---
+- runFlow: subflows/login-local-account.yaml
+- tapOn: Save to Locker
+- tapOn: "Note\nWrite down thoughts and instructions."
+- assertVisible: Title
+- assertVisible: "(?s)Content.*"
+- inputText: A draft note for testing
+- hideKeyboard
+- back
+- assertVisible: Discard changes?
+- tapOn: Discard
+- assertVisible: Save to Locker
+- tapOn: "Thing\nSave locations of real-world items."
+- assertVisible: "(?s)Name.*"
+- assertVisible: "(?s)Location.*"
+- assertVisible: Notes
+- inputText: Passport binder
+- hideKeyboard
+- back
+- assertVisible: Discard changes?
+- tapOn: Discard
+- assertVisible: Save to Locker
+- tapOn: "Secret\nPreserve account credentials."
+- assertVisible: "(?s)Name.*"
+- assertVisible: "(?s)Username.*"
+- assertVisible: "(?s)Password.*"
+- inputText: Test credential
+- hideKeyboard
+- back
+- assertVisible: Discard changes?
+- tapOn: Discard
+- assertVisible: Save to Locker
+- launchApp
+- assertVisible: Setup your Legacy
+- assertVisible: Save to Locker
