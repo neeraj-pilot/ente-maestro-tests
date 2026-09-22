@@ -11,14 +11,14 @@ tags:
 - runFlow:
     file: ../subflows/enter-offline-mode.yaml
 - runFlow:
-    file: ../subflows/add-offline-account.yaml
+    file: ../subflows/add-code.yaml
     env:
       ISSUER: "GitHub"
       SECRET: "JBSWY3DPEHPK3PXP"
       ACCOUNT: "security@octocat.test"
       NOTE: ""
 - runFlow:
-    file: ../subflows/add-offline-account.yaml
+    file: ../subflows/add-code.yaml
     env:
       ISSUER: "Stripe"
       SECRET: "KRUGS4ZANFZSAYJA"
@@ -43,20 +43,8 @@ tags:
 - tapOn: "Search"
 - assertVisible: "GitHub"
 - assertVisible: "Stripe"
-- runFlow:
-    when:
-      visible:
-        id: "auth_sort_codes"
-    commands:
-      - tapOn:
-          id: "auth_sort_codes"
-- runFlow:
-    when:
-      notVisible: "Issuer"
-    commands:
-      # Published universal APKs before the sort semantics identifier shipped.
-      - tapOn:
-          point: "82%,9%"
+- tapOn:
+    id: "auth_sort_codes"
 - assertVisible: "Issuer"
 - assertVisible: "Account"
 - assertVisible: "Frequently used"

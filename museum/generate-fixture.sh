@@ -66,7 +66,7 @@ jq --null-input \
         generator: "tools/auth-fixture-generator"
     }' > "$manifest"
 
-ALLOW_AUTH_FIXTURE_RESTORE=1 AUTH_FIXTURE_COMPOSE_PROJECT="$project" \
+AUTH_FIXTURE_COMPOSE_PROJECT="$project" \
     "$repo_root/museum/restore-fixture.sh"
 (
     cd "$repo_root/tools/auth-fixture-generator"

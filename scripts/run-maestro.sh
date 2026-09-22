@@ -3,6 +3,7 @@
 set -euo pipefail
 
 export MAESTRO_CLI_NO_ANALYTICS=1
+# Analytics opt-out does not cover error reports (Maestro issue #3488).
 export MAESTRO_API_URL=http://127.0.0.1:9
 
 report=${1:?Expected JUnit report path}

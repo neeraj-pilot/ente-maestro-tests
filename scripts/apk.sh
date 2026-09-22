@@ -14,13 +14,11 @@ resolve() {
             | . as $release | .assets[]?
             | select(.state == "uploaded" and (.name | test("^ente-auth-[^/]+\\.apk$")))
             | {
-                channel: ($release.tag_name | capture("-(?<channel>beta|rc)$").channel),
                 release_tag: $release.tag_name,
                 apk_asset_id: .id,
                 apk_name: .name,
                 apk_created_at: .created_at,
-                apk_sha256: .digest,
-                source_repository: "ente/nightly"
+                apk_sha256: .digest
             }
         ] | if length == 0 then error("No compatible Auth nightly APK was found") else max_by(.apk_created_at) end
         | if (.apk_asset_id | type == "number") and
@@ -31,13 +29,12 @@ resolve() {
 }
 
 download() {
-    local metadata=$1 output=$2 repository asset_id expected actual attempt
-    repository=$(jq -er '.source_repository' <<< "$metadata")
+    local metadata=$1 output=$2 asset_id expected actual attempt
     asset_id=$(jq -er '.apk_asset_id' <<< "$metadata")
     expected=$(jq -er '.apk_sha256 | ltrimstr("sha256:")' <<< "$metadata")
     mkdir -p "$(dirname "$output")"
     for attempt in 1 2 3; do
-        if gh api -H 'Accept: application/octet-stream' "repos/$repository/releases/assets/$asset_id" > "$output"; then
+        if gh api -H 'Accept: application/octet-stream' "repos/ente/nightly/releases/assets/$asset_id" > "$output"; then
             break
         fi
         [[ $attempt -lt 3 ]] || return 1

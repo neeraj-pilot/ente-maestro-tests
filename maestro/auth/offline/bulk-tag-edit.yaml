@@ -7,14 +7,14 @@ tags: [auth, android, offline, tags]
 - runFlow:
     file: ../subflows/enter-offline-mode.yaml
 - runFlow:
-    file: ../subflows/add-offline-account.yaml
+    file: ../subflows/add-code.yaml
     env:
       ISSUER: "GitHub"
       SECRET: "JBSWY3DPEHPK3PXP"
       ACCOUNT: "security@github.test"
       NOTE: ""
 - runFlow:
-    file: ../subflows/add-offline-account.yaml
+    file: ../subflows/add-code.yaml
     env:
       ISSUER: "Stripe"
       SECRET: "KRUGS4ZANFZSAYJA"

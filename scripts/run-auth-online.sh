@@ -303,7 +303,7 @@ run_suite() (
 
     mkdir -p "$debug_dir" "$results_dir" "$runtime_dir"
     trap 'record_runtime_health "$?"' EXIT
-    ALLOW_AUTH_FIXTURE_RESTORE=1 museum/restore-fixture.sh
+    museum/restore-fixture.sh
     case "$phase" in
         account-auth) run_account_auth ;;
         recovery-password) run_recovery ;;

@@ -19,7 +19,7 @@ tags: [auth, android, offline, backup, platform]
     visible: "(?s)Setup your first.*account"
     timeout: 30000
 - runFlow:
-    file: ../subflows/add-offline-account.yaml
+    file: ../subflows/add-code.yaml
     env:
       ISSUER: "GitHub"
       SECRET: "JBSWY3DPEHPK3PXP"
@@ -34,22 +34,9 @@ tags: [auth, android, offline, backup, platform]
 - extendedWaitUntil:
     visible: "(?s).*Automatic backups.*"
     timeout: 10000
-- runFlow:
-    when:
-      notVisible:
-        id: "auth_local_backup_toggle"
-    commands:
-      - tapOn:
-          text: "(?s).*Automatic backups.*"
-          point: "87%,30%"
-- runFlow:
-    when:
-      visible:
-        id: "auth_local_backup_toggle"
-    commands:
-      - tapOn:
-          id: "auth_local_backup_toggle"
-          point: "95%,50%"
+- tapOn:
+    id: "auth_local_backup_toggle"
+    point: "95%,50%"
 - extendedWaitUntil:
     visible: "Set backup password"
     timeout: 10000
@@ -80,16 +67,5 @@ tags: [auth, android, offline, backup, platform]
 - extendedWaitUntil:
     visible: "(?s).*Automatic backups.*"
     timeout: 30000
-- runFlow:
-    when:
-      notVisible:
-        id: "auth_local_backup_create_now"
-    commands:
-      - tapOn: "Backup now"
-- runFlow:
-    when:
-      visible:
-        id: "auth_local_backup_create_now"
-    commands:
-      - tapOn:
-          id: "auth_local_backup_create_now"
+- tapOn:
+    id: "auth_local_backup_create_now"

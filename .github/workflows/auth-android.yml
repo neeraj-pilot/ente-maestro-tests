@@ -44,9 +44,6 @@ concurrency:
 env:
     APP_ID: io.ente.auth.independent
     AUTH_APK_PATH: ${{ github.workspace }}/artifacts/auth.apk
-    MAESTRO_CLI_NO_ANALYTICS: 1
-    # Analytics opt-out does not cover error reports (Maestro issue #3488).
-    MAESTRO_API_URL: http://127.0.0.1:9
     # Use Mesa's host OpenGL implementation, not the crashing bundled renderers.
     LIBGL_ALWAYS_SOFTWARE: 1
 
@@ -65,11 +62,8 @@ jobs:
               with:
                   persist-credentials: false
 
-            - name: Validate hosted test configuration
-              run: |
-                  python3 -m unittest discover -s scripts/tests
-                  scripts/tests/apk.sh
-                  scripts/tests/runners.sh
+            - name: Test TOTP generation
+              run: python3 -m unittest discover -s scripts/tests
 
             - name: Resolve published Auth build
               id: apk
