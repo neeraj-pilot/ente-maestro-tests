@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/../.."
 : "${AUTH_APK_PATH:?Set AUTH_APK_PATH to the Auth nightly APK}"
 if [[ ! -f "$AUTH_APK_PATH" ]]; then
     echo "APK not found: $AUTH_APK_PATH" >&2
@@ -50,8 +50,8 @@ for suite in "$@"; do
     case "$suite" in
         imports)
             wait_for_downloads
-            adb -s "$serial" push maestro/fixtures/plain_text_import.txt /sdcard/Download/plain_text_import.txt
-            adb -s "$serial" push maestro/fixtures/google_auth_migration.png /sdcard/Download/google_auth_migration.png
+            adb -s "$serial" push maestro/auth/fixtures/plain_text_import.txt /sdcard/Download/plain_text_import.txt
+            adb -s "$serial" push maestro/auth/fixtures/google_auth_migration.png /sdcard/Download/google_auth_migration.png
             ;;
         backup)
             wait_for_downloads
@@ -65,5 +65,5 @@ tags=$(IFS=,; echo "$*")
 scripts/run-maestro.sh "$run_dir/results/offline.xml" "$run_dir/debug" \
     --include-tags "$tags" maestro/auth
 if [[ ",$tags," == *,backup,* ]]; then
-    ANDROID_SERIAL="$serial" scripts/verify-local-auth-backups.sh
+    ANDROID_SERIAL="$serial" scripts/auth/verify-local-backups.sh
 fi

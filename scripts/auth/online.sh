@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/../.."
 : "${AUTH_APK_PATH:?Set AUTH_APK_PATH to the Auth nightly APK}"
 export APP_ID=${APP_ID:-io.ente.auth.independent}
 export MAESTRO_DEVICE=${ANDROID_SERIAL:-}
@@ -204,7 +204,7 @@ run_account_auth() {
     fixture_totp_code=$(
         TOTP_SECRET="$fixture_totp_secret" \
             TOTP_MIN_VALIDITY_SECONDS=20 \
-            python3 scripts/current-totp.py
+            python3 scripts/auth/current-totp.py
     )
     run_maestro login/totp-complete.yaml \
         -e FIXTURE_TOTP_CODE="$fixture_totp_code"
@@ -263,7 +263,7 @@ run_entity_lifecycle() {
         "SELECT MAX(updated_at) FROM authenticator_entity WHERE user_id = $fixture_basic_user_id;")
     adb shell mkdir -p /sdcard/Download
     adb push \
-        maestro/fixtures/lifecycle-import.txt \
+        maestro/auth/fixtures/lifecycle-import.txt \
         /sdcard/Download/auth_lifecycle_import.txt
     run_maestro lifecycle/create.yaml
     wait_for_entity_count_and_quiet "$fixture_basic_user_id" "$lifecycle_marker" 4

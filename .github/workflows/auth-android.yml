@@ -8,7 +8,6 @@ on:
         paths: &test_paths
             - ".github/workflows/auth-android.yml"
             - "maestro/auth/**"
-            - "maestro/fixtures/**"
             - "scripts/**"
             - "museum/**"
             - "tools/auth-fixture-generator/**"
@@ -66,7 +65,7 @@ jobs:
                   persist-credentials: false
 
             - name: Test TOTP generation
-              run: python3 -m unittest discover -s scripts/tests
+              run: python3 -m unittest discover -s scripts/auth
 
             - name: Resolve published Auth build
               id: apk
@@ -74,7 +73,7 @@ jobs:
                   GH_TOKEN: ${{ github.token }}
                   SUITE: ${{ inputs.suite || 'all' }}
               run: |
-                  build=$(scripts/apk.sh resolve)
+                  build=$(scripts/auth/apk.sh resolve)
                   echo "$build"
                   echo "build=$build" >> "$GITHUB_OUTPUT"
                   case "$SUITE" in
@@ -133,7 +132,7 @@ jobs:
               env:
                   GH_TOKEN: ${{ github.token }}
                   BUILD: ${{ needs.prepare.outputs.build }}
-              run: scripts/apk.sh download "$BUILD" "$AUTH_APK_PATH"
+              run: scripts/auth/apk.sh download "$BUILD" "$AUTH_APK_PATH"
 
             - name: Install pinned Maestro
               run: scripts/install-maestro.sh
@@ -167,7 +166,7 @@ jobs:
                   cores: 2
                   emulator-options: -no-window -gpu host -feature -Vulkan -accel on -no-metrics -no-snapshot -noaudio -no-boot-anim -memory 4096
                   disable-animations: true
-                  script: case "$AUTH_TEST_SUITE" in all|offline|online) scripts/run-auth-$AUTH_TEST_GROUP.sh ;; *) scripts/run-auth-$AUTH_TEST_GROUP.sh "$AUTH_TEST_SUITE" ;; esac
+                  script: case "$AUTH_TEST_SUITE" in all|offline|online) scripts/auth/$AUTH_TEST_GROUP.sh ;; *) scripts/auth/$AUTH_TEST_GROUP.sh "$AUTH_TEST_SUITE" ;; esac
             - name: Upload results
               if: always() && steps.tests.outcome != 'skipped'
               uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
