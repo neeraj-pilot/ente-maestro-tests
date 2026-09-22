@@ -44,6 +44,9 @@ concurrency:
 env:
     APP_ID: io.ente.auth.independent
     AUTH_APK_PATH: ${{ github.workspace }}/artifacts/auth.apk
+    MAESTRO_CLI_NO_ANALYTICS: 1
+    # Cover installer version checks as well as test runs.
+    MAESTRO_API_URL: http://127.0.0.1:9
     # Use Mesa's host OpenGL implementation, not the crashing bundled renderers.
     LIBGL_ALWAYS_SOFTWARE: 1
 
