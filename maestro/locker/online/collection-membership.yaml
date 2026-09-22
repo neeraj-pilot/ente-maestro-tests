@@ -1,0 +1,68 @@
+appId: ${APP_ID}
+name: Locker collection membership and filter
+tags: [locker, android, online]
+---
+- runFlow: subflows/login-local-account.yaml
+- tapOn: Save to Locker
+- tapOn: "Note\nWrite down thoughts and instructions."
+- inputText: Maestro shelved note
+- hideKeyboard
+- tapOn: Save
+- extendedWaitUntil:
+    visible: Maestro shelved note
+    timeout: 30000
+- tapOn:
+    point: 9%,8%
+- tapOn: Collections
+- tapOn:
+    point: 93%,16%
+- inputText: Maestro shelf
+- hideKeyboard
+- tapOn: Create collection
+- extendedWaitUntil:
+    visible: "Maestro shelf\n0 items"
+    timeout: 30000
+- launchApp
+- longPressOn: Maestro shelved note
+- tapOn: Add to
+- assertVisible: Add to collection
+- tapOn: "Maestro shelf\nMaestro shelf"
+- tapOn: Save
+- extendedWaitUntil:
+    visible: Maestro shelved note
+    timeout: 30000
+- tapOn: Filters
+- tapOn: "Maestro shelf\nMaestro shelf"
+- back
+- assertVisible: Maestro shelved note
+- tapOn:
+    point: 9%,8%
+- tapOn: Collections
+- extendedWaitUntil:
+    visible: "Maestro shelf\n1 items?"
+    timeout: 30000
+- tapOn: "Maestro shelf\n1 items?"
+- assertVisible: Maestro shelved note
+- back
+- longPressOn: "Maestro shelf\n1 items?"
+- tapOn: Delete
+- assertVisible: Also delete items from everywhere
+- tapOn: Yes, delete collection
+- extendedWaitUntil:
+    notVisible: "Maestro shelf\n1 items?"
+    timeout: 30000
+- launchApp
+- assertVisible: Maestro shelved note
+- longPressOn: Maestro shelved note
+- tapOn: Delete
+- tapOn: Delete 1 item
+- tapOn:
+    point: 9%,8%
+- tapOn: Trash
+- assertVisible: Maestro shelved note
+- longPressOn: Maestro shelved note
+- tapOn: Delete
+- tapOn: Yes, delete
+- extendedWaitUntil:
+    notVisible: Maestro shelved note
+    timeout: 30000

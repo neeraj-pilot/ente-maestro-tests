@@ -77,7 +77,7 @@ jobs:
               id: test
               uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
               with:
-                  api-level: 34
+                  api-level: 35
                   emulator-build: 15917651
                   target: google_apis
                   arch: x86_64
@@ -98,7 +98,11 @@ jobs:
                           maestro/locker/online/item-editors.yaml \
                           maestro/locker/online/collection-lifecycle.yaml \
                           maestro/locker/online/note-lifecycle.yaml \
-                          maestro/locker/online/structured-items.yaml
+                          maestro/locker/online/structured-items.yaml \
+                          maestro/locker/online/important-lifecycle.yaml \
+                          maestro/locker/online/restore-note.yaml \
+                          maestro/locker/online/collection-membership.yaml \
+                          maestro/locker/online/language-switch.yaml
 
             - name: Stop local Museum
               if: always()

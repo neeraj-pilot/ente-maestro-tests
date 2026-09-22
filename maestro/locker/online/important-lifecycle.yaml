@@ -1,0 +1,51 @@
+appId: ${APP_ID}
+name: Locker important lifecycle
+tags: [locker, android, online]
+---
+- runFlow: subflows/login-local-account.yaml
+- tapOn: Save to Locker
+- tapOn: "Note\nWrite down thoughts and instructions."
+- inputText: Maestro important note
+- hideKeyboard
+- tapOn: Save
+- extendedWaitUntil:
+    visible: Maestro important note
+    timeout: 30000
+- longPressOn: Maestro important note
+- tapOn: Important
+- extendedWaitUntil:
+    notVisible: Select all
+    timeout: 30000
+- tapOn:
+    point: 9%,8%
+- tapOn: Collections
+- extendedWaitUntil:
+    visible: "Important\n1 items?"
+    timeout: 30000
+- tapOn: "Important\n1 items?"
+- assertVisible: Maestro important note
+- longPressOn: Maestro important note
+- tapOn: Unimportant
+- extendedWaitUntil:
+    notVisible: Maestro important note
+    timeout: 30000
+- launchApp
+- assertVisible: Maestro important note
+- longPressOn: Maestro important note
+- tapOn: Delete
+- assertVisible: Move to Trash?
+- tapOn: Delete 1 item
+- extendedWaitUntil:
+    notVisible: Maestro important note
+    timeout: 30000
+- tapOn:
+    point: 9%,8%
+- tapOn: Trash
+- assertVisible: Maestro important note
+- longPressOn: Maestro important note
+- tapOn: Delete
+- assertVisible: Permanently delete
+- tapOn: Yes, delete
+- extendedWaitUntil:
+    notVisible: Maestro important note
+    timeout: 30000

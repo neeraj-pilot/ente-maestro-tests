@@ -16,6 +16,16 @@ tags: [locker, android, online]
     timeout: 30000
 - tapOn: Maestro field kit
 - assertVisible: Shelf A
+- tapOn: Edit
+- tapOn: "(?s)Location.*"
+- eraseText
+- inputText: Shelf B
+- hideKeyboard
+- tapOn: Save
+- assertVisible: Shelf B
+- launchApp
+- tapOn: Maestro field kit
+- assertVisible: Shelf B
 - launchApp
 - tapOn: Add item
 - tapOn: "Secret\nPreserve account credentials."
@@ -32,6 +42,22 @@ tags: [locker, android, online]
     timeout: 30000
 - tapOn: Maestro example account
 - assertVisible: tester@example.org
+- assertVisible: show_password
+- assertNotVisible: test-only-passphrase
+- tapOn: show_password
+- assertVisible: test-only-passphrase
+- tapOn: hide_password
+- assertNotVisible: test-only-passphrase
+- tapOn: Edit
+- tapOn: "(?s)Username.*"
+- eraseText
+- inputText: owner@example.org
+- hideKeyboard
+- tapOn: Save
+- assertVisible: owner@example.org
+- launchApp
+- tapOn: Maestro example account
+- assertVisible: owner@example.org
 - launchApp
 - assertVisible: Maestro field kit
 - assertVisible: Maestro example account

@@ -26,6 +26,16 @@ tags: [locker, android, online]
 - tapOn: Maestro test note
 - assertVisible: Edit
 - assertVisible: Maestro test note
+- tapOn: Edit
+- tapOn: "(?s)Content.*"
+- eraseText
+- inputText: Maestro revised note body
+- hideKeyboard
+- tapOn: Save
+- assertVisible: Maestro revised note body
+- launchApp
+- tapOn: Maestro test note
+- assertVisible: Maestro revised note body
 - back
 - longPressOn: Maestro test note
 - assertVisible: Delete

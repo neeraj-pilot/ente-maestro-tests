@@ -1,0 +1,14 @@
+appId: ${APP_ID}
+name: Locker language switch
+tags: [locker, android, online]
+---
+- runFlow: subflows/login-local-account.yaml
+- tapOn:
+    point: 9%,8%
+- tapOn: General
+- tapOn: Select language
+- assertVisible: "Deutsch.*"
+- tapOn: "Deutsch.*"
+- assertVisible: Sprache auswählen
+- tapOn: "English.*"
+- assertVisible: Select language

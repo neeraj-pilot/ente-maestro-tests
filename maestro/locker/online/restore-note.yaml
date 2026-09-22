@@ -1,0 +1,47 @@
+appId: ${APP_ID}
+name: Locker restore from trash
+tags: [locker, android, online]
+---
+- runFlow: subflows/login-local-account.yaml
+- tapOn: Save to Locker
+- tapOn: "Note\nWrite down thoughts and instructions."
+- inputText: Maestro restore note
+- hideKeyboard
+- tapOn: Save
+- extendedWaitUntil:
+    visible: Maestro restore note
+    timeout: 30000
+- longPressOn: Maestro restore note
+- tapOn: Delete
+- assertVisible: Move to Trash?
+- tapOn: Delete 1 item
+- extendedWaitUntil:
+    notVisible: Maestro restore note
+    timeout: 30000
+- tapOn:
+    point: 9%,8%
+- tapOn: Trash
+- assertVisible: Maestro restore note
+- longPressOn: Maestro restore note
+- tapOn: Restore
+- assertVisible: Add to collection
+- tapOn: "Uncategorized\nUncategorized"
+- tapOn: Save
+- extendedWaitUntil:
+    notVisible: Maestro restore note
+    timeout: 30000
+- launchApp
+- assertVisible: Maestro restore note
+- longPressOn: Maestro restore note
+- tapOn: Delete
+- tapOn: Delete 1 item
+- tapOn:
+    point: 9%,8%
+- tapOn: Trash
+- assertVisible: Maestro restore note
+- longPressOn: Maestro restore note
+- tapOn: Delete
+- tapOn: Yes, delete
+- extendedWaitUntil:
+    visible: Your trash is empty
+    timeout: 30000
