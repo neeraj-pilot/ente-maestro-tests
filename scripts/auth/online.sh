@@ -76,23 +76,9 @@ run_maestro() {
     local result_name=${MAESTRO_RESULT_NAME:-${flow##*/}}
     result_name=${result_name%.yaml}
     shift
-    wait_for_android_network
     scripts/run-maestro.sh "$results_dir/$result_name.xml" "$debug_dir/$result_name" \
         -e ONLINE_ENDPOINT="$ONLINE_ENDPOINT" "${fixture_env[@]}" \
         "$@" "maestro/auth/online/$flow"
-}
-
-wait_for_android_network() {
-    # Android can finish booting before Cronet has a default network.
-    for _ in {1..30}; do
-        if timeout 5 adb shell dumpsys connectivity |
-            grep -E '^Active default network: [0-9]+' > /dev/null; then
-            return
-        fi
-        sleep 2
-    done
-    echo "Android has no active default network; online UI tests have not started" >&2
-    return 1
 }
 
 prepare_fixture_app() {
@@ -315,6 +301,7 @@ run_suite() (
 
 adb shell settings put system screen_off_timeout 2147483647
 adb install -r "$AUTH_APK_PATH"
+adb reverse tcp:8080 tcp:8080
 trap 'docker compose --project-name "$AUTH_FIXTURE_COMPOSE_PROJECT" --file museum/compose.yaml down --volumes --remove-orphans' EXIT
 
 status=0

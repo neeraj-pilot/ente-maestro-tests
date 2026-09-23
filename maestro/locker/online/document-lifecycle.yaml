@@ -112,6 +112,9 @@ tags: [locker, android, online]
 - launchApp
 - tapOn:
     point: 9%,8%
+- extendedWaitUntil:
+    visible: General
+    timeout: 30000
 - tapOn: Collections
 - extendedWaitUntil:
     visible: "Maestro document archive\n0 items"

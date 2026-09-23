@@ -66,8 +66,14 @@ tags: [locker, android, online]
 - tapOn: Maestro bulk beta
 - tapOn: Delete
 - tapOn: Delete 2 items
+- extendedWaitUntil:
+    notVisible: Maestro bulk alpha
+    timeout: 30000
 - tapOn:
     point: 9%,8%
+- extendedWaitUntil:
+    visible: General
+    timeout: 30000
 - tapOn: Trash
 - assertVisible: Maestro bulk alpha
 - assertVisible: Maestro bulk beta

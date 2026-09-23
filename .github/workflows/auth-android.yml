@@ -113,7 +113,6 @@ jobs:
             matrix:
                 group: ${{ fromJSON(needs.prepare.outputs.groups) }}
         env:
-            ONLINE_ENDPOINT: http://10.0.2.2:8080
             AUTH_APP_PREPARATION: root-prefs
             AUTH_FIXTURE_COMPOSE_PROJECT: auth-online-${{ github.run_id }}-${{ github.run_attempt }}
         steps:

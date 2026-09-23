@@ -75,8 +75,14 @@ tags: [locker, android, online]
 - longPressOn: Maestro shelved note
 - tapOn: Delete
 - tapOn: Delete 1 item
+- extendedWaitUntil:
+    notVisible: Maestro shelved note
+    timeout: 30000
 - tapOn:
     point: 9%,8%
+- extendedWaitUntil:
+    visible: General
+    timeout: 30000
 - tapOn: Trash
 - assertVisible: Maestro shelved note
 - longPressOn: Maestro shelved note
