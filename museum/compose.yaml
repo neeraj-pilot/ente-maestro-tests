@@ -25,3 +25,33 @@ services:
             interval: 1s
             timeout: 5s
             retries: 30
+
+    silo:
+        image: pgsty/silo:RELEASE.2026-09-16T00-00-00Z@sha256:635197cb9f36d01bee221d34d1c7d7960f6a95c48b0b6c01d99cd13bdae51a46
+        ports:
+            - "127.0.0.1:3200:3200"
+        environment:
+            MINIO_ROOT_USER: changeme
+            MINIO_ROOT_PASSWORD: changeme1234
+        command: server /data --address ":3200"
+        volumes:
+            - silo-data:/data
+        post_start:
+            - command: |
+                  sh -c '
+                  until mc alias set local http://silo:3200 changeme changeme1234 2>/dev/null; do sleep 1; done
+                  mc mb --ignore-existing local/b2-eu-cen
+                  mc mb --ignore-existing local/wasabi-eu-central-2-v3
+                  mc mb --ignore-existing local/scw-eu-fr-v3
+                  '
+
+    socat:
+        image: alpine/socat@sha256:e7b17711daaa7d49107a7193112689e91fb1a27bddd9cb0b32641b55b8e9e3b0
+        network_mode: service:museum
+        depends_on:
+            silo:
+                condition: service_started
+        command: TCP-LISTEN:3200,fork,reuseaddr TCP:silo:3200
+
+volumes:
+    silo-data:

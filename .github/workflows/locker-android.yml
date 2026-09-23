@@ -60,6 +60,9 @@ jobs:
             - name: Start local Museum with public fixture
               run: museum/restore-fixture.sh
 
+            - name: Start Locker object storage
+              run: docker compose --project-name "$AUTH_FIXTURE_COMPOSE_PROJECT" --file museum/compose.yaml up --wait --wait-timeout 60 silo socat
+
             - name: Enable KVM
               run: |
                   echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
@@ -86,7 +89,11 @@ jobs:
                   emulator-options: -no-window -gpu host -feature -Vulkan -accel on -no-metrics -no-snapshot -noaudio -no-boot-anim -memory 4096
                   disable-animations: true
                   script: |
-                      adb install -r "$LOCKER_APK_PATH"
+                      adb install --abi arm64-v8a -r "$LOCKER_APK_PATH"
+                      adb shell dumpsys package "$APP_ID" | grep 'primaryCpuAbi=arm64-v8a'
+                      adb reverse tcp:3200 tcp:3200
+                      adb shell 'mkdir -p /sdcard/Download; echo Ente Locker Maestro document fixture > "/sdcard/Download/Maestro Locker Document.txt"'
+                      adb shell am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d 'file:///sdcard/Download/Maestro%20Locker%20Document.txt'
                       scripts/run-maestro.sh artifacts/maestro/locker/results/onboarding.xml artifacts/maestro/locker/debug maestro/locker/onboarding/onboarding.yaml
 
                       credentials=museum/fixtures/public-test-credentials.json
@@ -94,14 +101,19 @@ jobs:
                           -e ONLINE_ENDPOINT=http://10.0.2.2:8080 \
                           -e USER_EMAIL="$(jq -r '.accounts.basic.email' "$credentials")" \
                           -e USER_PASSWORD="$(jq -r '.accounts.basic.password' "$credentials")" \
+                          -e SHARE_EMAIL="$(jq -r '.accounts.recovery.email' "$credentials")" \
                           maestro/locker/online/empty-account.yaml \
                           maestro/locker/online/item-editors.yaml \
                           maestro/locker/online/collection-lifecycle.yaml \
                           maestro/locker/online/note-lifecycle.yaml \
                           maestro/locker/online/structured-items.yaml \
+                          maestro/locker/online/document-lifecycle.yaml \
+                          maestro/locker/online/legacy-lifecycle.yaml \
                           maestro/locker/online/important-lifecycle.yaml \
                           maestro/locker/online/restore-note.yaml \
+                          maestro/locker/online/bulk-restore.yaml \
                           maestro/locker/online/collection-membership.yaml \
+                          maestro/locker/online/collection-sharing.yaml \
                           maestro/locker/online/language-switch.yaml
 
             - name: Stop local Museum

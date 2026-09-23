@@ -1,0 +1,86 @@
+appId: ${APP_ID}
+name: Locker bulk important, restore, and empty trash
+tags: [locker, android, online]
+---
+- runFlow: subflows/login-local-account.yaml
+- tapOn: Save to Locker
+- tapOn: "Note\nWrite down thoughts and instructions."
+- inputText: Maestro bulk alpha
+- hideKeyboard
+- tapOn: Save
+- extendedWaitUntil:
+    visible: Maestro bulk alpha
+    timeout: 30000
+- tapOn: Add item
+- tapOn: "Note\nWrite down thoughts and instructions."
+- inputText: Maestro bulk beta
+- hideKeyboard
+- tapOn: Save
+- extendedWaitUntil:
+    visible: Maestro bulk beta
+    timeout: 30000
+- longPressOn: Maestro bulk alpha
+- tapOn: Select all
+- assertVisible: Deselect all
+- tapOn: Important
+- extendedWaitUntil:
+    notVisible: Select all
+    timeout: 30000
+- tapOn:
+    point: 9%,8%
+- tapOn: Collections
+- extendedWaitUntil:
+    visible: "Important\n2 items"
+    timeout: 30000
+- tapOn: "Important\n2 items"
+- assertVisible: Maestro bulk alpha
+- assertVisible: Maestro bulk beta
+- launchApp
+- longPressOn: Maestro bulk alpha
+- tapOn: Maestro bulk beta
+- tapOn: Delete
+- assertVisible: Delete 2 items
+- tapOn: Delete 2 items
+- extendedWaitUntil:
+    notVisible: Maestro bulk alpha
+    timeout: 30000
+- tapOn:
+    point: 9%,8%
+- tapOn: Trash
+- assertVisible: Maestro bulk alpha
+- assertVisible: Maestro bulk beta
+- longPressOn: Maestro bulk alpha
+- tapOn: Select all
+- assertVisible: Deselect all
+- tapOn: Restore
+- assertVisible: Add to collection
+- tapOn: "Uncategorized\nUncategorized"
+- tapOn: Save
+- extendedWaitUntil:
+    notVisible: Maestro bulk alpha
+    timeout: 30000
+- launchApp
+- assertVisible: Maestro bulk alpha
+- assertVisible: Maestro bulk beta
+- longPressOn: Maestro bulk alpha
+- tapOn: Maestro bulk beta
+- tapOn: Delete
+- tapOn: Delete 2 items
+- tapOn:
+    point: 9%,8%
+- tapOn: Trash
+- assertVisible: Maestro bulk alpha
+- assertVisible: Maestro bulk beta
+- tapOn:
+    point: 93%,16%
+- assertVisible: Empty Trash
+- tapOn: Empty Trash
+- launchApp
+- extendedWaitUntil:
+    visible: Save to Locker
+    timeout: 30000
+- tapOn:
+    point: 9%,8%
+- assertVisible: General
+- tapOn: Trash
+- assertVisible: Your trash is empty

@@ -1,0 +1,81 @@
+appId: ${APP_ID}
+name: Locker collection sharing
+tags: [locker, android, online]
+---
+- runFlow: subflows/login-local-account.yaml
+- tapOn:
+    point: 9%,8%
+- tapOn: Collections
+- tapOn:
+    point: 93%,16%
+- inputText: Maestro shared shelf
+- hideKeyboard
+- tapOn: Create collection
+- extendedWaitUntil:
+    visible: "Maestro shared shelf\n0 items"
+    timeout: 30000
+- tapOn: "Maestro shared shelf\n0 items"
+# The Share icon has no accessibility label in this build.
+- tapOn:
+    point: 79%,16%
+- assertVisible: Share collection
+- tapOn: Add email
+- assertVisible: Add new email
+# The email field is likewise unlabeled in the accessibility tree.
+- tapOn:
+    point: 50%,84%
+- inputText: ${SHARE_EMAIL}
+- hideKeyboard
+- tapOn: Share
+- extendedWaitUntil:
+    visible: "(?s).*${SHARE_EMAIL}.*"
+    timeout: 30000
+- assertVisible: Shared with
+- back
+- tapOn:
+    point: 79%,16%
+- assertVisible: Share collection
+- assertVisible: "(?s).*${SHARE_EMAIL}.*"
+- assertVisible: Link
+- tapOn: Link
+- extendedWaitUntil:
+    visible: Copy
+    timeout: 30000
+- back
+- extendedWaitUntil:
+    visible: Manage link
+    timeout: 30000
+- tapOn: Manage link
+- assertVisible: "(?s)Link expiry.*"
+- assertVisible: "(?s)Device limit.*"
+- assertVisible: Password lock
+- scrollUntilVisible:
+    element: Remove link
+    direction: DOWN
+- tapOn: Remove link
+- assertVisible: Remove public link
+- tapOn: Yes, remove
+- extendedWaitUntil:
+    visible: Link
+    timeout: 30000
+- assertNotVisible: Manage link
+- back
+- launchApp
+- extendedWaitUntil:
+    visible: Save to Locker
+    timeout: 30000
+- tapOn:
+    point: 9%,8%
+- assertVisible: General
+- tapOn: Collections
+- tapOn: "(?s)Maestro shared shelf\n0 items.*"
+- tapOn:
+    point: 79%,16%
+- assertVisible: "(?s).*${SHARE_EMAIL}.*"
+- back
+- back
+- longPressOn: "(?s)Maestro shared shelf\n0 items.*"
+- tapOn: Delete
+- extendedWaitUntil:
+    notVisible: "(?s)Maestro shared shelf\n0 items.*"
+    timeout: 30000

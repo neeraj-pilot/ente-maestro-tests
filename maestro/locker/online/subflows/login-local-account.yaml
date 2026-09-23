@@ -4,7 +4,7 @@ appId: ${APP_ID}
     clearState: true
 - extendedWaitUntil:
     visible: Login to existing account
-    timeout: 60000
+    timeout: 90000
 - repeat:
     times: 7
     commands:

@@ -22,11 +22,20 @@ tags: [locker, android, online]
 - extendedWaitUntil:
     visible: "Maestro shelf\n0 items"
     timeout: 30000
+- tapOn:
+    point: 93%,16%
+- inputText: Maestro archive
+- hideKeyboard
+- tapOn: Create collection
+- extendedWaitUntil:
+    visible: "Maestro archive\n0 items"
+    timeout: 30000
 - launchApp
 - longPressOn: Maestro shelved note
 - tapOn: Add to
 - assertVisible: Add to collection
 - tapOn: "Maestro shelf\nMaestro shelf"
+- tapOn: "Maestro archive\nMaestro archive"
 - tapOn: Save
 - extendedWaitUntil:
     visible: Maestro shelved note
@@ -44,12 +53,22 @@ tags: [locker, android, online]
 - tapOn: "Maestro shelf\n1 items?"
 - assertVisible: Maestro shelved note
 - back
+- tapOn: "Maestro archive\n1 items?"
+- assertVisible: Maestro shelved note
+- back
 - longPressOn: "Maestro shelf\n1 items?"
 - tapOn: Delete
 - assertVisible: Also delete items from everywhere
 - tapOn: Yes, delete collection
 - extendedWaitUntil:
     notVisible: "Maestro shelf\n1 items?"
+    timeout: 30000
+- assertVisible: "Maestro archive\n1 items?"
+- longPressOn: "Maestro archive\n1 items?"
+- tapOn: Delete
+- tapOn: Yes, delete collection
+- extendedWaitUntil:
+    notVisible: "Maestro archive\n1 items?"
     timeout: 30000
 - launchApp
 - assertVisible: Maestro shelved note

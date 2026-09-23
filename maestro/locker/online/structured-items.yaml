@@ -61,6 +61,20 @@ tags: [locker, android, online]
 - launchApp
 - assertVisible: Maestro field kit
 - assertVisible: Maestro example account
+- tapOn: Search your documents
+- inputText: Maestro field kit
+- assertVisible: Maestro field kit
+- assertNotVisible: Maestro example account
+- eraseText
+- inputText: Maestro example account
+- assertVisible: Maestro example account
+- assertNotVisible: Maestro field kit
+- eraseText
+- inputText: Maestro missing item
+- extendedWaitUntil:
+    visible: No matches found
+    timeout: 30000
+- launchApp
 - longPressOn: Maestro field kit
 - assertVisible: Select all
 - tapOn: Maestro example account
@@ -78,6 +92,31 @@ tags: [locker, android, online]
     point: 9%,8%
 - tapOn: Trash
 - assertVisible: Maestro field kit
+- assertVisible: Maestro example account
+- tapOn: Maestro example account
+- assertVisible: owner@example.org
+- assertNotVisible: Edit
+- back
+- longPressOn: Maestro example account
+- tapOn: Restore
+- assertVisible: Add to collection
+- tapOn: "Uncategorized\nUncategorized"
+- tapOn: Save
+- extendedWaitUntil:
+    notVisible: Maestro example account
+    timeout: 30000
+- launchApp
+- tapOn: Maestro example account
+- assertVisible: owner@example.org
+- assertVisible: show_password
+- assertNotVisible: test-only-passphrase
+- launchApp
+- longPressOn: Maestro example account
+- tapOn: Delete
+- tapOn: Delete 1 item
+- tapOn:
+    point: 9%,8%
+- tapOn: Trash
 - assertVisible: Maestro example account
 - longPressOn: Maestro field kit
 - assertVisible: Select all

@@ -1,0 +1,123 @@
+appId: ${APP_ID}
+name: Locker document lifecycle
+tags: [locker, android, online]
+---
+- runFlow: subflows/login-local-account.yaml
+- tapOn:
+    point: 9%,8%
+- tapOn: Collections
+- tapOn:
+    point: 93%,16%
+- inputText: Maestro document archive
+- hideKeyboard
+- tapOn: Create collection
+- extendedWaitUntil:
+    visible: "Maestro document archive\n0 items"
+    timeout: 30000
+- launchApp
+- tapOn: Save to Locker
+- tapOn: "File\nUpload important files."
+- extendedWaitUntil:
+    visible: Maestro Locker Document.txt
+    timeout: 15000
+- tapOn: Maestro Locker Document.txt
+- assertVisible: 1 item selected
+- tapOn: "Documents\nDocuments"
+- tapOn: Save
+- extendedWaitUntil:
+    visible: Maestro Locker Document.txt
+    timeout: 60000
+- longPressOn: Maestro Locker Document.txt
+- assertVisible: Keep offline
+- assertVisible: Edit
+- assertVisible: Share
+- assertVisible: Add to
+- assertVisible: Download
+- tapOn: Keep offline
+- extendedWaitUntil:
+    visible: 1 file saved offline
+    timeout: 30000
+- longPressOn: Maestro Locker Document.txt
+- tapOn: Remove offline
+- extendedWaitUntil:
+    visible: 1 file removed from offline
+    timeout: 30000
+- longPressOn: Maestro Locker Document.txt
+- tapOn: Edit
+- assertVisible: Edit item
+- longPressOn: Maestro Locker Document.txt
+- tapOn: Select all
+- inputText: Maestro Archived Document.txt
+- hideKeyboard
+- tapOn: "Maestro document archive\nMaestro document archive"
+- tapOn: "Documents\nDocuments"
+- tapOn:
+    text: Save
+    enabled: true
+- extendedWaitUntil:
+    visible: Item updated successfully!
+    timeout: 30000
+- launchApp
+- extendedWaitUntil:
+    visible: Maestro Archived Document.txt
+    timeout: 30000
+- tapOn:
+    point: 9%,8%
+- tapOn: Collections
+- tapOn: "Maestro document archive\n1 items?"
+- extendedWaitUntil:
+    visible: Maestro Archived Document.txt
+    timeout: 30000
+- longPressOn: Maestro Archived Document.txt
+- tapOn: Download
+- extendedWaitUntil:
+    visible: SAVE
+    timeout: 30000
+- tapOn: SAVE
+- extendedWaitUntil:
+    visible: Maestro Archived Document.txt saved
+    timeout: 30000
+- doubleTapOn: Maestro Archived Document.txt
+- launchApp
+- extendedWaitUntil:
+    visible: Maestro Archived Document.txt
+    timeout: 30000
+- tapOn:
+    point: 9%,8%
+- tapOn: Collections
+- tapOn: "Maestro document archive\n1 items?"
+- assertVisible: Maestro Archived Document.txt
+- assertNotVisible: Download failed
+- assertNotVisible: Error
+- longPressOn: Maestro Archived Document.txt
+- tapOn: Delete
+- tapOn: Delete 1 item
+- extendedWaitUntil:
+    notVisible: Maestro Archived Document.txt
+    timeout: 30000
+- launchApp
+- extendedWaitUntil:
+    visible: Save to Locker
+    timeout: 30000
+- tapOn:
+    point: 9%,8%
+- tapOn: Trash
+- assertVisible: Maestro Archived Document.txt
+- longPressOn: Maestro Archived Document.txt
+- tapOn: Delete
+- tapOn: Yes, delete
+- extendedWaitUntil:
+    notVisible: Maestro Archived Document.txt
+    timeout: 30000
+- launchApp
+- tapOn:
+    point: 9%,8%
+- tapOn: Collections
+- extendedWaitUntil:
+    visible: "Maestro document archive\n0 items"
+    timeout: 30000
+- longPressOn: "Maestro document archive\n0 items"
+- tapOn: Delete
+- extendedWaitUntil:
+    notVisible: "Maestro document archive\n0 items"
+    timeout: 30000

@@ -1,0 +1,49 @@
+appId: ${APP_ID}
+name: Locker Legacy kit lifecycle
+tags: [locker, android, online]
+---
+- runFlow: subflows/login-local-account.yaml
+- assertVisible: Setup your Legacy
+- tapOn: Setup your Legacy
+- assertVisible: Help loved ones access important information, in your absence.
+- tapOn: Continue
+- assertVisible: Setup your Legacy
+- tapOn:
+    point: 50%,27%
+- inputText: Avery
+- tapOn:
+    point: 50%,35%
+- inputText: Blake
+- tapOn:
+    point: 50%,43%
+- inputText: Casey
+- hideKeyboard
+- tapOn:
+    text: Create kit
+    enabled: true
+- extendedWaitUntil:
+    visible: Share your Legacy
+    timeout: 30000
+- assertVisible: Avery
+- assertVisible: Blake
+- assertVisible: Casey
+- tapOn: Continue
+- assertVisible: Congratulations!
+- tapOn: Save to Locker
+- tapOn:
+    point: 9%,8%
+- tapOn: Legacy
+- assertVisible: Legacy kits
+- tapOn: "(?s)Avery · Blake · Casey.*"
+- assertVisible: Share your Legacy
+- tapOn:
+    point: 93%,13%
+- tapOn: Revoke Legacy kit
+- assertVisible: Shared sheets can no longer be used for recovery
+- tapOn:
+    text: Revoke Legacy kit
+    index: 1
+- extendedWaitUntil:
+    visible: Create legacy kit
+    timeout: 30000
+- assertNotVisible: "(?s)Avery · Blake · Casey.*"

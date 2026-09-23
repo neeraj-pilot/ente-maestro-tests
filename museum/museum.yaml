@@ -6,6 +6,32 @@ db:
     password: ente_auth
     sslmode: disable
 
+s3:
+    are_local_buckets: true
+    use_path_style_urls: true
+    b2-eu-cen:
+        key: changeme
+        secret: changeme1234
+        endpoint: localhost:3200
+        region: eu-central-2
+        bucket: b2-eu-cen
+    wasabi-eu-central-2-v3:
+        key: changeme
+        secret: changeme1234
+        endpoint: localhost:3200
+        region: eu-central-2
+        bucket: wasabi-eu-central-2-v3
+        compliance: false
+    scw-eu-fr-v3:
+        key: changeme
+        secret: changeme1234
+        endpoint: localhost:3200
+        region: eu-central-2
+        bucket: scw-eu-fr-v3
+
+apps:
+    public-locker: http://localhost:3005
+
 key:
     encryption: yvmG/RnzKrbCb9L3mgsmoxXr9H7i2Z4qlbT0mL3ln4w=
     hash: KXYiG07wC7GIgvCSdg+WmyWdXDAn6XKYJtp/wkEU7x573+byBRAYtpTP0wwvi8i/4l37uicX1dVTUzwH3sLZyw==

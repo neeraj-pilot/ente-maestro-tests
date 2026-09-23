@@ -28,3 +28,6 @@ tags:
     point: 50%,32%
 - inputText: abc
 - assertVisible: "(?s).*Password strength: Weak.*"
+- hideKeyboard
+- tapOn: Create account
+- assertVisible: "(?s)Email.*Password.*Confirm password.*"
